@@ -1,0 +1,812 @@
+{% extends "base.html" %}
+{% from '_form_macros.html' import render_field %}
+
+{% block title %}My Collection{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">My Collection</h2>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#sneakerFormModal" id="openAddSneakerModalBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill me-1" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/></svg> Add New Sneaker
+        </button>
+    </div>
+    
+    <p>Hey, {{ current_user.first_name or current_user.username }}! Here is your sneaker collection.</p>
+
+    
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3 mb-lg-0"><div class="card h-100 shadow-sm"><div class="card-body text-center">
+            <h6 class="card-subtitle mb-2 text-muted">Total Sneakers</h6><p class="card-text fs-2 fw-bold" id="stat-total-sneakers">{{ overall_total_count }}</p>
+        </div></div></div>
+        <div class="col-lg-3 col-md-6 mb-3 mb-lg-0"><div class="card h-100 shadow-sm"><div class="card-body text-center">
+            <h6 class="card-subtitle mb-2 text-muted">Total Collection Value</h6><p class="card-text fs-2 fw-bold" id="stat-total-value">£{{ "%.2f"|format(total_value) }}</p>
+        </div></div></div>
+        <div class="col-lg-3 col-md-6 mb-3 mb-md-0"><div class="card h-100 shadow-sm"><div class="card-body text-center">
+            <h6 class="card-subtitle mb-2 text-muted">Most Owned Brand</h6><p class="card-text fs-2 fw-bold" id="stat-most-owned">{{ most_owned_brand }}</p>
+        </div></div></div>
+         <div class="col-lg-3 col-md-6"><div class="card h-100 shadow-sm"><div class="card-body text-center">
+            <h6 class="card-subtitle mb-2 text-muted">In Rotation</h6><p class="card-text fs-2 fw-bold" id="stat-in-rotation">{{ in_rotation_count }}</p>
+        </div></div></div>
+    </div>
+
+    <div class="row mb-4"><div class="col"><div class="card shadow-sm"><div class="card-body">
+        <h6 class="card-subtitle mb-2 text-muted">Brand Distribution</h6>
+        <div style="position: relative; height: 350px;"><canvas id="brandPieChart"></canvas></div>
+    </div></div></div></div>
+
+    <div id="controls-bar-container">
+        {% with target_endpoint='sneakers.dashboard', show_sort_controls=True %}{% include '_controls_bar.html' %}{% endwith %}
+    </div>
+
+    <!-- <div class="collection-summary mb-3 text-muted">
+        {% if current_filter_brand and brand_specific_count is not none %}
+            {# Message when filtering by brand #}
+            <p class="mb-1">
+                Displaying {{ displayed_count }} of your {{ brand_specific_count }} pair{{ 's' if brand_specific_count != 1 else '' }} of <strong>{{ current_filter_brand }}</strong> sneakers in rotation
+                {% if current_search_term %}
+                    matching your search for "<em>{{ current_search_term }}</em>".
+                {% endif %}
+            </p>
+
+        {% elif current_search_term %}
+            {# Message when only searching #}
+            <p>Found {{ displayed_count }} pair{{ 's' if displayed_count != 1 else '' }} in your rotation matching your search for "<em>{{ current_search_term }}</em>".</p>
+
+        {% else %}
+            {# Default message for the rotation page #}
+            <p>You currently have {{ rotation_total_count }} pair{{ 's' if rotation_total_count != 1 else '' }} in your rotation.</p>
+        {% endif %}
+
+        {# Always show the overall collection total for context #}
+        <p class="mb-0">
+            <small>From your total collection of {{ overall_collection_count }} pair{{ 's' if overall_collection_count != 1 else '' }}.</small>
+        </p>
+    </div>-->
+    <div class="collection-summary mb-3 text-muted">
+        {% include '_collection_summary_message.html' %}
+    </div>
+
+    <hr>
+
+    <div id="sneaker-grid-container">
+        {% include '_sneaker_grid.html' %}
+    </div>
+
+    <div class="modal fade" id="sneakerFormModal" tabindex="-1" aria-labelledby="sneakerFormModalLabel" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="sneakerFormModalLabel">Add Sneaker</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="currentImagePreviewContainer" class="mb-3 text-center" style="display: none;"> {# Hidden by default #}
+                        <p class="mb-1"><strong>Current Image:</strong></p>
+                        <img src="#" id="currentImagePreviewInModal" class="img-thumbnail mb-2" style="max-width: 150px; max-height: 150px; object-fit: contain; background-color: #f8f9fa;">
+                        <p><small class="form-text text-muted mt-1 d-block">To change this image, use the options below. If you don't provide a new URL or upload a new file, the current image will be kept.</small></p>
+                        <hr class="my-2">
+                    </div>
+                    <form id="sneakerModalForm" method="POST" enctype="multipart/form-data"> {# action will be set by JS #}
+                        <div id="currentImagePreviewContainer" class="mb-3" style="display: none;"> {# Hidden by default #}
+                            <p class="mb-1"><strong>Current Image:</strong></p>
+                            <img src="#" id="currentImagePreviewInModal" class="img-thumbnail mb-2" style="max-width: 150px; max-height: 150px; object-fit: contain; background-color: #f8f9fa;">
+                            <p><small class="form-text text-muted mt-1 d-block">To change this image, use the options below. If you don't provide a new URL or upload a new file, the current image will be kept.</small></p>
+                            <hr>
+                        </div>
+                        <div id="sneakerModalFormContent">
+                            {% with form = form_for_modal %}
+                                {% include '_sneaker_form_fields.html' %}
+                            {% endwith %}
+                        </div>
+                         <div id="sneakerFormGeneralErrors" class="text-danger mt-2"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="saveSneakerModalButton">Save Sneaker</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="sneakerImageModal" tabindex="-1" aria-labelledby="sneakerImageModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="sneakerImageModalLabel">Sneaker Image</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                <div class="modal-body text-center"><img src="" id="modalSneakerImage" class="img-fluid" alt="Sneaker Image Large View"></div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            
+            // --- A. SHARED VARIABLES & ELEMENT SELECTORS ---
+            let brandChart = null; // Use 'let' so we can assign the chart instance to it later
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const controlsBarContainer = document.getElementById('controls-bar-container');
+            const sneakerGridContainer = document.getElementById('sneaker-grid-container');
+            const chartCanvas = document.getElementById('brandPieChart');
+            const imageLightboxModalEl = document.getElementById('sneakerImageModal');
+            const sneakerFormModalElement = document.getElementById('sneakerFormModal');
+            const sneakerModalBootstrapInstance = sneakerFormModalElement ? new bootstrap.Modal(sneakerFormModalElement) : null;
+            const actualFormInModal = document.getElementById('sneakerModalForm');
+            const modalTitleEl = document.getElementById('sneakerFormModalLabel');
+            const saveSneakerModalButton = document.getElementById('saveSneakerModalButton');
+            const openAddSneakerModalBtn = document.getElementById('openAddSneakerModalBtn');
+            const sneakerFormGeneralErrorsEl = document.getElementById('sneakerFormGeneralErrors');
+            const currentImagePreviewContainerEl = document.getElementById('currentImagePreviewContainer');
+            const currentImagePreviewImgEl = document.getElementById('currentImagePreviewInModal');
+            const newImagePreviewArea = document.getElementById('newImagePreviewArea');
+            const newSneakerImagePreview = document.getElementById('newSneakerImagePreview');
+            const modalUrlRadio = actualFormInModal ? actualFormInModal.querySelector('#image_option-0') : null;
+            const modalUploadRadio = actualFormInModal ? actualFormInModal.querySelector('#image_option-1') : null;
+            const modalUrlInputDiv = actualFormInModal ? actualFormInModal.querySelector('#modal_image_url_wrapper') : null;
+            const modalFileInputDiv = actualFormInModal ? actualFormInModal.querySelector('#modal_image_file_wrapper') : null;
+            const modalUrlInput = actualFormInModal ? actualFormInModal.querySelector('#modal_sneaker_image_url') : null;
+            const modalFileInput = actualFormInModal ? actualFormInModal.querySelector('#modal_sneaker_image_file') : null;
+            const collectionRowEl = document.getElementById('sneaker-collection-row');
+        
+            if (!csrfToken) {
+                console.error('CRITICAL: CSRF Token meta tag not found!');
+            }
+            
+            // --- B. HELPER FUNCTIONS ---
+            function clearValidationErrors(formElement) {
+                if (!formElement) return;
+                formElement.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+                formElement.querySelectorAll('.invalid-feedback').forEach(el => { 
+                    el.innerHTML = '';
+                    if(el.classList.contains('d-block')) el.classList.remove('d-block');
+                });
+                if (sneakerFormGeneralErrorsEl) sneakerFormGeneralErrorsEl.innerHTML = '';
+            }
+            
+            function displayValidationErrors(errors, formElement) {
+                if (!formElement) { console.error("displayValidationErrors: formElement is null"); return; }
+                clearValidationErrors(formElement);
+                let firstErrorField = null;
+        
+                for (const fieldName in errors) {
+                    if (fieldName === 'csrf_token' && sneakerFormGeneralErrorsEl) {
+                        sneakerFormGeneralErrorsEl.innerHTML += `<p class="text-danger small py-1">${errors[fieldName].join(', ')}</p>`;
+                        if (!firstErrorField && sneakerFormGeneralErrorsEl) firstErrorField = sneakerFormGeneralErrorsEl;
+                        continue;
+                    }
+        
+                    const inputElements = formElement.querySelectorAll(`[name="${fieldName}"]`);
+                    if (inputElements.length === 0 && sneakerFormGeneralErrorsEl) {
+                        sneakerFormGeneralErrorsEl.innerHTML += `<p class="text-danger small py-1">Error for field '${fieldName}': ${errors[fieldName].join(', ')} (Field not found in form)</p>`;
+                        if (!firstErrorField) firstErrorField = sneakerFormGeneralErrorsEl;
+                    }
+        
+                    inputElements.forEach(inputElement => {
+                        if (inputElement) {
+                            if (!firstErrorField && inputElement.type !== 'hidden') firstErrorField = inputElement;
+                            
+                            if (inputElement.type === 'radio' || inputElement.type === 'checkbox') {
+                                inputElement.classList.add('is-invalid');
+                            } else {
+                                inputElement.classList.add('is-invalid');
+                            }
+        
+                            let container = inputElement.closest('.mb-3') || inputElement.closest('.form-check');
+                            if (inputElement.type === 'radio' && inputElement.classList.contains('form-check-input') && inputElement.parentElement.classList.contains('form-check-inline')) {
+                                container = inputElement.closest('.mb-3'); 
+                            }
+                            
+                            let feedbackDiv = container ? container.querySelector('.invalid-feedback') : null;
+                            
+                            const inputGroupParent = inputElement.closest('.input-group');
+                            if (inputGroupParent && container && !feedbackDiv) { // If in input group, feedback might need to be after group
+                                feedbackDiv = container.querySelector('.invalid-feedback.d-block'); // Check if already exists for group
+                                if (!feedbackDiv) { 
+                                    feedbackDiv = document.createElement('div');
+                                    feedbackDiv.className = 'invalid-feedback d-block'; 
+                                    container.appendChild(feedbackDiv); 
+                                }
+                            } else if (!feedbackDiv && container) { 
+                                feedbackDiv = document.createElement('div');
+                                feedbackDiv.className = 'invalid-feedback'; 
+                                const insertAfterElement = (inputElement.type === 'radio' || inputElement.type === 'checkbox') ? 
+                                                        (inputElement.closest('.form-check-inline') || inputElement.closest('.form-check') || inputElement.parentElement) : 
+                                                        inputElement;
+                                if (insertAfterElement && insertAfterElement.parentNode) {
+                                insertAfterElement.parentNode.insertBefore(feedbackDiv, insertAfterElement.nextSibling);
+                                } else if (container) { 
+                                    container.appendChild(feedbackDiv);
+                                }
+                            }
+        
+                            if (feedbackDiv) {
+                                feedbackDiv.innerHTML = errors[fieldName].map(err => `<span>${err}</span>`).join('<br>');
+                                // Ensure it's visible, especially if dynamically created or for input groups
+                                if (inputElement.classList.contains('is-invalid') && !feedbackDiv.style.display || feedbackDiv.style.display === 'none') {
+                                    feedbackDiv.style.display = 'block'; // Make sure it's visible
+                                }
+                            } else if (sneakerFormGeneralErrorsEl) {
+                                const labelEl = formElement.querySelector(`label[for='${inputElement.id}']`);
+                                const fieldLabelText = labelEl ? (labelEl.firstChild.textContent ? labelEl.firstChild.textContent.trim().replace(':', '') : fieldName) : fieldName;
+                                sneakerFormGeneralErrorsEl.innerHTML += `<p class="text-danger small py-1">${fieldLabelText}: ${errors[fieldName].join(', ')}</p>`;
+                            }
+                        }
+                    });
+                }
+                if (firstErrorField && typeof firstErrorField.focus === 'function') {
+                    if (firstErrorField === sneakerFormGeneralErrorsEl && sneakerFormModalElement) {
+                        sneakerFormModalElement.querySelector('.modal-body').scrollTop = 0;
+                    } else {
+                        firstErrorField.focus();
+                    }
+                }
+            }
+            
+            function displayTemporaryAjaxMessage(message, category) {
+                const mainContainer = document.querySelector('main.container'); // Target for messages
+                if (!mainContainer) return;
+
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert alert-${category} alert-dismissible fade show mt-3`;
+                alertDiv.setAttribute('role', 'alert');
+                alertDiv.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                // Prepend to main container so it's at the top
+                mainContainer.insertBefore(alertDiv, mainContainer.firstChild);
+
+                // Auto-dismiss after a few seconds
+                setTimeout(() => {
+                    // Need to get the Bootstrap Alert instance to call close
+                    const alertInstance = bootstrap.Alert.getOrCreateInstance(alertDiv);
+                    if (alertInstance) {
+                        alertInstance.close();
+                    } else if (alertDiv) { // Fallback if instance not found, just remove
+                        alertDiv.remove();
+                    }
+                }, 4000); // Message visible for 4 seconds
+            }
+           
+            // --- Reusable Function to Attach All Event Listeners to a Single Sneaker Card ---
+            function attachEventListenersToCard(cardElement) {
+                if (!cardElement) return;
+        
+                // 1. AJAX for Sneaker Delete
+                const deleteForm = cardElement.querySelector('.delete-sneaker-ajax-form');
+                if (deleteForm) {
+                    deleteForm.addEventListener('submit', function (event) {
+                        event.preventDefault();
+                        if (!confirm('Are you sure you want to delete this sneaker?')) return;
+                        
+                        // This is your existing AJAX delete logic
+                        fetch(deleteForm.getAttribute('action'), {
+                            method: 'POST',
+                            headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                cardElement.style.transition = 'opacity 0.5s ease';
+                                cardElement.style.opacity = '0';
+                                setTimeout(() => { 
+                                    cardElement.remove();
+                                    updateCollectionCounts(data, 'delete'); // <-- CALL UPDATE FUNCTION HERE
+                                }, 500);
+                                displayTemporaryAjaxMessage(data.message || 'Sneaker removed!', 'success');
+                            }
+                            else { displayTemporaryAjaxMessage(data.message || 'Error deleting sneaker.', 'danger'); }
+                        })
+                        .catch(error => { displayTemporaryAjaxMessage('Network error while deleting.', 'danger'); console.error('Delete Error:', error); });
+                    });
+                }
+        
+                // 2. AJAX for Update Last Worn Date
+                const updateLastWornForm = cardElement.querySelector('.update-last-worn-ajax-form');
+                if (updateLastWornForm) {
+                    updateLastWornForm.addEventListener('submit', function(event) {
+                        event.preventDefault();
+                        const formActionUrl = updateLastWornForm.getAttribute('action');
+                        const sneakerId = cardElement.id.replace('sneaker-card-', '');
+                        const dateInput = updateLastWornForm.querySelector('input[name="new_last_worn"]');
+                        const formData = new FormData();
+                        formData.append('new_last_worn', dateInput.value);
+                        const statusElement = cardElement.querySelector(`#update-status-${sneakerId}`);
+                        const displayElement = cardElement.querySelector(`#last-worn-display-${sneakerId}`);
+        
+                        fetch(formActionUrl, {
+                            method: 'POST',
+                            headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                            body: formData
+                        })
+                        .then(response => {
+                            if (!response.ok) { return response.json().catch(() => { throw new Error(`HTTP error ${response.status}: ${response.statusText}`); }).then(errData => { throw { serverError: true, data: errData }; }); }
+                            return response.json();
+                        })                        
+                        .then(data => {
+                            if (data.status === 'success') {
+                                if (displayElement) { const smallTag = displayElement.querySelector('small'); if(smallTag) smallTag.innerHTML = 'Last Worn: ' + data.new_date_display; }
+                                if (statusElement) { statusElement.textContent = data.message || 'Updated!'; statusElement.style.color = 'var(--bs-success)'; statusElement.classList.add('visible'); setTimeout(() => { statusElement.classList.remove('visible'); setTimeout(() => { if (!statusElement.classList.contains('visible')) statusElement.textContent = ''; }, 300); }, 2500); }
+                            } else { 
+                                if (statusElement) { statusElement.textContent = data.message || 'Update failed!'; statusElement.style.color = 'var(--bs-danger)'; statusElement.classList.add('visible'); setTimeout(() => { statusElement.classList.remove('visible'); setTimeout(() => { if (!statusElement.classList.contains('visible')) statusElement.textContent = ''; }, 300); }, 3000); }
+                                else { displayTemporaryAjaxMessage('Error: ' + (data.message || 'Could not update date.'), 'danger');}
+                            }
+                        })
+                        .catch(error => {
+                            let errorMsg = 'Network error or unexpected issue. Please try again.';
+                            if (error.serverError && error.data && error.data.message) { errorMsg = error.data.message; }
+                            else if (error.message) { errorMsg = error.message; }
+                            if (statusElement) { statusElement.textContent = errorMsg; statusElement.style.color = 'var(--bs-danger)'; statusElement.classList.add('visible'); setTimeout(() => { statusElement.classList.remove('visible'); setTimeout(() => { if (!statusElement.classList.contains('visible')) statusElement.textContent = ''; }, 300);}, 5000); }
+                            else { displayTemporaryAjaxMessage(errorMsg, 'danger'); }
+                            console.error('Fetch Error (Update Last Worn):', error);
+                        });
+                    });
+                }
+        
+                // 3. "Edit Details" Button within this card
+                const editButton = cardElement.querySelector('.open-edit-sneaker-modal-btn');
+                if (editButton) {
+                    editButton.addEventListener('click', function() {
+                        // First, check that all necessary modal elements were found when the page loaded
+                        if (!actualFormInModal || !modalTitleEl || !sneakerModalBootstrapInstance) {
+                            console.error("Cannot open edit modal: one or more modal components are missing.");
+                            alert("An error occurred preparing the edit form. Please refresh the page.");
+                            return;
+                        }
+
+                        const sneakerId = this.dataset.sneakerId;
+                        const fetchUrl = this.dataset.fetchUrl;
+                        const editActionUrl = this.dataset.editActionUrl;
+
+                        // Fetch existing sneaker data to populate the modal form
+                        fetch(fetchUrl, {
+                            method: 'GET',
+                            headers: { 
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRFToken': csrfToken // Good practice to send, though often not required for GET
+                            }
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                // Try to get a specific error message from the server's JSON response
+                                return response.json().catch(() => {
+                                    // If the server response wasn't JSON (e.g., a 500 HTML error page)
+                                    throw new Error(`Server responded with an error: ${response.status} ${response.statusText}`);
+                                }).then(errorData => {
+                                    throw errorData; // Re-throw the parsed JSON error object
+                                });
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data.status === 'success' && data.sneaker) {
+                                const sneaker = data.sneaker;
+                                clearValidationErrors(actualFormInModal); // From your helper functions
+                                if(sneakerFormGeneralErrorsEl) sneakerFormGeneralErrorsEl.innerHTML = '';
+
+                                // Configure modal for "Edit" mode
+                                modalTitleEl.textContent = `Edit: ${sneaker.brand || ''} ${sneaker.model || ''}`;
+                                actualFormInModal.setAttribute('action', editActionUrl);
+                                actualFormInModal.setAttribute('data-sneaker-id', sneakerId);
+                                
+                                // Pre-fill form fields from the fetched sneaker data
+                                ['brand', 'model', 'colorway', 'size_type', 'size', 'last_worn_date', 
+                                'purchase_currency', 'purchase_price', 'condition', 'purchase_date'].forEach(fieldName => {
+                                    const input = actualFormInModal.querySelector(`[name="${fieldName}"]`);
+                                    if (input) {
+                                        // Use a fallback of empty string for null/undefined values from the server
+                                        input.value = sneaker[fieldName] !== null && sneaker[fieldName] !== undefined ? sneaker[fieldName] : '';
+                                    } else {
+                                        console.warn(`Could not find form input with name="${fieldName}" in the modal to populate.`);
+                                    }
+                                });
+
+                                // Show the current image preview
+                                if (currentImagePreviewImgEl && currentImagePreviewContainerEl) {
+                                    if (sneaker.current_image_display_url) {
+                                        currentImagePreviewImgEl.src = sneaker.current_image_display_url;
+                                        currentImagePreviewImgEl.alt = "Current: " + (sneaker.brand || '') + " " + (sneaker.model || '');
+                                        currentImagePreviewContainerEl.style.display = 'block';
+                                    } else {
+                                        currentImagePreviewContainerEl.style.display = 'none';
+                                    }
+                                }
+                                
+                                // Reset the "new image" section for the edit form
+                                if (newImagePreviewArea) newImagePreviewArea.style.display = 'none';
+                                if (newSneakerImagePreview) newSneakerImagePreview.src = '#';
+                                if (modalUrlInput) modalUrlInput.value = '';
+                                if (modalFileInput) modalFileInput.value = '';
+                                if (modalUrlRadio) modalUrlRadio.checked = true; // Default to URL input for changing image
+                                toggleModalImageInputs(); // Set initial visibility of URL/File inputs
+
+                                if (saveSneakerModalButton) saveSneakerModalButton.textContent = 'Save Changes';
+                                sneakerModalBootstrapInstance.show(); // Show the modal
+                            } else {
+                                displayTemporaryAjaxMessage(data.message || 'Error: Could not load sneaker details for editing.', 'danger');
+                            }
+                        })
+                        .catch(error => { 
+                            console.error('Fetch Error (Get Sneaker Data for Edit):', error);
+                            const errorMsg = error.message || 'An error occurred while fetching sneaker details.';
+                            displayTemporaryAjaxMessage(errorMsg, 'danger'); 
+                        });
+                    });
+                }
+            
+        
+                // 4. Image Lightbox Trigger
+                if (imageLightboxModalEl) {
+                    imageLightboxModalEl.addEventListener('show.bs.modal', function (event) {
+                        const triggerLink = event.relatedTarget;
+                        if (!triggerLink || !triggerLink.getAttribute) return; // Check if triggerLink is a valid element
+                        const imageSrc = triggerLink.getAttribute('data-image-src');
+                        const imageAlt = triggerLink.getAttribute('data-image-alt');
+                        const modalImage = imageLightboxModalEl.querySelector('#modalSneakerImage');
+                        const modalTitle = imageLightboxModalEl.querySelector('.modal-title');
+                        if (modalImage) { modalImage.src = imageSrc || '#'; modalImage.alt = imageAlt || 'Sneaker Image'; }
+                        if (modalTitle) { modalTitle.textContent = imageAlt || "Sneaker Image"; }
+                    });
+                }
+            }
+
+            function toggleModalImageInputs() {
+                if (!modalUrlRadio || !modalUploadRadio || !modalUrlInputDiv || !modalFileInputDiv || !modalUrlInput || !modalFileInput) {
+                    console.warn("Modal image toggle: Key elements not all found. IDs expected: image_option-0, image_option-1, modal_image_url_wrapper, modal_image_file_wrapper, modal_sneaker_image_url, modal_sneaker_image_file.");
+                    return;
+                }
+                if (modalUrlRadio.checked) {
+                    modalUrlInputDiv.style.display = ''; 
+                    modalFileInputDiv.style.display = 'none';
+                    modalUrlInput.disabled = false;
+                    modalFileInput.disabled = true;
+                    if (modalFileInput.value) modalFileInput.value = ''; 
+                } else if (modalUploadRadio.checked) {
+                    modalUrlInputDiv.style.display = 'none';
+                    modalFileInputDiv.style.display = '';
+                    modalUrlInput.disabled = true;
+                    modalFileInput.disabled = false;
+                    if (modalUrlInput.value) modalUrlInput.value = ''; 
+                }
+                if (newImagePreviewArea) newImagePreviewArea.style.display = 'none';
+                if (newSneakerImagePreview) newSneakerImagePreview.src = '#';
+            }
+            
+            // --- THE CORE AJAX UPDATE FUNCTION ---
+            function updateDashboard(url, isPopState = false) {
+                if (!sneakerGridContainer) return;
+                const scrollPosition = window.scrollY;
+                sneakerGridContainer.style.opacity = '0.5';
+
+                if (!isPopState) {
+                    history.pushState({ path: url }, '', url);
+                }
+
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (controlsBarContainer && data.controls_bar_html) {
+                            controlsBarContainer.innerHTML = data.controls_bar_html;
+                        }
+                        if (sneakerGridContainer && data.sneaker_grid_html) {
+                            sneakerGridContainer.innerHTML = data.sneaker_grid_html;
+                        }
+                        document.querySelector('.collection-summary').innerHTML = data.summary_message_html;
+                        document.getElementById('stat-total-value').textContent = `£${parseFloat(data.total_value || 0).toFixed(2)}`;
+                        document.getElementById('stat-most-owned').textContent = data.most_owned_brand || 'N/A';
+                        document.getElementById('stat-total-sneakers').textContent = data.overall_total_count || 0;
+                        document.getElementById('stat-in-rotation').textContent = data.in_rotation_count || 0;
+
+                        if (brandChart && data.brand_labels && data.brand_data) {
+                            brandChart.data.labels = data.brand_labels;
+                            brandChart.data.datasets[0].data = data.brand_data;
+                            brandChart.update();
+                        }
+                    })
+                    .catch(error => console.error('Dashboard update failed:', error))
+                    .finally(() => {
+                        sneakerGridContainer.style.opacity = '1';
+                        requestAnimationFrame(() => window.scrollTo(0, scrollPosition));
+                    });
+            }
+
+            if (controlsBarContainer) {
+                controlsBarContainer.addEventListener('click', event => {
+                    const link = event.target.closest('a');
+                    if (link && link.closest('.controls-bar')) {
+                        event.preventDefault();
+                        updateDashboard(link.href);
+                    }
+                });
+                controlsBarContainer.addEventListener('submit', event => {
+                    const form = event.target;
+                    if (form && form.closest('.controls-bar')) {
+                        event.preventDefault();
+                        const params = new URLSearchParams(new FormData(form));
+                        const url = `${form.action}?${params.toString()}`;
+                        updateDashboard(url);
+                    }
+                });
+            }
+            window.addEventListener('popstate', event => updateDashboard(location.href, true));
+            
+            if (chartCanvas) {
+                const brandLabels = JSON.parse('{{ brand_labels|tojson|safe }}');
+                const brandData = JSON.parse('{{ brand_data|tojson|safe }}');
+                if (brandData && brandData.length > 0) {
+                    brandChart = new Chart(chartCanvas, {
+                        type: 'pie',
+                        data: { labels: brandLabels, datasets: [{ data: brandData, backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#19ff19', '#3b0e31', '#69f0d3'] }] },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                }
+            }
+
+            // --- ATTACH EVENT LISTENERS ON INITIAL PAGE LOAD ---
+            // Remove old forEach loops and replace with this:
+            document.querySelectorAll('#sneaker-collection-row .col').forEach(cardElement => {
+                attachEventListenersToCard(cardElement);
+            });
+            
+            // New Image Preview Listeners
+            if (modalUrlInput && newSneakerImagePreview && newImagePreviewArea) {
+                modalUrlInput.addEventListener('input', function() {
+                    const url = this.value.trim();
+                    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+                        newSneakerImagePreview.src = url; newSneakerImagePreview.alt = "New image URL preview";
+                        newImagePreviewArea.style.display = 'block';
+                    } else { newImagePreviewArea.style.display = 'none'; newSneakerImagePreview.src = '#'; }
+                });
+            }
+            if (modalFileInput && newSneakerImagePreview && newImagePreviewArea) {
+                modalFileInput.addEventListener('change', function(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/avif', 'image/webp'];
+                        if (allowedTypes.includes(file.type)) {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                newSneakerImagePreview.src = e.target.result; newSneakerImagePreview.alt = "New file preview";
+                                newImagePreviewArea.style.display = 'block';
+                            };
+                            reader.readAsDataURL(file);
+                        } else {
+                            newImagePreviewArea.style.display = 'none'; newSneakerImagePreview.src = '#';
+                            displayTemporaryAjaxMessage('Selected file type is not allowed.', 'warning');
+                            this.value = '';
+                        }
+                    } else { newImagePreviewArea.style.display = 'none'; newSneakerImagePreview.src = '#'; }
+                });
+            }
+            
+            // Image Option Radio Button Toggling
+            if (modalUrlRadio && modalUploadRadio) {
+                modalUrlRadio.addEventListener('change', toggleModalImageInputs);
+                modalUploadRadio.addEventListener('change', toggleModalImageInputs);
+            }
+
+            // Prepare Modal for ADDING
+            if (openAddSneakerModalBtn && actualFormInModal) {
+                openAddSneakerModalBtn.addEventListener('click', function () {
+                    // This listener now ONLY prepares the data and state
+                    modalTitleEl.textContent = 'Add New Sneaker';
+                    actualFormInModal.setAttribute('action', "{{ url_for('sneakers.add_sneaker') }}");
+                    actualFormInModal.removeAttribute('data-sneaker-id');
+                    actualFormInModal.reset(); 
+                    clearValidationErrors(actualFormInModal);
+
+                    // Hide both image preview areas initially
+                    if(currentImagePreviewContainerEl) currentImagePreviewContainerEl.style.display = 'none';
+                    if (newImagePreviewArea) newImagePreviewArea.style.display = 'none';
+                    if (newSneakerImagePreview) newSneakerImagePreview.src = '#';
+
+                    // Just set the default radio button state.
+                    if (modalUrlRadio) modalUrlRadio.checked = true;
+
+                    if (saveSneakerModalButton) saveSneakerModalButton.textContent = 'Add Sneaker';
+
+                    // DO NOT call toggleModalImageInputs() here anymore.
+                });
+            }
+        
+            // HANDLE MODAL FORM SUBMISSION (FOR ADD & EDIT) ---
+            if (actualFormInModal && sneakerModalBootstrapInstance) {
+                // Listen for the 'submit' event on the form itself.
+                actualFormInModal.addEventListener('submit', function(event) {
+                    event.preventDefault(); // Always prevent the default form submission
+
+                    // --- 'actionUrl' is declared ONLY ONCE right here ---
+                    const actionUrl = actualFormInModal.getAttribute('action');
+
+                    // Debugging & Robustness Check
+                    console.log("Attempting to submit form to URL:", actionUrl);
+                    if (!actionUrl || actionUrl.includes('undefined')) {
+                        displayTemporaryAjaxMessage('Error: Form action is missing or invalid. Please close the modal and try again.', 'danger');
+                        console.error("Form submission aborted due to invalid actionUrl:", actionUrl);
+                        return; // Stop the function
+                    }
+
+                    if (!csrfToken) {
+                        displayTemporaryAjaxMessage('Cannot process request: Missing security token.', 'danger');
+                        return;
+                    }
+
+                    clearValidationErrors(actualFormInModal);
+
+                    const formData = new FormData(actualFormInModal);
+                    const isEditMode = actualFormInModal.hasAttribute('data-sneaker-id');
+
+                    // Provide User Feedback during submission
+                    const originalButtonText = saveSneakerModalButton.innerHTML;
+                    saveSneakerModalButton.disabled = true;
+                    saveSneakerModalButton.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...`;
+
+                    fetch(actionUrl, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().catch(() => {
+                                throw new Error(`Server responded with an error: ${response.status} ${response.statusText}`);
+                            }).then(errorData => {
+                                throw { serverError: true, data: errorData };
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // This is the logic for handling a successful response
+                        if (data.status === 'success') {
+                            sneakerModalBootstrapInstance.hide();
+                            displayTemporaryAjaxMessage(data.message || 'Operation successful!', 'success');
+
+                            // The logic for dynamic DOM updates or page reload goes here
+                            // For now, we are still reloading the page.
+                            window.location.reload(); 
+                        } else if (data.errors) {
+                            displayValidationErrors(data.errors, actualFormInModal);
+                        } else {
+                            displayTemporaryAjaxMessage(data.message || 'An unknown error occurred.', 'danger');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error submitting modal form:', error);
+                        const errorMsg = error?.data?.message || error.message || 'A network error occurred. Please try again.';
+                        displayTemporaryAjaxMessage(errorMsg, 'danger');
+                    })
+                    .finally(() => {
+                        // Restore save button regardless of success or failure
+                        saveSneakerModalButton.disabled = false;
+                        saveSneakerModalButton.innerHTML = isEditMode ? 'Save Changes' : 'Add Sneaker';
+                    });
+                });
+
+                // This ensures the button in the modal footer triggers the form's submit event
+                if (saveSneakerModalButton) {
+                    saveSneakerModalButton.setAttribute('type', 'submit');
+                    saveSneakerModalButton.setAttribute('form', 'sneakerModalForm');
+                }
+            }
+            if (sneakerFormModalElement) {
+                sneakerFormModalElement.addEventListener('shown.bs.modal', function() {
+                    // This is the most reliable time to set the initial input visibility.
+                    // Our other listeners for opening the "Add" or "Edit" modal have already
+                    // set the correct radio button state. Now we just apply the visibility rule.
+                    console.log("Sneaker Form Modal shown. Toggling inputs to match radio state.");
+                    toggleModalImageInputs(); 
+                });
+            }
+
+            // --- Event Delegation for Rotation Buttons ---
+            if(collectionRowEl) {
+                collectionRowEl.addEventListener('submit', function(event) {
+                    // Find the form that was submitted
+                    const form = event.target;
+
+                    // Handle "Remove from Rotation"
+                    if (form.matches('.remove-from-rotation-ajax-form')) {
+                        event.preventDefault();
+                        if (!csrfToken) { displayTemporaryAjaxMessage('Security token missing.', 'danger'); return; }
+
+                        const cardElement = form.closest('.col');
+
+                        fetch(form.getAttribute('action'), {
+                            method: 'POST',
+                            headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                displayTemporaryAjaxMessage(data.message, 'success');
+                                // On the rotation page, this card should disappear
+                                if (cardElement) {
+                                    cardElement.style.transition = 'opacity 0.5s ease';
+                                    cardElement.style.opacity = '0';
+                                    setTimeout(() => { 
+                                        cardElement.remove();
+                                        // TODO: Update counts dynamically
+                                    }, 500); 
+                                }
+                            } else {
+                                displayTemporaryAjaxMessage(data.message || 'An error occurred.', 'danger');
+                            }
+                        })
+                        .catch(err => { console.error(err); displayTemporaryAjaxMessage('A network error occurred.', 'danger'); });
+                    }
+                    // You can add your other delegated submit listeners here too, like for delete
+                });
+            }
+
+            // Update Counts
+
+            function updateCollectionCounts(data, actionType = '') { // actionType can be 'add' or 'delete'
+                const summaryEl = document.querySelector('.collection-summary');
+                if (!summaryEl) {
+                    console.error("Could not find '.collection-summary' div to update counts.");
+                    return;
+                }
+
+                // Get the current state of the filter/search controls from the page
+                const currentBrandFilterEl = document.getElementById('filter_brand');
+                const activeBrandFilter = (currentBrandFilterEl && currentBrandFilterEl.value !== 'all') ? currentBrandFilterEl.value : null;
+
+                const currentSearchTermEl = document.getElementById('search_term');
+                const activeSearchTerm = (currentSearchTermEl && currentSearchTermEl.value) ? currentSearchTermEl.value.trim() : null;
+
+                // These counts come from the server response
+                const overallTotal = data.overall_total_count;
+                const displayedCount = document.querySelectorAll('#sneaker-collection-row .col').length;
+
+                let newCountHTML = '';
+
+                if (activeBrandFilter) {
+                    // This block handles the display when a brand filter is active.
+                    // It reconstructs the message about the filtered brand and the overall total.
+                    let brandCountForMessage = '...'; // A placeholder
+
+                    if (actionType === 'add' && activeBrandFilter.toLowerCase() === (data.added_sneaker_brand || '').toLowerCase()) {
+                        brandCountForMessage = data.brand_specific_count_for_added_brand;
+                    } else if (actionType === 'delete' && activeBrandFilter.toLowerCase() === (data.deleted_sneaker_brand || '').toLowerCase()) {
+                        brandCountForMessage = data.brand_specific_count_for_deleted_brand;
+                    } else {
+                        // If the added/deleted sneaker's brand doesn't match the current filter,
+                        // the brand-specific count is unchanged. We'll use the count of what's currently displayed
+                        // within the search term message.
+                    }
+
+                    // Let's build the message string. Note the use of backticks (`).
+                    newCountHTML = `
+                        <p class="mb-1">
+                            You have ${brandCountForMessage} pair${brandCountForMessage != 1 ? 's' : ''} of <strong>${activeBrandFilter}</strong> sneakers in your collection.
+                            ${activeSearchTerm ? `(Showing ${displayedCount} of these matching your search.)` : ''}
+                        </p>
+                        <p class="mb-0">
+                            <small>Your total collection now has <span id="js-overall-count-display">${overallTotal}</span> pair<span id="js-overall-count-plural-s">${overallTotal != 1 ? 's' : ''}</span>.</small>
+                        </p>
+                    `;
+
+                } else if (activeSearchTerm) {
+                    // This block handles when only a search is active.
+                    newCountHTML = `
+                        <p>Found ${displayedCount} pair${displayedCount != 1 ? 's' : ''} matching your search.</p>
+                        <p class="mb-0">
+                            <small>Your total collection now has <span id="js-overall-count-display">${overallTotal}</span> pair<span id="js-overall-count-plural-s">${overallTotal != 1 ? 's' : ''}</span>.</small>
+                        </p>
+                    `;
+                } else {
+                    // This is the default message when no filters/search are active.
+                    newCountHTML = `
+                        <p id="mainCollectionCountP">You currently have <span id="js-overall-count-display">${overallTotal}</span> pair<span id="js-overall-count-plural-s">${overallTotal != 1 ? 's' : ''}</span> in your collection.</p>
+                    `;
+                }
+
+                // Update the summary section with the newly constructed HTML
+                summaryEl.innerHTML = newCountHTML;
+            }
+        });
+    </script>
+
+{% endblock %}

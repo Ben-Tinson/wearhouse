@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to WearHouse{% endblock %}
+
+{% block content %}
+
+{# This top-level 'if' statement creates two completely different versions of the page #}
+{% if current_user.is_authenticated %}
+
+    {# --- VERSION 1: FOR LOGGED-IN USERS --- #}
+
+    <div class="p-5 mb-4 card h-100 rounded-3 shadow-sm text-center">
+        <div class="container-fluid py-5">
+            <h1 class="display-4 fw-bold">Welcome back, {{ current_user.first_name or current_user.username }}!</h1>
+            <p class="fs-4 col-md-10 mx-auto">Ready to dive back into your collection?</p>
+    
+            {# --- NEW CONTAINER FOR BUTTONS --- #}
+            <div class="d-grid gap-2 d-sm-flex justify-content-sm-center mt-4">
+                <a href="{{ url_for('sneakers.dashboard') }}" class="btn btn-primary btn-lg px-4 gap-3">My Collection</a>
+                <a href="{{ url_for('sneakers.rotation') }}" class="btn btn-primary btn-lg px-4">My Rotation</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container px-4 py-5" id="featured-3">
+        <h2 class="mb-3">Features</h2>
+        <hr class="mb-4">
+        <div class="row g-4 py-4 row-cols-1 row-cols-lg-2">
+            
+            <div class="feature col">
+                {# MODIFIED: Changed text-bg-primary to bg-wearhouse-primary #}
+                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-wearhouse-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-collection-fill" viewBox="0 0 16 16"><path d="M0 13a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 16 13V6a1.5 1.5 0 0 0-1.5-1.5h-13A1.5 1.5 0 0 0 0 6v7zM2 3a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 0-1h-11A.5.5 0 0 0 2 3zm2-2a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 0-1h-7A.5.5 0 0 0 4 1z"/></svg>
+                </div>
+                <h3 class="fs-2">Manage Your Collection</h3>
+                <p>Add every sneaker you own with detailed information like purchase price, size, condition, and images. Never lose track of your collection again.</p>
+            </div>
+    
+            <div class="feature col">
+                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-wearhouse-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+                    {# --- NEW: Up and Down Arrow Icon --- #}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-arrow-down-up" viewBox="0 0 16 16">
+                      <path fill-rule="evenodd" d="M11.5 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L11 2.707V14.5a.5.5 0 0 0 .5.5zm-7-14a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L4 13.293V1.5a.5.5 0 0 1 .5-.5z"/>
+                    </svg>
+                </div>
+                <h3 class="fs-2">Curate Your Rotation</h3>
+                <p>Easily select which sneakers are in your active rotation and track when you last wore them. Keep your style fresh and give every pair some love.</p>
+            </div>
+    
+            <div class="feature col">
+                {# MODIFIED: Changed text-bg-primary to bg-wearhouse-primary #}
+                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-wearhouse-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-calendar-heart-fill" viewBox="0 0 16 16"><path d="M4 .5a.5.5 0 0 0-1 0V1H2a2 2 0 0 0-2 2v1h16V3a2 2 0 0 0-2-2h-1V.5a.5.5 0 0 0-1 0V1H4V.5zM16 14V5H0v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2zM8 7.993c1.664-1.711 5.825 1.283 0 5.132-5.825-3.85-1.664-6.843 0-5.132z"/></svg>
+                </div>
+                <h3 class="fs-2">Track Upcoming Releases</h3>
+                <p>Follow the hype with our curated Release Calendar. Add anticipated drops to your personal Wishlist so you never miss out.</p>
+            </div>
+    
+            <div class="feature col">
+                {# MODIFIED: Changed text-bg-primary to bg-wearhouse-primary #}
+                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-wearhouse-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-bar-chart-line-fill" viewBox="0 0 16 16"><path d="M11 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12h.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1 0-1H1v-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h1V7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7h1V2z"/></svg>
+                </div>
+                <h3 class="fs-2">View Your Stats</h3>
+                <p>Visualize your collection with our dashboard insights. See your most owned brands, total collection value, and more with dynamic charts.</p>
+            </div>
+        </div>
+    </div>
+
+    {# --- NEW: "At a Glance" Stats Section --- #}
+    <div class="container px-4 py-5" id="stats-section">
+        <h2 class="mb-3">At a Glance</h2>
+        <hr class="mb-4">
+        <div class="row">
+            <div class="col-lg-3 col-md-6 mb-4"><div class="card h-100 shadow-sm"><div class="card-body text-center">
+                <h6 class="card-subtitle mb-2 text-muted">Total Sneakers</h6><p class="card-text fs-2 fw-bold" id="stat-total-sneakers">{{ stats.overall_total_count }}</p>
+            </div></div></div>
+            <div class="col-lg-3 col-md-6 mb-4"><div class="card h-100 shadow-sm"><div class="card-body text-center">
+                <h6 class="card-subtitle mb-2 text-muted">Total Value</h6><p class="card-text fs-2 fw-bold" id="stat-total-value">£{{ "%.2f"|format(stats.total_value) }}</p>
+            </div></div></div>
+            <div class="col-lg-3 col-md-6 mb-4"><div class="card h-100 shadow-sm"><div class="card-body text-center">
+                <h6 class="card-subtitle mb-2 text-muted">Most Owned Brand</h6><p class="card-text fs-2 fw-bold" id="stat-most-owned">{{ stats.most_owned_brand }}</p>
+            </div></div></div>
+             <div class="col-lg-3 col-md-6 mb-4"><div class="card h-100 shadow-sm"><div class="card-body text-center">
+                <h6 class="card-subtitle mb-2 text-muted">In Rotation</h6><p class="card-text fs-2 fw-bold" id="stat-in-rotation">{{ stats.in_rotation_count }}</p>
+            </div></div></div>
+        </div>
+    </div>
+
+    {# --- Recently Added Sneakers Section --- #}
+    {% if recent_sneakers %}
+    <div class="container px-4 py-5" id="recent-sneakers">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="mb-0">Recently Added</h2>
+            <a href="{{ url_for('sneakers.dashboard') }}" class="btn btn-outline-secondary btn-sm">View Full Collection</a>
+        </div>
+        <hr class="mb-4">
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+            {% for sneaker in recent_sneakers %}<div class="col">{% include '_single_sneaker_card.html' %}</div>{% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {# --- In Your Rotation Section --- #}
+    {% if rotation_sneakers %}
+        <div class="container px-4 py-5" id="rotation-preview">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="mb-0">In Your Rotation</h2>
+                <a href="{{ url_for('sneakers.rotation') }}" class="btn btn-outline-secondary btn-sm">View Rotation</a>
+            </div>
+            <hr class="mb-4">
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+                {% for sneaker in rotation_sneakers %}
+                <div class="col">
+                    {# We can reuse this partial here too #}
+                    {% include '_single_sneaker_card.html' %}
+                </div>
+            {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+    
+    {# --- Upcoming on Your Wishlist Section --- #}
+    {% if upcoming_wishlist %}
+        <div class="container px-4 py-5" id="wishlist-preview">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="mb-0">Upcoming on Your Wishlist</h2>
+                <a href="{{ url_for('main.wishlist') }}" class="btn btn-outline-secondary btn-sm">View Wishlist</a>
+            </div>
+            <hr class="mb-4">
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+                {% for release in upcoming_wishlist %}
+                <div class="col">
+                    {# Here we use the simpler card from the release calendar #}
+                    <div class="card h-100 shadow-sm">
+                        <img src="{{ release.image_url or 'https://via.placeholder.com/300x250.png?text=No+Image' }}" class="card-img-top p-3" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #f8f9fa;">
+                        <div class="card-body">
+                            <h5 class="card-title fs-6">{{ release.name }}</h5>
+                            <p class="card-text"><small class="text-muted">Releases: {{ release.release_date.strftime('%b %d, %Y') }}</small></p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {# --- From the Release Calendar Section --- #}
+    {% if general_releases %}
+        <div class="container px-4 py-5" id="release-calendar-preview">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="mb-0">Upcoming Releases</h2>
+                <a href="{{ url_for('main.wishlist') }}" class="btn btn-outline-secondary btn-sm">View Wishlist</a>
+            </div>
+            <hr class="mb-4">
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+                {% for release in general_releases %}
+                <div class="col">
+                     <div class="card h-100 shadow-sm">
+                        <img src="{{ release.image_url or 'https://via.placeholder.com/300x250.png?text=No+Image' }}" class="card-img-top p-3" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #f8f9fa;">
+                        <div class="card-body">
+                            <h5 class="card-title fs-6">{{ release.name }}</h5>
+                            <p class="card-text"><small class="text-muted">Releases: {{ release.release_date.strftime('%b %d, %Y') }}</small></p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+{% else %}
+
+    {# --- VERSION 2: FOR LOGGED-OUT GUESTS (with new consistent layout) --- #}
+
+    <div class="p-5 mb-4 card h-100 rounded-3 shadow-sm text-center">
+        <h1 class="display-4 fw-bold">Welcome to WearHouse</h1>
+        <p class="fs-4 col-md-10 mx-auto">The ultimate place to manage, track, and showcase your prized sneaker collection.</p>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg mt-3 px-5">Get Started for Free</a>
+        <p class="mt-3">Already have an account? <a href="{{ url_for('auth.login') }}">Log in here</a>.</p>
+    </div>
+
+    <div class="container px-4 py-5" id="featured-3">
+        <h2 class="mb-3">Features</h2>
+        <hr class="mb-4">
+        <div class="row g-4 py-4 row-cols-1 row-cols-lg-2">
+            
+            <div class="feature col">
+                {# MODIFIED: Changed text-bg-primary to bg-wearhouse-primary #}
+                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-wearhouse-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-collection-fill" viewBox="0 0 16 16"><path d="M0 13a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 16 13V6a1.5 1.5 0 0 0-1.5-1.5h-13A1.5 1.5 0 0 0 0 6v7zM2 3a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 0-1h-11A.5.5 0 0 0 2 3zm2-2a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 0-1h-7A.5.5 0 0 0 4 1z"/></svg>
+                </div>
+                <h3 class="fs-2">Manage Your Collection</h3>
+                <p>Add every sneaker you own with detailed information like purchase price, size, condition, and images. Never lose track of your collection again.</p>
+            </div>
+    
+            <div class="feature col">
+                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-wearhouse-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+                    {# --- NEW: Up and Down Arrow Icon --- #}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-arrow-down-up" viewBox="0 0 16 16">
+                      <path fill-rule="evenodd" d="M11.5 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L11 2.707V14.5a.5.5 0 0 0 .5.5zm-7-14a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L4 13.293V1.5a.5.5 0 0 1 .5-.5z"/>
+                    </svg>
+                </div>
+                <h3 class="fs-2">Curate Your Rotation</h3>
+                <p>Easily select which sneakers are in your active rotation and track when you last wore them. Keep your style fresh and give every pair some love.</p>
+            </div>
+    
+            <div class="feature col">
+                {# MODIFIED: Changed text-bg-primary to bg-wearhouse-primary #}
+                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-wearhouse-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-calendar-heart-fill" viewBox="0 0 16 16"><path d="M4 .5a.5.5 0 0 0-1 0V1H2a2 2 0 0 0-2 2v1h16V3a2 2 0 0 0-2-2h-1V.5a.5.5 0 0 0-1 0V1H4V.5zM16 14V5H0v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2zM8 7.993c1.664-1.711 5.825 1.283 0 5.132-5.825-3.85-1.664-6.843 0-5.132z"/></svg>
+                </div>
+                <h3 class="fs-2">Track Upcoming Releases</h3>
+                <p>Follow the hype with our curated Release Calendar. Add anticipated drops to your personal Wishlist so you never miss out.</p>
+            </div>
+    
+            <div class="feature col">
+                {# MODIFIED: Changed text-bg-primary to bg-wearhouse-primary #}
+                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-wearhouse-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-bar-chart-line-fill" viewBox="0 0 16 16"><path d="M11 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12h.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1 0-1H1v-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h1V7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7h1V2z"/></svg>
+                </div>
+                <h3 class="fs-2">View Your Stats</h3>
+                <p>Visualize your collection with our dashboard insights. See your most owned brands, total collection value, and more with dynamic charts.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container px-4 py-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="mb-0">Hot Upcoming Releases</h2>
+            <a href="{{ url_for('main.release_calendar') }}" class="btn btn-outline-secondary btn-sm">View Full Calendar</a>
+        </div>
+        <hr class="mb-4">
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+            {% for release in general_releases %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm">
+                        <img src="{{ release.image_url or 'https://via.placeholder.com/300x250.png?text=No+Image' }}" class="card-img-top p-3" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #f8f9fa;">
+                        <div class="card-body">
+                            <h5 class="card-title fs-6">{{ release.name }}</h5>
+                            <p class="card-text"><small class="text-muted">Releases: {{ release.release_date.strftime('%b %d, %Y') }}</small></p>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="col-12"><p class="text-center text-muted">No upcoming releases to show right now.</p></div>
+            {% endfor %}
+        </div>
+    </div>
+
+{% endif %}
+{% endblock %}

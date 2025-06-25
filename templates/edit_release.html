@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% from '_form_macros.html' import render_field %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <h2 class="mb-4">{{ title }}</h2>
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="POST" action="" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+                        {{ render_field(form.name) }}
+                        {{ render_field(form.brand) }}
+                        {{ render_field(form.release_date) }}
+                        
+                        <div class="mb-3">
+                            {{ form.retail_price.label(class="form-label") }}
+                            <div class="input-group">
+                                {{ form.retail_currency(class="form-select" + (" is-invalid" if form.retail_currency.errors else ""), style="flex: 0 0 auto; width: auto; max-width: 100px;") }}
+                                {{ form.retail_price(class="form-control" + (" is-invalid" if form.retail_price.errors else ""), placeholder="Amount") }}
+                            </div>
+                            {% if form.retail_currency.errors or form.retail_price.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.retail_currency.errors %}<span>{{ error }}</span><br>{% endfor %}
+                                    {% for error in form.retail_price.errors %}<span>{{ error }}</span><br>{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <hr class="my-4">
+                        <h4 class="mb-3">Release Image</h4>
+                        
+                        <div class="mb-3">
+                            <label class="form-label d-block">Image Source:</label>
+                            {% for subfield in form.image_option %}
+                                <div class="form-check form-check-inline">
+                                    {{ subfield(class="form-check-input" + (" is-invalid" if form.image_option.errors else "")) }}
+                                    {{ subfield.label(class="form-check-label") }}
+                                </div>
+                            {% endfor %}
+                            {% if form.image_option.errors %}<div class="invalid-feedback d-block">{% for error in form.image_option.errors %}<span>{{ error }}</span><br>{% endfor %}</div>{% endif %}
+                        </div>
+
+                        <div id="image_url_input_div">
+                            {{ render_field(form.image_url) }}
+                        </div>
+                        
+                        <div id="image_file_input_div" style="display: none;">
+                            <div class="mb-3">
+                                {{ form.sneaker_image_file.label(class="form-label") }}
+                                {% if form.sneaker_image_file.errors %}
+                                    {{ form.sneaker_image_file(class="form-control is-invalid") }}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.sneaker_image_file.errors %}
+                                            <span>{{ error }}</span><br>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ form.sneaker_image_file(class="form-control") }}
+                                {% endif %}
+                                <div class="form-text">Allowed types: png, jpg, jpeg, gif, avif</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3" id="imagePreviewArea" style="display: none; text-align: center;">
+                            <p class="mb-1"><small class="text-muted">Image preview:</small></p>
+                            <img src="#" id="imagePreview" class="img-thumbnail" 
+                                 style="max-width: 300px; max-height: 300px; object-fit: contain; background-color: #f8f9fa;" 
+                                 alt="Image preview">
+                        </div>
+                        <div class="mt-4">
+                            {{ form.submit(class="btn btn-primary w-100", value="Save Changes") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {# --- UPDATED SCRIPT FOR IMAGE TOGGLING AND PREVIEWS --- #}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- Element Selectors ---
+        const urlRadio = document.getElementById('image_option-0');
+        const uploadRadio = document.getElementById('image_option-1');
+        const urlDiv = document.getElementById('image_url_input_div');
+        const fileDiv = document.getElementById('image_file_input_div');
+        const urlInput = document.getElementById('image_url'); // WTForms default ID
+        const fileInput = document.getElementById('sneaker_image_file'); // WTForms default ID
+
+        const previewArea = document.getElementById('imagePreviewArea');
+        const previewImage = document.getElementById('imagePreview');
+
+        // --- Functions ---
+        function toggleImageInputs() {
+            if (urlRadio.checked) {
+                urlDiv.style.display = 'block';
+                fileDiv.style.display = 'none';
+            } else {
+                urlDiv.style.display = 'none';
+                fileDiv.style.display = 'block';
+            }
+            // Reset preview when toggling
+            previewArea.style.display = 'none';
+            previewImage.setAttribute('src', '#');
+        }
+
+        // --- Event Listeners ---
+        urlRadio.addEventListener('change', toggleImageInputs);
+        uploadRadio.addEventListener('change', toggleImageInputs);
+        
+        // Listener for the URL input field
+        if (urlInput) {
+            urlInput.addEventListener('input', function() {
+                const url = this.value.trim();
+                if (url && url.startsWith('http')) {
+                    previewImage.setAttribute('src', url);
+                    previewArea.style.display = 'block';
+                } else {
+                    previewArea.style.display = 'none';
+                }
+            });
+        }
+
+        // Listener for the File input field
+        if (fileInput) {
+            fileInput.addEventListener('change', function(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        previewImage.setAttribute('src', e.target.result);
+                        previewArea.style.display = 'block';
+                    }
+                    reader.readAsDataURL(file); // Read file to generate a data URL
+                } else {
+                    previewArea.style.display = 'none';
+                }
+            });
+        }
+
+        // Run on page load to set the initial correct state
+        toggleImageInputs();
+    });
+    </script>
+{% endblock %}

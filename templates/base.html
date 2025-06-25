@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}WearHouse{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* --- Color Palette --- */
+            --wearhouse-primary: #FF6600;       /* Vibrant Orange */
+            --wearhouse-accent: #007bff;        /* Example Accent - Electric Blue (can be used for other elements) */
+            
+            /* --- Light Theme (Default) --- */
+                --wearhouse-page-bg: #f8f9fa;      /* Light grey page background */
+                --wearhouse-card-bg: #ffffff;     /* White card background */
+                --wearhouse-text-color: #212529;   /* Dark text */
+                --wearhouse-muted-color: #6c757d;  /* Muted dark text */
+                --wearhouse-border-color: #dee2e6; /* Default border color */
+                --wearhouse-input-bg: #ffffff;    /* Light input background */
+            
+
+            /* Navbar specific variables */
+            --navbar-top-offset: 20px; 
+            --navbar-height: 56px; /* Approximate, adjust based on your actual navbar height */
+    
+        }
+        
+        /* --- NEW: Dark Theme Variable Overrides --- */
+        html.dark-mode {
+            --wearhouse-page-bg: #121212;      /* Very dark grey */
+            --wearhouse-card-bg: #1e1e1e;      /* Slightly lighter dark grey for cards */
+            --wearhouse-text-color: #e8e6e3;   /* Off-white text */
+            --wearhouse-muted-color: rgba(232, 230, 227, 0.6); /* Muted light text */
+            --wearhouse-border-color: #444;    /* Darker border color */
+            --wearhouse-input-bg: #2a2a2a;     /* Dark input background */
+        }
+    
+        /* --- 1. Base & Typography --- */
+        body { 
+            font-family: 'Open Sans', sans-serif;
+            color: var(--wearhouse-text-color);
+            background-color: var(--wearhouse-page-bg);
+            display: flex; 
+            flex-direction: column; 
+            min-height: 100vh; /* For sticky footer */
+            background-color: var(--wearhouse-page-bg);
+            color: var(--wearhouse-text-color);
+        }
+
+        .card, .modal-content {
+            background-color: var(--wearhouse-card-bg);
+            color: var(--wearhouse-text-color);
+            border-color: var(--wearhouse-border-color);
+        }
+
+        /* Specific overrides for Dark Mode */
+        html.dark-mode .navbar.bg-white {
+            background-color: var(--wearhouse-card-bg) !important; /* Override .bg-white */
+        }
+        html.dark-mode .controls-bar.bg-light {
+            background-color: var(--wearhouse-card-bg) !important; /* Override .bg-light */
+            border-color: var(--wearhouse-border-color) !important;
+        }
+        html.dark-mode .table {
+            --bs-table-bg: var(--wearhouse-card-bg);
+            --bs-table-color: var(--wearhouse-text-color);
+            --bs-table-border-color: var(--wearhouse-border-color);
+            --bs-table-striped-bg: #2c2c2c;
+        }
+        html.dark-mode .form-control, 
+        html.dark-mode .form-select {
+            background-color: var(--wearhouse-input-bg);
+            color: var(--wearhouse-text-color);
+            border-color: var(--wearhouse-border-color);
+        }
+        html.dark-mode .form-control:focus, 
+        html.dark-mode .form-select:focus {
+            background-color: var(--wearhouse-input-bg);
+            color: var(--wearhouse-text-color);
+        }
+        html.dark-mode hr {
+            border-top-color: var(--wearhouse-border-color);
+        }
+    
+        h1, h2, h3, h4, h5, h6,
+        .navbar-brand, 
+        .card-title, 
+        .modal-title {
+            font-family: 'Montserrat', sans-serif;
+        }
+        .btn { /* Using Montserrat for all buttons for consistency */
+            font-family: 'Montserrat', sans-serif;
+        }
+    
+        a {
+            color: var(--wearhouse-primary);
+        }
+        a:hover {
+            color: #E65C00; /* Darker orange for hover */
+        }
+    
+        .text-muted { /* Global muted text for the light page theme */
+            color: var(--wearhouse-muted-color) !important; 
+        }
+    
+        hr {
+            border-top-color: var(--wearhouse-border-color);
+        }
+
+        .bg-wearhouse-primary {
+            background-color: var(--wearhouse-primary) !important;
+            color: #fff !important; /* Ensure text on the badge is white */
+        }
+    
+        /* --- 2. Navbar (Floating, Fixed, Container-Width Content) --- */
+        .wearhouse-navbar-fixed-wrapper { /* Outer fixed, full-width, transparent wrapper */
+            position: fixed;
+            top: var(--navbar-top-offset);
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 1030;
+            pointer-events: none; /* Wrapper itself shouldn't intercept mouse events */
+        }
+        .wearhouse-navbar-fixed-wrapper .container { /* The .container inside the wrapper */
+            pointer-events: auto; /* Allow mouse events on the container (and thus the navbar within it) */
+            /* Bootstrap's .container class handles max-width and centering automatically */
+        }
+        /* The <nav> tag itself uses Bootstrap classes: navbar navbar-expand-lg navbar-light bg-white shadow-lg rounded */
+        /* This means its background, shadow, and rounded corners are handled. */
+    
+        .navbar-brand {
+            color: var(--wearhouse-primary) !important; /* Ensure brand color */
+        }
+        .navbar-brand:hover {
+            opacity: 0.75;
+        }
+    
+        .navbar-light .navbar-nav .nav-link {
+            transition: color 0.15s ease-in-out, font-weight 0.15s ease-in-out;
+            padding-top: 0.75rem; 
+            padding-bottom: 0.75rem;
+            margin-left: 0.25rem;
+            margin-right: 0.25rem;
+            border-radius: 0.25rem; 
+            border-bottom: 2px solid transparent;
+        }
+        .navbar-light .navbar-nav .nav-link:hover {
+            color: var(--wearhouse-primary);
+            border-bottom-color: var(--wearhouse-primary);
+        }
+        .navbar-light .navbar-nav .nav-link.active {
+            color: var(--wearhouse-primary); 
+            font-weight: bold;
+            border-bottom-color: var(--wearhouse-primary);
+        }
+    
+        /* Content Pusher for the custom fixed navbar */
+        .wearhouse-content-pusher {
+            height: calc(var(--navbar-height) + var(--navbar-top-offset) + 2rem); /* e.g., 56px + 20px + 16px = 92px */
+        }
+    
+        /* --- 3. Main Content Area & Default Card Styling (for light theme) --- */
+        main.container {
+            flex-grow: 1; /* For sticky footer */
+        }
+        .card { 
+            background-color: var(--wearhouse-card-bg);
+            color: var(--wearhouse-text-color);
+        }
+        .card .text-muted {
+            color: var(--wearhouse-muted-color) !important; /* Darker muted for light cards */
+        }
+        .card .card-header { /* Default light card header */
+            background-color: #f8f9fa; /* Bootstrap light grey */
+            border-bottom: 1px solid var(--wearhouse-border-color);
+            color: var(--wearhouse-text-color); /* Ensure header text is dark */
+        }
+    
+        /* --- 4. Specific Component Styles --- */
+        /* Controls Bar on Dashboard (assuming it keeps .bg-light class from Bootstrap) */
+        .controls-bar.bg-light {
+            color: var(--wearhouse-text-on-light) !important; 
+            border: 1px solid var(--wearhouse-border-color);
+        }
+        .controls-bar.bg-light .text-muted {
+            color: var(--wearhouse-muted-on-light) !important;
+        }
+        .controls-bar.bg-light .btn-outline-secondary {
+            --bs-btn-color: var(--wearhouse-muted-on-light);
+            --bs-btn-border-color: var(--wearhouse-muted-on-light);
+            --bs-btn-hover-bg: var(--wearhouse-muted-on-light);
+            --bs-btn-hover-color: var(--wearhouse-page-bg); /* e.g., white text on grey hover */
+        }
+        .controls-bar.bg-light .btn-group-sm .btn.btn-outline-secondary:hover {
+            color: var(--wearhouse-primary) !important; /* Your primary orange for text */
+            background-color: #e9ecef; /* A slightly off-white/very light grey for hover background on controls bar */
+            border-color: #dee2e6; /* Optional: match background or slightly darker */
+        }
+        .controls-bar.bg-light .btn.btn-outline-secondary:hover,
+        .controls-bar.bg-light .btn.btn-outline-warning:hover {
+            color: var(--wearhouse-primary) !important; /* Text turns orange */
+            background-color: #e9ecef; /* A very light background, almost white, or use #e9ecef */
+            /* border-color: var(--wearhouse-primary); /* Optional: border turns orange */
+        }
+        .controls-bar.bg-light .btn-primary,
+        .controls-bar.bg-light .btn-info { /* For active sort/order buttons */
+            color: #fff;/* Ensure text is white on colored buttons */
+        }
+        /* Custom style for the "Clear" buttons */
+        .btn-custom-clear {
+            color: var(--wearhouse-button-orange);
+            background-color: var(--wearhouse-button-clear-bg);
+            border-color: var(--wearhouse-button-orange);
+            /* Ensure other Bootstrap button base styles are inherited or set if needed */
+            /* display: inline-block; font-weight: 400; line-height: 1.5; text-align: center; ... */
+            /* text-decoration: none; vertical-align: middle; cursor: pointer; user-select: none; */
+            /* padding: var(--bs-btn-padding-y) var(--bs-btn-padding-x); */
+            /* font-size: var(--bs-btn-font-size); */
+            /* border-radius: var(--bs-btn-border-radius); */
+            transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+        }
+
+        .btn-custom-clear:hover,
+        .btn-custom-clear:focus, /* Added focus style for accessibility */
+        .btn-custom-clear:active { /* Added active style */
+            color: #ffffff;
+            background-color: var(--wearhouse-button-orange);
+            border-color: var(--wearhouse-button-orange);
+            /* box-shadow: 0 0 0 0.25rem rgba(255, 128, 0, 0.5); /* Optional: focus shadow */
+        }
+
+        /* Ensure the active sort button (btn-primary in controls-bar) has the correct base style */
+        .controls-bar.bg-light .btn.btn-primary {
+            background-color: var(--wearhouse-primary);
+            border-color: var(--wearhouse-primary);
+            color: #fff; /* White text when active and not hovered */
+        }
+
+        /* New hover and focus style for an ACTIVE sort button */
+        .controls-bar.bg-light .btn.btn-primary:hover,
+        .controls-bar.bg-light .btn.btn-primary:focus {
+            background-color: #e9ecef;         /* Very light grey/off-white background on hover/focus */
+            color: var(--wearhouse-primary);    /* Orange text on hover/focus */
+            border-color: transparent; /* Keep an orange border or make it subtle */
+            box-shadow: none;                   /* Remove Bootstrap's default focus shadow/ring */
+        }
+
+        /* This ensures other primary buttons outside the controls-bar retain their normal hover, if any */
+        /* If you want this hover effect for ALL btn-primary, define it globally for .btn-primary:hover */
+
+        /* We should also ensure the :focus state for non-active outline buttons is clean */
+        .controls-bar.bg-light .btn.btn-outline-secondary:focus,
+        .controls-bar.bg-light .btn.btn-outline-warning:focus {
+            box-shadow: 0 0 0 0.25rem rgba(255, 128, 0, 0.25); /* Use your orange for focus glow, or 'none' */
+        }
+    
+        /* Custom Dark Component Class */
+        .wearhouse-dark-component {
+            background-color: var(--wearhouse-component-dark-bg); /* #242424 */
+            color: var(--wearhouse-text-on-dark);
+        }
+        .wearhouse-dark-component h1, .wearhouse-dark-component h2, .wearhouse-dark-component h3, 
+        .wearhouse-dark-component h4, .wearhouse-dark-component h5, .wearhouse-dark-component h6,
+        .wearhouse-dark-component p, .wearhouse-dark-component li, .wearhouse-dark-component label,
+        .wearhouse-dark-component strong { /* Make sure strong text is also light */
+            color: var(--wearhouse-text-on-dark);
+        }
+        .wearhouse-dark-component .text-muted {
+            color: var(--wearhouse-muted-on-dark) !important;
+        }
+        .wearhouse-dark-component a {
+            color: var(--wearhouse-primary); /* Orange links on this dark component */
+        }
+        .wearhouse-dark-component a:hover {
+            color: #E65C00; /* Darker orange on hover */
+        }
+        
+        .form-control, .form-select {
+            background-color: var(--wearhouse-input-bg);
+            color: var(--wearhouse-text-color);
+            border-color: var(--wearhouse-border-color);
+        }
+
+        /* --- 5. Forms (general styling for light theme) --- */
+        .form-control:focus, .form-select:focus {
+            background-color: var(--wearhouse-input-bg);
+            color: var(--wearhouse-text-color);
+        }
+        
+        /* Hide the up/down spinner arrows on date and number inputs */
+        input[type="date"]::-webkit-outer-spin-button,
+        input[type="date"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        /* Primary Button (overriding Bootstrap's default if you use .btn-primary) */
+        .btn-primary {
+            background-color: var(--wearhouse-primary);
+            border-color: var(--wearhouse-primary);
+            color: #fff; /* Ensure text is white */
+        }
+        .btn-primary:hover {
+            background-color: #e9ecef;
+            border-color: var(--wearhouse-component-dark-bg);
+            color: var(--wearhouse-component-dark-bg);
+        }
+    
+        /* --- 6. Modals (assuming they should generally match the page theme) --- */
+        /* Default Bootstrap modals are light. On our light page theme, they are fine. */
+        /* If you needed dark modals specifically:
+        .modal-content.bg-dark, .modal-content.wearhouse-dark-component { ... }
+        */
+        .modal-header {
+            border-bottom-color: var(--wearhouse-border-color);
+        }
+        .modal-footer {
+            border-top-color: var(--wearhouse-border-color);
+        }
+    
+    
+        /* --- 7. Specific UI Elements (from previous steps) --- */
+        /* Dashboard Table Image/Button sizes (if you revert to table view ever) */
+        .table img.img-thumbnail { max-width: 70px; max-height: 70px; object-fit: cover; vertical-align: middle; }
+        .table .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; }
+        .table input[type="date"].form-control-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; width: auto; max-width:150px; }
+    
+        /* Image Lightbox Click Trigger & Expand Icon */
+        .image-modal-trigger { position: relative; display: block; text-decoration: none; line-height: 0; cursor: pointer; }
+        .expand-icon { position: absolute; top: 8px; right: 8px; color: white; background-color: rgba(0, 0, 0, 0.5); border-radius: 50%; opacity: 0.75; transition: opacity 0.2s ease-in-out, background-color 0.2s ease-in-out; z-index: 10; pointer-events: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; }
+        .expand-icon.expand-icon-mobile { width: 24px; height: 24px; }
+        .expand-icon svg { display: block; }
+        .image-modal-trigger:hover .expand-icon { opacity: 1; background-color: rgba(0, 0, 0, 0.7); }
+        .image-modal-trigger .card-img-top, .image-modal-trigger img.img-fluid { display: block; }
+    
+        /* AJAX Status Message */
+        .ajax-status-message { display: block; overflow: hidden; max-height: 0; opacity: 0; transition: opacity 0.3s ease-in-out, max-height 0.3s ease-in-out, margin-top 0.3s ease-in-out; color: var(--bs-success); margin-top: 0; font-weight: 500; }
+        .ajax-status-message.visible { max-height: 3em; opacity: 1; margin-top: 0.25rem; }
+    
+        /* Mobile Sort Button Alignment */
+        @media (max-width: 991.98px) { 
+            .sort-by-field-buttons .btn { 
+                min-height: 50px; display: inline-flex; align-items: center; justify-content: center; 
+                padding-top: 0.25rem; padding-bottom: 0.25rem;
+            } 
+        }
+        
+        /* Footer (user said it's white) */
+        footer.bg-dark { /* If you still have bg-dark class on footer tag, this overrides it */
+            background-color: var(--wearhouse-page-bg-light) !important; /* Force white */
+            color: var(--wearhouse-text-on-light) !important;    /* Force dark text */
+            border-top: 1px solid var(--wearhouse-border-color);
+        }
+        footer.bg-dark a { /* If footer used to be dark, links might need this */
+            color: var(--wearhouse-primary); 
+        }
+        /* If your footer doesn't have .bg-dark, you might need a class like .site-footer */
+        /*
+        .site-footer {
+            background-color: var(--wearhouse-page-bg-light);
+            color: var(--wearhouse-text-on-light);
+            border-top: 1px solid var(--wearhouse-border-color);
+            text-align: center;
+            padding: 1rem 0; 
+            margin-top: auto; // For sticky footer
+        }
+        .site-footer p { margin-bottom: 0; }
+        .site-footer a { color: var(--wearhouse-primary); }
+        */
+
+        /* Hide the moon icon by default (in light mode) */
+        .theme-icon-moon {
+            display: none;
+        }
+        /* Show the sun icon by default (in light mode) */
+        .theme-icon-sun {
+            display: inline-block;
+        }
+
+        /* When dark mode is active... */
+        html.dark-mode .theme-icon-sun {
+            display: none; /* Hide the sun */
+        }
+        html.dark-mode .theme-icon-moon {
+            display: inline-block; /* Show the moon */
+        }
+
+        /* Style the label to make the icons more clickable */
+        .form-check-label {
+            cursor: pointer;
+        }
+
+        /* Fix for navbar link text color in dark mode */
+        html.dark-mode .navbar-dark .navbar-nav .nav-link {
+            color: rgba(255, 255, 255, 0.75); /* A standard light text color */
+        }
+        html.dark-mode .navbar-dark .navbar-nav .nav-link:hover,
+        html.dark-mode .navbar-dark .navbar-nav .nav-link.active {
+            color: #fff; /* A brighter white for hover/active states */
+            border-bottom-color: var(--wearhouse-primary);
+        }
+        html.dark-mode .navbar-dark .navbar-brand {
+            color: var(--wearhouse-primary) !important; /* Ensure brand is always orange */
+        }
+
+        /* Force dark backgrounds on key components */
+        html.dark-mode .bg-white,
+        html.dark-mode .bg-light {
+            background-color: var(--wearhouse-card-bg) !important;
+            border-color: var(--wearhouse-border-color) !important;
+        }
+
+        /* Force light text color on navbar links when in dark mode */
+        html.dark-mode .navbar-light .navbar-nav .nav-link {
+            color: rgba(255, 255, 255, 0.75); /* A standard light text color */
+            border-bottom-color: transparent; /* Reset border for non-active links */
+        }
+
+        /* Correctly style the ACTIVE navbar link in dark mode */
+        html.dark-mode .navbar-light .navbar-nav .nav-link.active,
+        html.dark-mode .navbar-light .navbar-nav .nav-link:hover {
+            color: #fff; /* A brighter white for hover/active states */
+            border-bottom-color: var(--wearhouse-primary);
+        }
+
+        /* Make the mobile menu "hamburger" icon visible on a dark background */
+        html.dark-mode .navbar-toggler-icon {
+            filter: invert(1) grayscale(100%) brightness(200%);
+        }
+
+        /* Ensure modals also get the dark theme */
+        html.dark-mode .modal-header,
+        html.dark-mode .modal-footer {
+            border-color: var(--wearhouse-border-color);
+        }
+
+        /* Style the placeholder text of form inputs in dark mode */
+        html.dark-mode .form-control::placeholder {
+            color: var(--wearhouse-muted-color);
+            opacity: 0.7; /* Make it slightly more subtle */
+        }
+        /* Older browser compatibility for placeholder */
+        html.dark-mode .form-control::-webkit-input-placeholder {
+            color: var(--wearhouse-muted-color);
+            opacity: 0.7;
+        }
+        html.dark-mode .form-control::-moz-placeholder {
+            color: var(--wearhouse-muted-color);
+            opacity: 0.7;
+        }
+
+        /* Override Bootstrap's .text-dark class specifically for the footer in dark mode */
+        html.dark-mode footer.text-dark {
+            color: var(--wearhouse-text-color) !important;
+        }
+
+        html.dark-mode .list-group-item {
+            background-color: var(--wearhouse-card-bg);
+            color: var(--wearhouse-text-color);
+            border-color: var(--wearhouse-border-color);
+        }
+
+        html.dark-mode .card-header {
+            background-color: #2a2a2a; /* A slightly different dark shade for contrast */
+            border-bottom-color: var(--wearhouse-border-color);
+            color: var(--wearhouse-text-color);
+        }
+
+        html.dark-mode .btn-primary:hover,
+        html.dark-mode .btn-primary:focus {
+            background-color: var(--wearhouse-card-bg); /* Use the dark card background */
+            color: var(--wearhouse-primary);            /* Make the text orange */
+            border-color: var(--wearhouse-primary);    /* Keep the border orange */
+        }
+
+        /* Define a high-contrast hover for secondary outline buttons in dark mode */
+        html.dark-mode .btn-outline-secondary:hover,
+        html.dark-mode .btn-outline-secondary:focus {
+            background-color: #6c757d; /* Standard Bootstrap secondary color */
+            color: #ffffff;            /* Force the text to be white */
+            border-color: #6c757d;
+        }
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Immediately invoked function to apply theme before page load
+        (function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark-mode');
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div class="wearhouse-navbar-fixed-wrapper"> {# Outer fixed, full-width, transparent wrapper #}
+        <div class="container"> {# This standard Bootstrap container centers and sets responsive max-width #}
+            <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-lg rounded"> {# Actual visible navbar #}
+                <div class="container-fluid"> {# For navbar's internal padding & content flow #}
+                    <a class="navbar-brand" href="{{ url_for('main.home') }}">WearHouse</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        {# Your existing nav items (Home, My Collection, Profile, Login/Register, Logout) go here #}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'main.home' %}active{% endif %}" aria-current="page" href="{{ url_for('main.home') }}">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'main.release_calendar' %}active{% endif %}" href="{{ url_for('main.release_calendar') }}">Release Calendar</a>
+                        </li> 
+                        {% if current_user.is_authenticated %}                    
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'main.wishlist' %}active{% endif %}" href="{{ url_for('main.wishlist') }}">My Wishlist</a>
+                        </li>                    
+                        <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'sneakers.dashboard' %}active{% endif %}" href="{{ url_for('sneakers.dashboard') }}">My Collection</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'sneakers.rotation' %}active{% endif %}" href="{{ url_for('sneakers.rotation') }}">My Rotation</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'main.profile' %}active{% endif %}" href="{{ url_for('main.profile') }}">Profile</a>
+                            </li>
+                            {# Logout link is now on profile page #}
+                        {% else %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'auth.login' %}active{% endif %}" href="{{ url_for('auth.login') }}">Login</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'auth.register' %}active{% endif %}" href="{{ url_for('auth.register') }}">Register</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                    <div class="d-flex align-items-center ms-lg-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="theme-toggle-switch">
+                            <label class="form-check-label" for="theme-toggle-switch">
+                                {# --- NEW: Sun and Moon Icons --- #}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-sun-fill theme-icon-sun" viewBox="0 0 16 16">
+                                    <path d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z"/>
+                                </svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-moon-fill theme-icon-moon" viewBox="0 0 16 16">
+                                    <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"/>
+                                </svg>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </div>
+</div>
+
+    
+    <div class="wearhouse-content-pusher"></div> 
+    <main class="container mt-4 mb-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show auto-dismiss-alert" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-white text-dark text-center p-3 mt-auto shadow-lg">
+        <div class="container">
+            <p class="mb-0">&copy; 2025 WearHouse</p> {# Simpler copyright, mb-0 to remove bottom margin from p #}
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Find all alerts that should auto-dismiss
+            const autoDismissAlerts = document.querySelectorAll('.auto-dismiss-alert');
+            const themeToggle = document.getElementById('theme-toggle-switch');
+
+            autoDismissAlerts.forEach(function(alert) {
+                setTimeout(function() {
+                    // Use Bootstrap's Alert instance to gracefully close it (with the fade animation)
+                    const alertInstance = new bootstrap.Alert(alert);
+                    if (alertInstance) {
+                        alertInstance.close();
+                    }
+                }, 5000); // Set timeout for 5 seconds (5000 milliseconds), adjust as you like
+            });
+            // Function to set the theme
+            function setTheme(isDark) {
+                if (isDark) {
+                    document.documentElement.classList.add('dark-mode');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark-mode');
+                    localStorage.setItem('theme', 'light');
+                }
+            }
+
+
+            // Set the initial state of the toggle switch
+            const currentTheme = localStorage.getItem('theme');
+            if (currentTheme === 'dark') {
+                themeToggle.checked = true;
+            }
+
+            // Listen for clicks on the toggle switch
+            if (themeToggle) {
+                themeToggle.addEventListener('change', function() {
+                    setTheme(this.checked);
+                });
+            }
+        });
+    </script>
+</body>
+</html>

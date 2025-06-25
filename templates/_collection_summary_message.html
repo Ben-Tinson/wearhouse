@@ -1,0 +1,10 @@
+{% if current_filter_brand and brand_specific_count is not none %}
+    <p>You have {{ brand_specific_count }} pair{{ 's' if brand_specific_count != 1 else '' }} of <strong>{{ current_filter_brand }}</strong> sneakers.</p>
+    {% if current_search_term %}
+        <p class="mb-0"><small>(Showing {{ displayed_count }} of these matching your search.)</small></p>
+    {% endif %}
+{% elif current_search_term %}
+    <p>Found {{ displayed_count }} pair{{ 's' if displayed_count != 1 else '' }} matching your search.</p>
+{% else %}
+    <p>You currently have {{ overall_total_count }} pair{{ 's' if overall_total_count != 1 else '' }} in your collection.</p>
+{% endif %}

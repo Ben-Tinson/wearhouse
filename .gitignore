@@ -1,0 +1,22 @@
+# Virtual Environment
+venv/
+.venv/
+
+# Byte-compiled / optimized / C extensions
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Instance Folder
+instance/
+
+# Environment files
+.env
+.flaskenv
+
+# Database
+*.sqlite3
+*.db
+
+# Other
+.DS_Store

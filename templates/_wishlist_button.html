@@ -1,0 +1,23 @@
+{# templates/_wishlist_button.html #}
+{# This template expects a 'release' object to be available in its context. #}
+{# It also uses the global 'current_user' object. #}
+
+{% if current_user.is_authenticated %}
+    {# Check if the current release is already in the user's wishlist #}
+    {% if release in current_user.wishlist %}
+        {# If YES, show a "Remove from Wishlist" button #}
+        <button type="button" class="btn btn-success btn-sm w-100 toggle-wishlist-btn" 
+                data-action="{{ url_for('main.remove_from_wishlist', release_id=release.id) }}"
+                data-release-id="{{ release.id }}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-circle-fill me-1" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM12.03 5.97a.75.75 0 0 0-1.08.022L7.477 10.435 5.053 8.012a.75.75 0 0 0-1.06 1.06l2.97 2.97a.75.75 0 0 0 1.08 0l4.5-4.5a.75.75 0 0 0-.022-1.08z"/></svg>
+            On Wishlist
+        </button>
+    {% else %}
+        {# If NO, show an "Add to Wishlist" button #}
+        <button type="button" class="btn btn-outline-primary btn-sm w-100 toggle-wishlist-btn"
+                data-action="{{ url_for('main.add_to_wishlist', release_id=release.id) }}"
+                data-release-id="{{ release.id }}">
+            Add to Wishlist
+        </button>
+    {% endif %}
+{% endif %}

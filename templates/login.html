@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %} {# Using title passed from the route #}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <h2 class="mb-4 text-center">{{ title }}</h2> {# Using title passed from the route #}
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('auth.login') }}"> {# Explicit action is fine #}
+                    {{ form.hidden_tag() }} {# IMPORTANT: Adds CSRF token and other hidden fields #}
+                    
+                    <div class="mb-3">
+                        {{ form.username.label(class="form-label") }}
+                        
+                        {% if form.username.errors %}
+                            {{ form.username(class="form-control is-invalid", placeholder="Enter your username") }}
+                            <div class="invalid-feedback">
+                                {% for error in form.username.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.username(class="form-control", placeholder="Enter your username") }}
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.password.label(class="form-label") }}
+                        {% if form.password.errors %}
+                            {{ form.password(class="form-control is-invalid", placeholder="Enter your password") }}
+                            <div class="invalid-feedback">
+                                {% for error in form.password.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.password(class="form-control", placeholder="Enter your password") }}
+                        {% endif %}
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+        <p class="mt-3 text-center">
+            Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a>.
+        </p>
+        <p class="text-center mt-2"> {# mt-2 for a little space above it #}
+            <a href="{{ url_for('auth.reset_password_request') }}">Forgot password?</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

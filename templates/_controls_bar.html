@@ -1,0 +1,114 @@
+{# templates/_controls_bar.html #}
+{# Reusable controls bar for sorting, filtering, and searching. #}
+{# Expects 'target_endpoint' and all current state variables to be passed. #}
+
+<div class="controls-bar mb-4 p-3 border rounded bg-light shadow-sm">
+    <div class="row gy-3">
+        {% if show_sort_controls %}
+        {# --- Sorting Section --- #}
+        <div class="col-12">
+            <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
+                <strong class="me-2 mb-2 mb-md-0">Sort by:</strong>
+                <div class="btn-group btn-group-sm me-lg-3 mb-2 mb-md-0 sort-by-field-buttons" role="group" aria-label="Sort by field">
+                    <a href="{{ url_for(target_endpoint, sort_by='id', order='desc', filter_brand=(current_filter_brand or 'all'), search_term=(current_search_term or '')) }}" 
+                       class="btn {% if sort_active_in_url and current_sort_by == 'id' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Added</a>
+                    <a href="{{ url_for(target_endpoint, sort_by='brand', order='asc', filter_brand=(current_filter_brand or 'all'), search_term=(current_search_term or '')) }}" 
+                       class="btn {% if sort_active_in_url and current_sort_by == 'brand' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Brand</a>
+                    <a href="{{ url_for(target_endpoint, sort_by='model', order='asc', filter_brand=(current_filter_brand or 'all'), search_term=(current_search_term or '')) }}" 
+                       class="btn {% if sort_active_in_url and current_sort_by == 'model' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Model</a>
+                    <a href="{{ url_for(target_endpoint, sort_by='purchase_date', order='desc', filter_brand=(current_filter_brand or 'all'), search_term=(current_search_term or '')) }}" 
+                       class="btn {% if sort_active_in_url and current_sort_by == 'purchase_date' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Purchase Date</a>
+                    <a href="{{ url_for(target_endpoint, sort_by='last_worn_date', order='desc', filter_brand=(current_filter_brand or 'all'), search_term=(current_search_term or '')) }}" 
+                       class="btn {% if sort_active_in_url and current_sort_by == 'last_worn_date' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Last Worn</a>
+                    <a href="{{ url_for(target_endpoint, sort_by='purchase_price', order='desc', filter_brand=(current_filter_brand or 'all'), search_term=(current_search_term or '')) }}" 
+                       class="btn {% if sort_active_in_url and current_sort_by == 'purchase_price' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Price</a>
+                </div>
+
+                {% if sort_active_in_url and current_sort_by %}
+                    <div class="btn-group btn-group-sm mb-2 mb-md-0" role="group" aria-label="Sort order">
+                        <a href="{{ url_for(target_endpoint, sort_by=current_sort_by, order='asc', filter_brand=(current_filter_brand or 'all'), search_term=(current_search_term or '')) }}" 
+                           class="btn {% if current_order == 'asc' %}btn-info{% else %}btn-outline-secondary{% endif %}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-sort-up me-1" viewBox="0 0 16 16"><path d="M3.5 12.5a.5.5 0 0 1-1 0V3.707L1.354 4.854a.5.5 0 1 1-.708-.708l2-1.999.007-.007a.498.498 0 0 1 .7.006l2 2a.5.5 0 1 1-.707.708L3.5 3.707V12.5zm3.5-9a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zM7.5 6a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zm0 3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3zm0 3a.5.5 0 0 0 0 1h1a.5.5 0 0 0 0-1h-1z"/></svg>Asc
+                        </a>
+                        <a href="{{ url_for(target_endpoint, sort_by=current_sort_by, order='desc', filter_brand=(current_filter_brand or 'all'), search_term=(current_search_term or '')) }}" 
+                           class="btn {% if current_order == 'desc' %}btn-info{% else %}btn-outline-secondary{% endif %}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-sort-down me-1" viewBox="0 0 16 16"><path d="M3.5 2.5a.5.5 0 0 0-1 0v8.793l-1.146-1.147a.5.5 0 0 0-.708.708l2 1.999.007.007a.497.497 0 0 0 .7-.006l2-2a.5.5 0 0 0-.707-.708L3.5 11.293V2.5zm3.5 1a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zM7.5 6a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zm0 3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3zm0 3a.5.5 0 0 0 0 1h1a.5.5 0 0 0 0-1h-1z"/></svg>Desc
+                        </a>
+                    </div>
+                    {# "Clear Sort" link - preserves filter and search #}
+                    {% set clear_sort_params = {} %}
+                    {% if current_filter_brand and current_filter_brand != 'all' %}{% set _ = clear_sort_params.update({'filter_brand': current_filter_brand}) %}{% endif %}
+                    {% if current_search_term %}{% set _ = clear_sort_params.update({'search_term': current_search_term}) %}{% endif %}
+                    <a href="{{ url_for(target_endpoint, **clear_sort_params) }}" class="btn btn-custom-clear btn-sm ms-2 mb-1 mb-md-0">Clear Sort</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {# --- Brand Filter and Search Row --- #}
+        <div class="col-12">
+            <div class="d-flex flex-wrap align-items-center justify-content-start">
+
+                {# --- NEW COMBINED FILTER FORM --- #}
+                <form method="GET" action="{{ url_for(target_endpoint) }}" class="d-flex align-items-center me-lg-3 mb-2 mb-lg-0">
+                    {# Preserve search term when filtering #}
+                    <input type="hidden" name="search_term" value="{{ current_search_term or '' }}">
+
+                    {# Brand Filter Dropdown #}
+                    <select name="filter_brand" id="filter_brand" class="form-select form-select-sm me-2" style="width: auto;">
+                        <option value="all">All Brands</option>
+                        {% for brand_name in brands_for_filter %}<option value="{{ brand_name }}" {% if current_filter_brand == brand_name %}selected{% endif %}>{{ brand_name }}</option>{% endfor %}
+                    </select>
+
+                    {# Month Filter Dropdown #}
+                    {% if months_for_filter %}
+                    <select name="filter_month" id="filter_month" class="form-select form-select-sm me-2" style="width: auto;">
+                        <option value="all">All Months</option>
+                        {% for month_value, month_name in months_for_filter %}<option value="{{ month_value }}" {% if current_filter_month == month_value %}selected{% endif %}>{{ month_name }}</option>{% endfor %}
+                    </select>
+                    {% endif %}
+
+                    <button type="submit" class="btn btn-outline-primary btn-sm">Filter</button>
+
+                    {# Clear Brand Filter Link #}
+                    {% if current_filter_brand and current_filter_brand != 'all' %}
+                        {% set clear_brand_params = {} %}
+                        {% if show_sort_controls and sort_active_in_url %}{% set _ = clear_brand_params.update({'sort_by': current_sort_by, 'order': current_order}) %}{% endif %}
+                        {% if current_search_term %}{% set _ = clear_brand_params.update({'search_term': current_search_term}) %}{% endif %}
+                        {% if current_filter_month and current_filter_month != 'all' %}{% set _ = clear_brand_params.update({'filter_month': current_filter_month}) %}{% endif %}
+                        <a href="{{ url_for(target_endpoint, **clear_brand_params) }}" class="btn btn-custom-clear btn-sm ms-2">Clear Brand</a>
+                    {% endif %}
+
+                    {% if current_filter_month and current_filter_month != 'all' %}
+                        {% set clear_month_params = {} %}
+                        {% if show_sort_controls and sort_active_in_url %}{% set _ = clear_month_params.update({'sort_by': current_sort_by, 'order': current_order}) %}{% endif %}
+                        {% if current_search_term %}{% set _ = clear_month_params.update({'search_term': current_search_term}) %}{% endif %}
+                        {% if current_filter_brand and current_filter_brand != 'all' %}{% set _ = clear_month_params.update({'filter_brand': current_filter_brand}) %}{% endif %}
+                        <a href="{{ url_for(target_endpoint, **clear_month_params) }}" class="btn btn-custom-clear btn-sm ms-2">Clear Month</a>
+                    {% endif %}
+                </form>
+
+                {# Search Form #}
+                <form method="GET" action="{{ url_for(target_endpoint) }}" class="mb-2 mb-lg-0 ms-md-auto" style="min-width: 300px;">
+                    {# Hidden fields to preserve state #}
+                    {% if show_sort_controls and sort_active_in_url %}<input type="hidden" name="sort_by" value="{{ current_sort_by }}"><input type="hidden" name="order" value="{{ current_order }}">{% endif %}
+                    <input type="hidden" name="filter_brand" value="{{ current_filter_brand or 'all' }}">
+                    <input type="hidden" name="filter_month" value="{{ current_filter_month or 'all' }}">
+
+                    <div class="input-group input-group-sm">
+                        <input type="search" name="search_term" id="search_term" class="form-control" placeholder="Search..." value="{{ current_search_term or '' }}">
+                        <button type="submit" class="btn btn-outline-success">Search</button>
+                        {% if current_search_term %}
+                            {# --- CORRECTED "CLEAR SEARCH" LINK --- #}
+                            {% set clear_search_params = {} %}
+                            {% if show_sort_controls and sort_active_in_url %}{% set _ = clear_search_params.update({'sort_by': current_sort_by, 'order': current_order}) %}{% endif %}
+                            {% if current_filter_brand and current_filter_brand != 'all' %}{% set _ = clear_search_params.update({'filter_brand': current_filter_brand}) %}{% endif %}
+                            {% if current_filter_month and current_filter_month != 'all' %}{% set _ = clear_search_params.update({'filter_month': current_filter_month}) %}{% endif %}
+                            <a href="{{ url_for(target_endpoint, **clear_search_params) }}" class="btn btn-custom-clear">Clear</a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,90 @@
+{# templates/_single_sneaker_card.html #}
+{# This template expects a single 'sneaker' object in its context #}
+<div class="col" id="sneaker-card-{{ sneaker.id }}">
+    <div class="card h-100 shadow-sm">
+        {# ---- Image for Medium screens and UP (md, lg, xl) ---- #}
+        {% if sneaker.image_url %}
+            {% set desktop_image_src = sneaker.image_url if (sneaker.image_url.startswith('http://') or sneaker.image_url.startswith('https://')) else url_for('main.uploaded_file', filename=sneaker.image_url) %}
+            <a href="#" data-bs-toggle="modal" data-bs-target="#sneakerImageModal" 
+               data-image-src="{{ desktop_image_src }}" 
+               data-image-alt="{{ sneaker.brand }} {{ sneaker.model }}"
+               class="d-none d-md-block image-modal-trigger">
+                <img src="{{ desktop_image_src }}" class="card-img-top" alt="{{ sneaker.brand }} {{ sneaker.model }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
+                <span class="expand-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 1 0 .707z"/></svg>
+                </span>
+            </a>
+        {% else %}
+            <img src="https://via.placeholder.com/300x250.png?text=No+Image" class="card-img-top d-none d-md-block" alt="No image available" style="height: 250px; object-fit: cover;">
+        {% endif %}
+
+        <div class="card-body d-flex flex-column">
+            {# ---- Layout for Small screens and BELOW (xs, sm) ---- #}
+            <div class="row g-2 mb-2 d-md-none align-items-center">
+                <div class="col-8">
+                    <h5 class="card-title fs-6 mb-0">{{ sneaker.brand }} - {{ sneaker.model }}</h5>
+                </div>
+                <div class="col-4 text-center">
+                    {% if sneaker.image_url %}
+                        {% set mobile_image_source = sneaker.image_url if (sneaker.image_url.startswith('http://') or sneaker.image_url.startswith('https://')) else url_for('main.uploaded_file', filename=sneaker.image_url) %}
+                        <a href="#" data-bs-toggle="modal" data-bs-target="#sneakerImageModal"
+                           data-image-src="{{ mobile_image_source }}"
+                           data-image-alt="{{ sneaker.brand }} {{ sneaker.model }}"
+                           class="image-modal-trigger">
+                            <img src="{{ mobile_image_source }}" class="img-fluid rounded" alt="{{ sneaker.brand }} {{ sneaker.model }} mobile" style="max-height: 75px; object-fit: contain; background-color: #f8f9fa;">
+                            <span class="expand-icon expand-icon-mobile">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 1 0 .707z"/></svg>
+                            </span>
+                        </a>
+                    {% else %}
+                        <img src="https://via.placeholder.com/80x75.png?text=No+Img" class="img-fluid rounded" alt="No image available mobile" style="max-height: 75px; object-fit: cover;">
+                    {% endif %}
+                </div>
+            </div>
+
+            <h5 class="card-title d-none d-md-block">{{ sneaker.brand }} - {{ sneaker.model }}</h5>
+
+            <p class="card-text mb-1"><small class="text-muted">Colorway: {{ sneaker.colorway if sneaker.colorway else 'N/A' }}</small></p>
+            <p class="card-text mb-1"><small class="text-muted">Size: {% if sneaker.size_type or sneaker.size %}{{ sneaker.size_type if sneaker.size_type else '' }} {{ sneaker.size if sneaker.size else '' }}{% else %}N/A{% endif %}</small></p>
+            <p class="card-text mb-1 d-none d-sm-block"><small class="text-muted">Condition: {{ sneaker.condition if sneaker.condition else 'N/A' }}</small></p>
+            <p class="card-text mb-1 d-none d-sm-block"><small class="text-muted">Purchased: {% if sneaker.purchase_date %}{{ sneaker.purchase_date.strftime('%b %d, %Y') }}{% else %}N/A{% endif %}</small></p>
+            <p class="card-text mb-2 d-none d-sm-block"><small class="text-muted">Price: {% if sneaker.purchase_price is not none %}{{ sneaker.purchase_currency if sneaker.purchase_currency else '' }} {{ "%.2f"|format(sneaker.purchase_price) }}{% else %}N/A{% endif %}</small></p>
+
+            <p class="card-text mb-2" id="last-worn-display-{{ sneaker.id }}"><small class="text-muted">Last Worn: {% if sneaker.last_worn_date %}{{ sneaker.last_worn_date.strftime('%b %d, %Y') }}{% else %}Not set{% endif %}</small></p>
+            <form method="POST" action="{{ url_for('sneakers.update_last_worn', sneaker_id=sneaker.id) }}" class="mb-2 update-last-worn-ajax-form">
+                <label for="last_worn_input_{{ sneaker.id }}" class="form-label visually-hidden">Update Last Worn Date</label>
+                <div class="input-group input-group-sm">
+                    <input type="date" name="new_last_worn" id="last_worn_input_{{ sneaker.id }}"
+                           class="form-control" 
+                           value="{{ sneaker.last_worn_date.strftime('%Y-%m-%d') if sneaker.last_worn_date else '' }}"
+                           aria-label="New last worn date">
+                    <button type="submit" class="btn btn-outline-info">Update</button>
+                </div>
+                <span id="update-status-{{ sneaker.id }}" class="form-text ajax-status-message" style="font-size: 0.85em;"></span>
+            </form>
+
+            <div class="mt-auto d-flex justify-content-between pt-2 align-items-center">
+                {# The "Edit Details" button is always visible on both pages #}
+                <button type="button" class="btn btn-outline-secondary btn-sm open-edit-sneaker-modal-btn" 
+                        data-sneaker-id="{{ sneaker.id }}"
+                        data-fetch-url="{{ url_for('sneakers.get_sneaker_data', sneaker_id=sneaker.id) }}"
+                        data-edit-action-url="{{ url_for('sneakers.edit_sneaker', sneaker_id=sneaker.id) }}">Edit Details</button>
+
+                {# --- Conditionally Render Remove or Delete Button --- #}
+                {% if on_rotation_page %}
+                    {# On the "My Rotation" page, show this button: #}
+                    <form method="POST" action="{{ url_for('sneakers.remove_from_rotation', sneaker_id=sneaker.id) }}" class="d-inline remove-from-rotation-ajax-form">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                            Remove from Rotation
+                        </button>
+                    </form>
+                {% else %}
+                    {# On the "My Collection" page, show this button: #}
+                    <form method="POST" action="{{ url_for('sneakers.delete_sneaker', sneaker_id=sneaker.id) }}" class="d-inline delete-sneaker-ajax-form">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">{{ title }}</h2>
+        <a href="{{ url_for('sneakers.rotation') }}" class="btn btn-secondary">Back to My Rotation</a>
+    </div>
+    <p class="text-muted">Select the sneakers you want to add to your active rotation. Your selections will be remembered as you filter and search.</p>
+
+    {% with target_endpoint='sneakers.select_for_rotation', show_sort_controls=True %}
+        {% include '_controls_bar.html' %}
+    {% endwith %}
+    
+    {% if available_sneakers %}
+        <form method="POST" action="{{ url_for('sneakers.select_for_rotation') }}" id="selection-form">
+            {{ form.hidden_tag() }}
+
+            {# Button row for submitting and clearing #}
+            <div class="row align-items-center mb-3">
+                <div class="col-auto me-auto">
+                    <h5 class="mb-0">
+                        Selected: <span id="selection-counter" class="badge bg-wearhouse-primary rounded-pill">0</span>
+                    </h5>
+                </div>
+                <div class="col-auto">
+                    <div class="row g-2">
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-outline-secondary" id="clear-selection-btn">Clear Selection</button>
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-success">Add to Rotation</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col" style="width: 5%;" class="text-center">Add</th>
+                                <th scope="col" style="width: 10%;">Image</th>
+                                <th scope="col">Brand</th>
+                                <th scope="col">Model</th>
+                                <th scope="col">Colorway</th>
+                                <th scope="col">Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sneaker in available_sneakers %}
+                                <tr>
+                                    <td class="text-center">
+                                        <div class="form-check d-flex justify-content-center">
+                                            {# Added a data-id attribute to the checkbox #}
+                                            <input class="form-check-input sneaker-select-checkbox" type="checkbox" name="sneaker_ids" value="{{ sneaker.id }}" id="sneaker-select-{{ sneaker.id }}" data-id="{{ sneaker.id }}">
+                                        </div>
+                                    </td>
+                                <td>
+                                    {% if sneaker.image_url %}
+                                        {% set image_src = sneaker.image_url if (sneaker.image_url.startswith('http://') or sneaker.image_url.startswith('https://')) else url_for('main.uploaded_file', filename=sneaker.image_url) %}
+                                        <img src="{{ image_src }}" class="img-thumbnail" alt="{{ sneaker.brand }} {{ sneaker.model }}" style="width: 70px; height: 70px; object-fit: contain;">
+                                    {% else %}
+                                        <img src="https://via.placeholder.com/70x70.png?text=No+Img" class="img-thumbnail" alt="No image available">
+                                    {% endif %}
+                                </td>
+                                <td>{{ sneaker.brand }}</td>
+                                <td>{{ sneaker.model }}</td>
+                                <td>{{ sneaker.colorway or 'N/A' }}</td>
+                                <td>{{ (sneaker.size_type or '') + ' ' + (sneaker.size or '') if sneaker.size_type or sneaker.size else 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="text-center my-4">
+                <button type="submit" class="btn btn-success btn-lg">Add Selected to Rotation</button>
+            </div>
+        </form>
+    {% else %}
+        <div class="text-center mt-5 p-5 border rounded bg-light">
+            <h4>No More Sneakers to Add!</h4>
+            <p class="lead">All sneakers in your collection are already in your rotation, or your search/filter returned no results.</p>
+        </div>
+    {% endif %}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('selection-form');
+            const clearButton = document.getElementById('clear-selection-btn');
+            const counterElement = document.getElementById('selection-counter');
+            const storageKey = 'rotationSelection'; // Using a more specific key
+        
+            // --- NEW: Clear old selections on a new visit ---
+            // Check if the previous page was NOT this page.
+            // This means the user is arriving here for a new task.
+            if (document.referrer && !document.referrer.includes('/select-for-rotation')) {
+                console.log("New visit detected, clearing previous selections.");
+                sessionStorage.removeItem(storageKey);
+            }
+            // --- END OF NEW BLOCK ---
+        
+            // --- Functions for managing selections ---
+            function getSelections() {
+                const stored = sessionStorage.getItem(storageKey);
+                return stored ? new Set(JSON.parse(stored)) : new Set();
+            }
+        
+            function saveSelections(selections) {
+                sessionStorage.setItem(storageKey, JSON.stringify(Array.from(selections)));
+                updateCounter(selections.size);
+            }
+        
+            function updateCounter(count) {
+                if (counterElement) {
+                    counterElement.textContent = count;
+                }
+            }
+        
+            function applySelections() {
+                const selections = getSelections();
+                const allCheckboxes = document.querySelectorAll('.sneaker-select-checkbox');
+                allCheckboxes.forEach(checkbox => {
+                    const sneakerId = checkbox.dataset.id;
+                    checkbox.checked = selections.has(sneakerId);
+                });
+                updateCounter(selections.size);
+            }
+        
+            // --- Event Listeners ---
+            if (form) {
+                form.addEventListener('change', function(event) {
+                    if (event.target.classList.contains('sneaker-select-checkbox')) {
+                        const checkbox = event.target;
+                        const sneakerId = checkbox.dataset.id;
+                        let selections = getSelections();
+        
+                        if (checkbox.checked) {
+                            selections.add(sneakerId);
+                        } else {
+                            selections.delete(sneakerId);
+                        }
+                        saveSelections(selections);
+                    }
+                });
+            }
+        
+            if (clearButton) {
+                clearButton.addEventListener('click', function() {
+                    sessionStorage.removeItem(storageKey);
+                    document.querySelectorAll('.sneaker-select-checkbox').forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+                    updateCounter(0);
+                });
+            }
+        
+            // --- Initialisation ---
+            applySelections();
+        });
+    </script>
+{% endblock %}

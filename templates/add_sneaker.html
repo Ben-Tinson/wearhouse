@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-7">
+        <h2 class="mb-4 text-center">{{ title }}</h2>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                {# When using FileField, form needs enctype. Flask-WTF's form object provides this. #}
+                <form method="POST" action="{{ url_for('sneakers.add_sneaker') }}" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }} {# CSRF token and other hidden fields #}
+
+                    {# Brand #}
+                    <div class="mb-3">
+                        {{ form.brand.label(class="form-label") }}
+                        {% if form.brand.errors %}
+                            {{ form.brand(class="form-control is-invalid") }}
+                            <div class="invalid-feedback">
+                                {% for error in form.brand.errors %}<span>{{ error }}</span><br>{% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.brand(class="form-control") }}
+                        {% endif %}
+                    </div>
+
+                    {# Model #}
+                    <div class="mb-3">
+                        {{ form.model.label(class="form-label") }}
+                        {% if form.model.errors %}
+                            {{ form.model(class="form-control is-invalid") }}
+                            <div class="invalid-feedback">
+                                {% for error in form.model.errors %}<span>{{ error }}</span><br>{% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.model(class="form-control") }}
+                        {% endif %}
+                    </div>
+
+                    {# Colorway #}
+                    <div class="mb-3">
+                        {{ form.colorway.label(class="form-label") }} <small class="text-muted">(optional)</small>
+                        {% if form.colorway.errors %}
+                            {{ form.colorway(class="form-control is-invalid") }}
+                            <div class="invalid-feedback">
+                                {% for error in form.colorway.errors %}<span>{{ error }}</span><br>{% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.colorway(class="form-control") }}
+                        {% endif %}
+                    </div>
+
+                    {# Size Type and Size Value #}
+                    <div class="mb-3">
+                        <label class="form-label">Size <small class="text-muted">(optional)</small></label> {# Combined label for the group #}
+                        <div class="input-group">
+                            {{ form.size_type(class="form-select" + (" is-invalid" if form.size_type.errors else ""), style="flex: 0 0 auto; width: auto; max-width: 130px;") }}
+                            {{ form.size(class="form-control" + (" is-invalid" if form.size.errors else ""), placeholder="e.g., 10 or 10.5", inputmode="decimal") }}
+                        </div>
+                        {# Display errors for size_type #}
+                        {% if form.size_type.errors %}
+                            <div class="invalid-feedback d-block"> {# d-block to ensure it shows below input-group #}
+                                {% for error in form.size_type.errors %}<span>{{ error }}</span><br>{% endfor %}
+                            </div>
+                        {% endif %}
+                        {# Display errors for size #}
+                        {% if form.size.errors %}
+                            <div class="invalid-feedback d-block"> {# d-block to ensure it shows below input-group #}
+                                {% for error in form.size.errors %}<span>{{ error }}</span><br>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {# Purchase Date #}
+                    <div class="mb-3">
+                        {{ form.purchase_date.label(class="form-label") }} <small class="text-muted">(optional)</small>
+                        {% if form.purchase_date.errors %}
+                            {{ form.purchase_date(class="form-control is-invalid") }}
+                            <div class="invalid-feedback">
+                                {% for error in form.purchase_date.errors %}<span>{{ error }}</span><br>{% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.purchase_date(class="form-control") }}
+                        {% endif %}
+                    </div>
+
+                    {# Purchase Price and Currency #}
+                    <div class="mb-3">
+                        <label class="form-label">Purchase Price <small class="text-muted">(optional)</small></label>
+                        <div class="input-group">
+                            {{ form.purchase_currency(class="form-select" + (" is-invalid" if form.purchase_currency.errors else ""), style="flex: 0 0 auto; width: auto; max-width: 100px;") }}
+                            {{ form.purchase_price(class="form-control" + (" is-invalid" if form.purchase_price.errors else ""), placeholder="Amount", step="0.01") }}
+                        </div>
+                         {# Display errors for purchase_currency #}
+                        {% if form.purchase_currency.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.purchase_currency.errors %}<span>{{ error }}</span><br>{% endfor %}
+                            </div>
+                        {% endif %}
+                        {# Display errors for purchase_price #}
+                        {% if form.purchase_price.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.purchase_price.errors %}<span>{{ error }}</span><br>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {# Condition #}
+                    <div class="mb-3">
+                        {{ form.condition.label(class="form-label") }} <small class="text-muted">(optional)</small>
+                        {{ form.condition(class="form-select" + (" is-invalid" if form.condition.errors else "")) }}
+                        {% if form.condition.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.condition.errors %}<span>{{ error }}</span><br>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {# Last Worn Date #}
+                    <div class="mb-3">
+                        {{ form.last_worn_date.label(class="form-label") }} <small class="text-muted">(optional)</small>
+                        {% if form.last_worn_date.errors %}
+                            {{ form.last_worn_date(class="form-control is-invalid") }}
+                            <div class="invalid-feedback">
+                                {% for error in form.last_worn_date.errors %}<span>{{ error }}</span><br>{% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.last_worn_date(class="form-control") }}
+                        {% endif %}
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <h4 class="mb-3">Sneaker Image <small class="text-muted fs-6">(Optional)</small></h4>
+                    
+                    {# Image Option Radio Buttons #}
+                    <div class="mb-3">
+                        {{ form.image_option.label(class="form-label d-block") }} {# d-block for label above radios #}
+                        {% for subfield in form.image_option %}
+                            <div class="form-check form-check-inline">
+                                {{ subfield(class="form-check-input" + (" is-invalid" if form.image_option.errors else "")) }}
+                                {{ subfield.label(class="form-check-label") }}
+                            </div>
+                        {% endfor %}
+                        {% if form.image_option.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.image_option.errors %}<span>{{ error }}</span><br>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {# Image URL Input #}
+                    <div class="mb-3" id="image_url_field_div">
+                        {{ form.sneaker_image_url.label(class="form-label") }}
+                        {% if form.sneaker_image_url.errors %}
+                            {{ form.sneaker_image_url(class="form-control is-invalid", placeholder="https://example.com/image.jpg") }}
+                            <div class="invalid-feedback">
+                                {% for error in form.sneaker_image_url.errors %}<span>{{ error }}</span><br>{% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.sneaker_image_url(class="form-control", placeholder="https://example.com/image.jpg") }}
+                        {% endif %}
+                    </div>
+
+                    {# Image File Input #}
+                    <div class="mb-3" id="image_file_field_div">
+                        {{ form.sneaker_image_file.label(class="form-label") }}
+                        {% if form.sneaker_image_file.errors %}
+                            {{ form.sneaker_image_file(class="form-control is-invalid") }}
+                            <div class="invalid-feedback">
+                                {% for error in form.sneaker_image_file.errors %}<span>{{ error }}</span><br>{% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.sneaker_image_file(class="form-control") }}
+                        {% endif %}
+                        <div class="form-text">Allowed types: png, jpg, jpeg, gif, avif</div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-success") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+        <p class="mt-3 text-center">
+            <a href="{{ url_for('sneakers.dashboard') }}">Back to Dashboard</a>
+        </p>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // IDs for RadioField subfields are typically fieldname-0, fieldname-1, etc.
+        // Based on choices=[('url', ...), ('upload', ...)] in forms.py
+        const urlRadio = document.getElementById('image_option-0'); 
+        const uploadRadio = document.getElementById('image_option-1'); 
+        
+        const urlInputDiv = document.getElementById('image_url_field_div');
+        const fileInputDiv = document.getElementById('image_file_field_div');
+        const urlInput = document.getElementById('sneaker_image_url'); // Actual input element
+        const fileInput = document.getElementById('sneaker_image_file'); // Actual input element
+
+        function toggleImageInputs() {
+            if (!urlRadio || !uploadRadio || !urlInputDiv || !fileInputDiv || !urlInput || !fileInput) {
+                // If any element is missing, log an error and don't run the script to avoid JS errors
+                console.error("One or more image option elements not found for JS toggle.");
+                return;
+            }
+
+            if (urlRadio.checked) {
+                urlInputDiv.style.display = ''; // Show
+                fileInputDiv.style.display = 'none'; // Hide
+                urlInput.disabled = false;
+                fileInput.disabled = true;
+                fileInput.value = ''; // Clear file input
+            } else if (uploadRadio.checked) {
+                urlInputDiv.style.display = 'none'; // Hide
+                fileInputDiv.style.display = ''; // Show
+                urlInput.disabled = true;
+                fileInput.disabled = false;
+                urlInput.value = ''; // Clear URL input
+            }
+        }
+
+        if (urlRadio && uploadRadio) {
+            urlRadio.addEventListener('change', toggleImageInputs);
+            uploadRadio.addEventListener('change', toggleImageInputs);
+            toggleImageInputs(); // Initial call to set the correct state on page load
+        } else {
+            // If radio buttons aren't found, try to ensure both fields are visible/enabled by default
+            // or as a fallback (though this indicates an issue with radio button rendering/IDs)
+            if(urlInputDiv) urlInputDiv.style.display = '';
+            if(fileInputDiv) fileInputDiv.style.display = '';
+            if(urlInput) urlInput.disabled = false;
+            if(fileInput) fileInput.disabled = false;
+        }
+    });
+</script>
+{% endblock %}

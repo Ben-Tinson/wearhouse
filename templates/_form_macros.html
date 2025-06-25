@@ -1,0 +1,40 @@
+{# templates/_form_macros.html #}
+
+{% macro render_field(field, label_visible=true) %}
+  <div class="mb-3">
+    {% if label_visible %}
+      {{ field.label(class="form-label") }}
+    {% endif %}
+
+    {# --- NEW LOGIC to determine the correct CSS class --- #}
+    {% set field_class = 'form-control' %} {# Default to form-control for text, date, url etc. #}
+    {% if field.type == 'BooleanField' %}
+        {% set field_class = 'form-check-input' %}
+    {% elif field.type == 'SelectField' or field.type == 'SelectMultipleField' or field.type == 'RadioField' %}
+        {% set field_class = 'form-select' %}
+    {% endif %}
+
+    {# Add is-invalid class if there are errors #}
+    {% if field.errors %}
+        {% set field_class = field_class + ' is-invalid' %}
+    {% endif %}
+
+    {# Render the field with the correct class #}
+    {% if field.type == 'BooleanField' %}
+        <div class="form-check">
+            {{ field(class=field_class, **kwargs) }}
+            {{ field.label(class="form-check-label") }}
+        </div>
+    {% else %}
+        {{ field(class=field_class, **kwargs) }}
+    {% endif %}
+
+    {% if field.errors %}
+      <div class="invalid-feedback d-block">
+        {% for error in field.errors %}
+          <span>{{ error }}</span><br>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+{% endmacro %}

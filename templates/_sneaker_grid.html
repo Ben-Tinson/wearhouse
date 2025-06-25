@@ -1,0 +1,31 @@
+{# templates/_sneaker_grid.html #}
+
+{% if sneakers %}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4" id="sneaker-collection-row">
+        {% for sneaker in sneakers %}
+            <div class="col" id="sneaker-card-{{ sneaker.id }}">
+                {# This include statement renders the full card for each sneaker #}
+                {% include '_single_sneaker_card.html' %}
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    {# This 'else' block runs if the 'sneakers' list is empty #}
+    <div class="text-center mt-5 p-5 border rounded bg-light shadow-sm" id="emptyCollectionMessage">
+
+        {# --- NEW CONDITIONAL LOGIC --- #}
+        {% if not current_filter_brand and not current_search_term %}
+            {# This shows only for a truly empty collection with no filters active #}
+            <h4>Your Collection is Empty!</h4>
+            <p class="lead">You haven't added any sneakers to your collection yet.</p>
+            <button type="button" class="btn btn-success btn-lg mt-3" data-bs-toggle="modal" data-bs-target="#sneakerFormModal" id="openAddSneakerModalBtnFromEmpty">
+                Add Your First Sneaker
+            </button>
+        {% else %}
+            {# This shows if filters or a search result in no sneakers found #}
+            <h4>No Sneakers Found</h4>
+            <p class="lead">No items match your current filter or search.</p>
+        {% endif %}
+        {# --- END OF CONDITIONAL LOGIC --- #}
+    </div>
+{% endif %}

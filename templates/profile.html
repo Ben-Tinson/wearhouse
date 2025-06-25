@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <h2 class="mb-4 text-center">{{ title }}</h2>
+        <div class="card shadow-sm">
+            <div class="card-header">
+                User Information
+            </div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item">
+                    <strong>Username:</strong> {{ current_user.username }}
+                </li>
+                <li class="list-group-item">
+                    <strong>Email:</strong> {{ current_user.email }}
+                </li>
+                <li class="list-group-item">
+                    <strong>First Name:</strong> {{ current_user.first_name if current_user.first_name else 'N/A' }}
+                </li>
+                <li class="list-group-item">
+                    <strong>Last Name:</strong> {{ current_user.last_name if current_user.last_name else 'N/A' }}
+                </li>
+            </ul>
+            <div class="card-body text-center">
+                {# We will create the 'change_password' route next #}
+                <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-primary">Change Password</a>
+                <a href="{{ url_for('main.edit_profile') }}" class="btn btn-outline-secondary ms-2">Edit Profile</a> 
+                <hr class="my-3"> {# a horizontal line to separate actions #}
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-danger">Logout</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+```
+
+**Explanation of `profile.html`:**
+* It extends `base.html` for consistent layout and navigation.
+* It uses a Bootstrap `card` to display the user's information neatly.
+* `list-group` and `list-group-item` are used to display each piece of information.
+* `{{ current_user.username }}`, `{{ current_user.email }}`, etc.: Accesses attributes directly from the `current_user` object.
+* It provides a fallback of 'N/A' if `first_name` or `last_name` is not set (though they are now required for new users, this is good for robustness).
+* **"Change Password" Link:** `<a href="{{ url_for('auth.change_password') }}" ...>` points to a route named `change_password` which we will create in the next step.
+* I've also added a commented-out placeholder for a future "Edit Profile" link, if you ever want to allow users to change their username, email, or names.

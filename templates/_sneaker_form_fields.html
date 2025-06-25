@@ -1,0 +1,168 @@
+{# templates/_sneaker_form_fields.html #}
+{# This template expects a 'form' object (an instance of SneakerForm) to be available #}
+
+{{ form.hidden_tag() }} {# CSRF token and other hidden fields #}
+
+    {# Brand #}
+    <div class="mb-3">
+        {{ form.brand.label(class="form-label") }}
+        {% if form.brand.errors %}
+            {{ form.brand(class="form-control is-invalid") }}
+            <div class="invalid-feedback">
+                {% for error in form.brand.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% else %}
+            {{ form.brand(class="form-control") }}
+        {% endif %}
+    </div>
+
+    {# Model #}
+    <div class="mb-3">
+        {{ form.model.label(class="form-label") }}
+        {% if form.model.errors %}
+            {{ form.model(class="form-control is-invalid") }}
+            <div class="invalid-feedback">
+                {% for error in form.model.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% else %}
+            {{ form.model(class="form-control") }}
+        {% endif %}
+    </div>
+
+    {# Colorway #}
+    <div class="mb-3">
+        {{ form.colorway.label(class="form-label") }} <small class="text-muted">(optional)</small>
+        {% if form.colorway.errors %}
+            {{ form.colorway(class="form-control is-invalid") }}
+            <div class="invalid-feedback">
+                {% for error in form.colorway.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% else %}
+            {{ form.colorway(class="form-control") }}
+        {% endif %}
+    </div>
+
+    {# Size Type and Size Value #}
+    <div class="mb-3">
+        <label class="form-label">Size <small class="text-muted">(optional)</small></label> {# Combined label for the group #}
+        <div class="input-group">
+            {{ form.size_type(class="form-select" + (" is-invalid" if form.size_type.errors else ""), style="flex: 0 0 auto; width: auto; max-width: 130px;") }}
+            {{ form.size(class="form-control" + (" is-invalid" if form.size.errors else ""), placeholder="e.g., 10 or 10.5", inputmode="decimal") }}
+        </div>
+        {# Display errors for size_type #}
+        {% if form.size_type.errors %}
+            <div class="invalid-feedback d-block"> {# d-block to ensure it shows below input-group #}
+                {% for error in form.size_type.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% endif %}
+        {# Display errors for size #}
+        {% if form.size.errors %}
+            <div class="invalid-feedback d-block"> {# d-block to ensure it shows below input-group #}
+                {% for error in form.size.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    {# Purchase Date #}
+    <div class="mb-3">
+        {{ form.purchase_date.label(class="form-label") }} <small class="text-muted">(optional)</small>
+        {% if form.purchase_date.errors %}
+            {{ form.purchase_date(class="form-control is-invalid") }}
+            <div class="invalid-feedback">
+                {% for error in form.purchase_date.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% else %}
+            {{ form.purchase_date(class="form-control") }}
+        {% endif %}
+    </div>
+
+    {# Purchase Price and Currency #}
+    <div class="mb-3">
+        <label class="form-label">Purchase Price <small class="text-muted">(optional)</small></label>
+        <div class="input-group">
+            {{ form.purchase_currency(class="form-select" + (" is-invalid" if form.purchase_currency.errors else ""), style="flex: 0 0 auto; width: auto; max-width: 100px;") }}
+            {{ form.purchase_price(class="form-control" + (" is-invalid" if form.purchase_price.errors else ""), placeholder="Amount", step="0.01") }}
+        </div>
+         {# Display errors for purchase_currency #}
+        {% if form.purchase_currency.errors %}
+            <div class="invalid-feedback d-block">
+                {% for error in form.purchase_currency.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% endif %}
+        {# Display errors for purchase_price #}
+        {% if form.purchase_price.errors %}
+            <div class="invalid-feedback d-block">
+                {% for error in form.purchase_price.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    {# Condition #}
+    <div class="mb-3">
+        {{ form.condition.label(class="form-label") }} <small class="text-muted">(optional)</small>
+        {{ form.condition(class="form-select" + (" is-invalid" if form.condition.errors else "")) }}
+        {% if form.condition.errors %}
+            <div class="invalid-feedback d-block">
+                {% for error in form.condition.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    {# Last Worn Date #}
+    <div class="mb-3">
+        {{ form.last_worn_date.label(class="form-label") }} <small class="text-muted">(optional)</small>
+        {% if form.last_worn_date.errors %}
+            {{ form.last_worn_date(class="form-control is-invalid") }}
+            <div class="invalid-feedback">
+                {% for error in form.last_worn_date.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% else %}
+            {{ form.last_worn_date(class="form-control") }}
+        {% endif %}
+    </div>
+    
+    <hr class="my-4">
+    <h4 class="mb-3">Sneaker Image <small class="text-muted">(optional)</small></h4>
+
+    {# Image Option Radio Buttons #}
+    <div class="mb-3">
+        {# {{ form.image_option.label(class="form-label d-block visually-hidden") }} #} <label class="form-label d-block">New Image Source Option:</label>
+        {% for subfield in form.image_option %}
+            <div class="form-check form-check-inline">
+                {{ subfield(class="form-check-input" + (" is-invalid" if form.image_option.errors else "")) }}
+                {{ subfield.label(class="form-check-label") }}
+            </div>
+        {% endfor %}
+        {% if form.image_option.errors %}<div class="invalid-feedback d-block">{% for error in form.image_option.errors %}<span>{{ error }}</span><br>{% endfor %}</div>{% endif %}
+    </div>
+
+    {# Image URL Input - WRAPPER DIV WITH NEW ID #}
+    <div class="mb-3" id="modal_image_url_wrapper">
+        {{ form.sneaker_image_url.label(class="form-label") }}
+        {% if form.sneaker_image_url.errors %}
+            {{ form.sneaker_image_url(class="form-control is-invalid", placeholder="https://example.com/image.jpg", id="modal_sneaker_image_url") }} {# Ensure unique ID for input if needed #}
+            <div class="invalid-feedback">{% for error in form.sneaker_image_url.errors %}<span>{{ error }}</span><br>{% endfor %}</div>
+        {% else %}
+            {{ form.sneaker_image_url(class="form-control", placeholder="https://example.com/image.jpg", id="modal_sneaker_image_url") }}
+        {% endif %}
+    </div>
+
+    {# Image File Input - WRAPPER DIV WITH NEW ID #}
+    <div class="mb-3" id="modal_image_file_wrapper">
+        {{ form.sneaker_image_file.label(class="form-label") }}
+        {% if form.sneaker_image_file.errors %}
+            {{ form.sneaker_image_file(class="form-control is-invalid", id="modal_sneaker_image_file") }} {# Ensure unique ID for input if needed #}
+            <div class="invalid-feedback">{% for error in form.sneaker_image_file.errors %}<span>{{ error }}</span><br>{% endfor %}</div>
+        {% else %}
+            {{ form.sneaker_image_file(class="form-control", id="modal_sneaker_image_file") }}
+        {% endif %}
+        <div class="form-text">Allowed types: png, jpg, jpeg, gif, avif</div>
+    </div>
+
+    {# Image Preview Area #}
+    <div class="mb-3" id="newImagePreviewArea" style="display: none; text-align: center;"> {# Hidden by default #}
+        <p class="mb-1"><small class="text-muted">New image preview:</small></p>
+        <img src="#" id="newSneakerImagePreview" class="img-thumbnail" 
+             style="max-width: 300px; max-height: 300px; object-fit: contain; background-color: #f8f9fa;" 
+             alt="New image preview">
+    </div>

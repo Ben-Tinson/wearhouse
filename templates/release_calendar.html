@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">{{ title }}</h2>
+        {% if current_user.is_authenticated and current_user.is_admin %}
+            <a href="{{ url_for('main.add_release') }}" class="btn btn-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill me-1" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/></svg>
+                Add New Release
+            </a>
+        {% endif %}
+    </div>
+    <p class="text-muted">A curated list of upcoming sneaker releases.</p>
+    {% if not current_user.is_authenticated %}
+        <div class="alert alert-info" role="alert">
+            Want to track these releases? 
+            <a href="{{ url_for('auth.login') }}" class="alert-link">Log in</a> or 
+            <a href="{{ url_for('auth.register') }}" class="alert-link">create an account</a> 
+            to add them to your personal wishlist!
+        </div>
+    {% endif %}
+    {% with target_endpoint='main.release_calendar' %}
+        {% include '_controls_bar.html' %}
+    {% endwith %}
+    <hr>
+    <div id="release-container">
+        {% if releases_by_month %}
+        {# Outer loop: Iterates through each month #}
+        {% for month_year, releases_in_month in releases_by_month.items() %}
+        {% if not loop.first %}
+            <hr>
+        {% endif %}
+            <h3 class="mb-3">{{ month_year }}</h3>
+            <hr>
+            
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+                {# Inner loop: Iterates through the sneakers for THIS month #}
+                {% for release in releases_in_month %}
+                    <div class="col" id="release-card-{{ release.id }}">
+                        <div class="card h-100 shadow-sm d-flex flex-column">
+                            
+                            {# Card Image Section #}
+                            <div class="p-3" style="height: 250px; background-color: #f8f9fa;">
+                                {% set image_src = release.image_url or "https://via.placeholder.com/300x250.png?text=No+Image" %}
+                                <img src="{{ image_src }}" class="card-img-top" alt="{{ release.name }}" style="height: 100%; width: 100%; object-fit: contain;">
+                            </div>
+
+                            {# Card Body with Sneaker Details #}
+                            <div class="card-body p-3 pb-2">
+                                <h5 class="card-title fs-6">{{ release.name }}</h5>
+                                <p class="card-text mb-0">
+                                    <small class="text-muted">
+                                        Release: {{ release.release_date.strftime('%b %d, %Y') if release.release_date else 'N/A' }}<br>
+                                        Retail: {% if release.retail_price is not none %}{{ release.retail_currency or '' }} {{ "%.2f"|format(release.retail_price) }}{% else %}N/A{% endif %}
+                                    </small>
+                                </p>
+                            </div>
+                            
+                            {# Card Footer with Action Buttons #}
+                            <div class="card-footer bg-transparent border-top-0 px-3 pb-3">
+                                <div class="d-grid gap-2">
+                                    {# Wishlist button for all logged-in users #}
+                                    <div id="wishlist-button-container-{{ release.id }}">
+                                        {% include '_wishlist_button.html' %}
+                                    </div>
+
+                                    {# Admin-only buttons #}
+                                    {% if current_user.is_authenticated and current_user.is_admin %}
+                                        <div class="d-flex justify-content-center gap-2">
+                                            <a href="{{ url_for('main.edit_release', release_id=release.id) }}" class="btn btn-outline-secondary btn-sm flex-grow-1">Edit</a>
+                                            <form method="POST" action="{{ url_for('main.delete_release', release_id=release.id) }}" class="d-grid flex-grow-1" onsubmit="return confirm('Are you sure you want to delete this release?');">
+                                                {{ form.hidden_tag() if form }}
+                                                <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                                            </form>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div> {% endfor %}
+    </div> {% else %}
+    <div class="text-center mt-5 p-5 border rounded bg-light">
+        <h4>No Upcoming Releases Found</h4>
+        <p class="lead">Check back soon for updates or add a new release!</p>
+        {% if current_user.is_authenticated and current_user.is_admin %}
+            <a href="{{ url_for('main.add_release') }}" class="btn btn-primary mt-3">Add a Release</a>
+        {% endif %}
+    </div>
+{% endif %}
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("DEBUG: Page loaded. Wishlist script running.");
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const releaseContainer = document.getElementById('release-container');
+
+    function displayTemporaryAjaxMessage(message, category = 'info') {
+        // ... (your existing helper function code) ...
+    }
+
+    if (releaseContainer && csrfToken) {
+        console.log("DEBUG: Found release container and CSRF token. Attaching master click listener.");
+
+        releaseContainer.addEventListener('click', function(event) {
+            const wishlistButton = event.target.closest('.toggle-wishlist-btn');
+            
+            if (wishlistButton) {
+                console.log("DEBUG: Wishlist button was clicked! Starting AJAX request for release ID:", wishlistButton.dataset.releaseId);
+                event.preventDefault();
+                
+                const actionUrl = wishlistButton.dataset.action;
+                const releaseId = wishlistButton.dataset.releaseId;
+                const buttonContainer = document.getElementById(`wishlist-button-container-${releaseId}`);
+                if (!buttonContainer) { console.error("Could not find button container for release ID:", releaseId); return; }
+
+                wishlistButton.disabled = true;
+                wishlistButton.innerHTML = `<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>`;
+
+                fetch(actionUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                })
+                .then(res => {
+                    if (!res.ok) { return res.json().then(err => Promise.reject(err)); }
+                    return res.json();
+                })
+                .then(data => {
+                    console.log("DEBUG: Received AJAX response:", data);
+                    if (data.status === 'success' && data.new_button_html) {
+                        displayTemporaryAjaxMessage(data.message, 'success');
+                        buttonContainer.innerHTML = data.new_button_html;
+                    } else {
+                        displayTemporaryAjaxMessage(data.message || 'An error occurred.', 'danger');
+                        // We don't re-enable the button here because we will replace it on error anyway if we can
+                        if (buttonContainer && data.new_button_html) {
+                            buttonContainer.innerHTML = data.new_button_html;
+                        } else {
+                            wishlistButton.disabled = false;
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error('Wishlist AJAX Error:', err);
+                    displayTemporaryAjaxMessage(err.message || 'A network error occurred.', 'danger');
+                    wishlistButton.disabled = false;
+                    wishlistButton.textContent = 'Error';
+                });
+            }
+        });
+        releaseContainer.addEventListener('mouseover', function(event) {
+            const wishlistButton = event.target.closest('.toggle-wishlist-btn');
+            // If the mouse is over a green "On Wishlist" button...
+            if (wishlistButton && wishlistButton.classList.contains('btn-success')) {
+                // Store the original content so we can restore it later
+                wishlistButton.dataset.originalHtml = wishlistButton.innerHTML;
+                // Change the button to a red "Remove" button
+                wishlistButton.classList.remove('btn-success');
+                wishlistButton.classList.add('btn-danger');
+                wishlistButton.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-circle-fill me-1" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/></svg>
+                    Remove?
+                `;
+            }
+        });
+
+        // --- NEW: Listen for MOUSEOUT to change the button back ---
+        releaseContainer.addEventListener('mouseout', function(event) {
+            const wishlistButton = event.target.closest('.toggle-wishlist-btn');
+            // If the mouse leaves a red "Remove" button...
+            if (wishlistButton && wishlistButton.classList.contains('btn-danger')) {
+                // Restore its original green "On Wishlist" appearance
+                wishlistButton.classList.remove('btn-danger');
+                wishlistButton.classList.add('btn-success');
+                if (wishlistButton.dataset.originalHtml) {
+                    wishlistButton.innerHTML = wishlistButton.dataset.originalHtml;
+                }
+            }
+        });
+    } else {
+        if (!releaseContainer) console.error("DEBUG: Could not find release container with ID 'release-container'.");
+        if (!csrfToken) console.error("DEBUG: Could not find CSRF meta tag.");
+    }
+});
+</script>
+{% endblock %}
+
+
