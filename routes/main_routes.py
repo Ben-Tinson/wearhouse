@@ -145,11 +145,12 @@ def release_calendar():
     # Format months as "YYYY-MM" for the dropdown value and "Month Year" for the display
     months_for_filter = []
     for year, month in distinct_months_tuples:
-        # Create a date object to get the month name safely
+        # Explicitly convert to integers to handle database differences
+        year = int(year)
+        month = int(month)
+        # Now the formatting will work correctly
         date_obj = datetime(year, month, 1)
-        month_name = date_obj.strftime('%B')
-        # Manually build the string
-        display_text = f"{month_name} {year}"
+        display_text = date_obj.strftime('%B %Y')
         value_text = f"{year}-{month:02d}"
         months_for_filter.append((value_text, display_text))
 
