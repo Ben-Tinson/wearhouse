@@ -26,6 +26,7 @@ MarkupSafe==3.0.2
 outcome==1.3.0.post0
 packaging==25.0
 pluggy==1.6.0
+psycopg2-binary==2.9.9
 Pygments==2.19.1
 PySocks==1.7.1
 pytest==8.4.0
