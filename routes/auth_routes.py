@@ -6,31 +6,24 @@ from flask_mail import Message
 from extensions import db, mail
 from models import User
 from forms import LoginForm, RegistrationForm, RequestResetForm, ResetPasswordForm, EmptyForm
+from email_utils import send_email
 
 auth_bp = Blueprint('auth', __name__)
 
 def send_password_reset_email(user_instance):
     token = user_instance.get_reset_password_token()
     reset_url = url_for('auth.reset_password_with_token', token=token, _external=True)
-    
-    html_body = render_template('email/reset_password_email.html', 
+
+    # CORRECTED: Use your existing template file
+    html_body = render_template('emails/reset_password_email.html', 
                                 user=user_instance, 
                                 reset_url=reset_url)
-    
-    msg = Message(subject='Password Reset Request - WearHouse',
-                  sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@wearhouse.com'),
-                  recipients=[user_instance.email])
-    msg.html = html_body
-    
-    # For now, print to console instead of sending
-    print("---- SENDING PASSWORD RESET EMAIL (to console) ----")
-    print(f"To: {msg.recipients}")
-    print(f"From: {msg.sender}")
-    print(f"Subject: {msg.subject}")
-    print("---- HTML Body ----")
-    print(msg.html)
-    print("----------------------------------------------------")
-    # Later, you would use: mail.send(msg)
+
+    # --- THIS IS THE ONLY PART THAT CHANGES ---
+    # Instead of building a Message object and printing, we call our new utility
+    send_email(to_email=user_instance.email,
+               subject='Password Reset Request - WearHouse',
+               html_content=html_body)
 
 def send_confirm_new_email_address_email(user_instance, new_email_address):
     token = user_instance.get_confirm_new_email_token(new_email_address) # Use the new token method
@@ -214,7 +207,6 @@ def change_password():
                            title='Change Your Password', 
                            form=form) # Pass the form object to the template
 
-
 # Confirm New Email Route
 
 @auth_bp.route('/confirm-new-email/<token>', methods=['GET']) # Usually GET for confirmation links
@@ -280,29 +272,18 @@ def send_change_password_link_route(): # Renamed for clarity
 # Confirm Account Registration Email
 
 def send_account_confirmation_email(user_instance):
-    token = user_instance.get_email_confirmation_token() # Use the new token method from User model
-    # We'll create the 'confirm_email_from_token' route in a later step
+    token = user_instance.get_email_confirmation_token()
     confirm_url = url_for('auth.confirm_email_from_token', token=token, _external=True)
 
-    # We'll create templates/email/confirm_registration_email.html next
-    html_body = render_template('email/confirm_registration_email.html', 
+    # CORRECTED: Use your existing template file
+    html_body = render_template('emails/confirm_registration_email.html', 
                                 user=user_instance, 
                                 confirm_url=confirm_url)
 
-    msg = Message(subject='Confirm Your WearHouse Account Email',
-                  sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@wearhouse.com'),
-                  recipients=[user_instance.email]) # Send to the user's registered email
-    msg.html = html_body
-
-    # For now, print to console
-    print("---- SENDING ACCOUNT REGISTRATION CONFIRMATION EMAIL (to console) ----")
-    print(f"To: {msg.recipients}")
-    print(f"From: {msg.sender}")
-    print(f"Subject: {msg.subject}")
-    print("---- HTML Body ----")
-    print(msg.html)
-    print("----------------------------------------------------------------------")
-    # Later, you would use: mail.send(msg)
+    # --- THIS IS THE ONLY PART THAT CHANGES ---
+    send_email(to_email=user_instance.email,
+               subject='Confirm Your WearHouse Account Email',
+               html_content=html_body)
 
 # Confirm Regisration with Token Route
 

@@ -27,7 +27,8 @@ class Config:
     MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
-    MAIL_DEFAULT_SENDER = ('WearHouse Admin', os.environ.get('MAIL_USERNAME', 'noreply@wearhouse.com'))
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER')
+    SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
 
 class TestConfig(Config):
     TESTING = True
