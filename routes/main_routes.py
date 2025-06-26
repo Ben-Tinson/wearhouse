@@ -143,10 +143,15 @@ def release_calendar():
         extract('month', Release.release_date)
     ).all()
     # Format months as "YYYY-MM" for the dropdown value and "Month Year" for the display
-    months_for_filter = [
-        (f"{year}-{month:02d}", datetime(year, month, 1).strftime('%B %Y'))
-        for year, month in distinct_months_tuples
-    ]
+    months_for_filter = []
+    for year, month in distinct_months_tuples:
+        # Create a date object to get the month name safely
+        date_obj = datetime(year, month, 1)
+        month_name = date_obj.strftime('%B')
+        # Manually build the string
+        display_text = f"{month_name} {year}"
+        value_text = f"{year}-{month:02d}"
+        months_for_filter.append((value_text, display_text))
 
     # Apply filters to the main query
     current_filter_brand = None
