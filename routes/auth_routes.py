@@ -15,7 +15,7 @@ def send_password_reset_email(user_instance):
     reset_url = url_for('auth.reset_password_with_token', token=token, _external=True)
 
     # CORRECTED: Use your existing template file
-    html_body = render_template('emails/reset_password_email.html', 
+    html_body = render_template('email/reset_password_email.html', 
                                 user=user_instance, 
                                 reset_url=reset_url)
 
@@ -26,31 +26,19 @@ def send_password_reset_email(user_instance):
                html_content=html_body)
 
 def send_confirm_new_email_address_email(user_instance, new_email_address):
-    token = user_instance.get_confirm_new_email_token(new_email_address) # Use the new token method
-    # We'll create the 'confirm_new_email_with_token' route in a later step
+    token = user_instance.get_confirm_new_email_token(new_email_address)
     confirm_url = url_for('auth.confirm_new_email_with_token', token=token, _external=True)
 
-    # We'll create templates/email/confirm_new_email_address.html next
+    # CORRECTED: Use your existing template file
     html_body = render_template('email/confirm_new_email_address.html', 
                                 user=user_instance, 
                                 confirm_url=confirm_url,
                                 new_email=new_email_address)
 
-    msg = Message(subject='Confirm Your New Email Address - WearHouse',
-                  sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@wearhouse.com'),
-                  recipients=[new_email_address]) # Send to the NEW email address
-    msg.html = html_body
-
-    # For now, print to console
-    print("---- SENDING CONFIRM NEW EMAIL ADDRESS (to console) ----")
-    print(f"To: {msg.recipients}")
-    print(f"From: {msg.sender}")
-    print(f"Subject: {msg.subject}")
-    print("---- HTML Body ----")
-    print(msg.html)
-    print("---------------------------------------------------------")
-    # Later, you would use: mail.send(msg)
-
+    # --- THIS IS THE ONLY PART THAT CHANGES ---
+    send_email(to_email=new_email_address,
+               subject='Confirm Your New Email Address - WearHouse',
+               html_content=html_body)
 
 # Registration Route
 
@@ -276,7 +264,7 @@ def send_account_confirmation_email(user_instance):
     confirm_url = url_for('auth.confirm_email_from_token', token=token, _external=True)
 
     # CORRECTED: Use your existing template file
-    html_body = render_template('emails/confirm_registration_email.html', 
+    html_body = render_template('email/confirm_registration_email.html', 
                                 user=user_instance, 
                                 confirm_url=confirm_url)
 
