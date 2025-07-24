@@ -6,17 +6,12 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from sqlalchemy import or_, asc, desc, func
 from werkzeug.utils import secure_filename
-
+from utils import allowed_file
 from extensions import db
 from models import User, Sneaker
 from forms import SneakerForm, EmptyForm
 
 sneakers_bp = Blueprint('sneakers', __name__)
-
-# Helper function can be defined here if only used here
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
 def get_sort_order(sort_by, order):
     # This helper can contain your if/elif block to determine the sort criteria

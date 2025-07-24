@@ -12,6 +12,8 @@ from forms import EditProfileForm, ReleaseForm, EmptyForm
 from werkzeug.utils import secure_filename
 from decorators import admin_required
 from sqlalchemy import or_, asc, desc, extract, func
+from utils import allowed_file
+
 
 main_bp = Blueprint('main', __name__)
 
@@ -142,6 +144,7 @@ def release_calendar():
         extract('year', Release.release_date), 
         extract('month', Release.release_date)
     ).all()
+    
     # Format months as "YYYY-MM" for the dropdown value and "Month Year" for the display
     months_for_filter = []
     for year, month in distinct_months_tuples:
