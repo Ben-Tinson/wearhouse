@@ -1,6 +1,7 @@
 # routes/sneakers_routes.py
 import os
 import uuid
+import requests
 from datetime import date
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, abort # <-- ADD current_app
 from flask_login import login_required, current_user
@@ -8,7 +9,7 @@ from sqlalchemy import or_, asc, desc, func
 from werkzeug.utils import secure_filename
 from utils import allowed_file
 from extensions import db
-from models import User, Sneaker
+from models import User, Sneaker, SneakerDB
 from forms import SneakerForm, EmptyForm
 
 sneakers_bp = Blueprint('sneakers', __name__)
@@ -262,196 +263,102 @@ def rotation():
 
 # Add Sneaker Route
 
-@sneakers_bp.route('/add-sneaker', methods=['GET', 'POST'])
+@sneakers_bp.route('/add-sneaker', methods=['POST'])
 @login_required
 def add_sneaker():
     form = SneakerForm()
-    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
-              (request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html)
-
     if form.validate_on_submit():
         final_image_location = None
-        image_option = form.image_option.data
-        image_url_from_form = form.sneaker_image_url.data
-        image_file_from_form = form.sneaker_image_file.data
-        if image_option == 'url' and image_url_from_form:
-            final_image_location = image_url_from_form
-        elif image_option == 'upload' and image_file_from_form:
-            if image_file_from_form.filename != '':
-                original_filename = secure_filename(image_file_from_form.filename)
-                extension = os.path.splitext(original_filename)[1].lower()
-                unique_filename = str(uuid.uuid4().hex) + extension
-                save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
-                try:
-                    image_file_from_form.save(save_path)
-                    final_image_location = unique_filename
-                except Exception as e:
-                    current_app.logger.error(f"Failed to save uploaded file: {e}")
-                    if is_ajax: return jsonify({'status': 'error', 'message': 'Error uploading image. Image not saved.'}), 400
-                    flash('There was an error uploading the image. It was not saved.', 'danger')
-        
+        # Handle Image URL or Upload
+        if form.image_option.data == 'upload' and form.sneaker_image_file.data:
+            image_file = form.sneaker_image_file.data
+            if allowed_file(image_file.filename):
+                filename = secure_filename(image_file.filename)
+                unique_filename = str(uuid.uuid4()) + os.path.splitext(filename)[1]
+                image_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
+                image_file.save(image_path)
+                final_image_location = unique_filename
+        elif form.image_option.data == 'url' and form.sneaker_image_url.data:
+            final_image_location = form.sneaker_image_url.data
+
+        # Create New Sneaker Object
         new_sneaker = Sneaker(
-            brand=form.brand.data, model=form.model.data,
-            colorway=form.colorway.data if form.colorway.data and form.colorway.data.strip() else None,
-            size_type=form.size_type.data if form.size_type.data else None,
-            size=form.size.data if form.size.data and form.size.data.strip() else None,
-            last_worn_date=form.last_worn_date.data,
-            purchase_price=form.purchase_price.data,
-            purchase_currency=form.purchase_currency.data if form.purchase_currency.data else None,
-            condition=form.condition.data if form.condition.data else None,
+            brand=form.brand.data,
+            model=form.model.data,
+            size_type=form.size_type.data,
+            size=form.size.data,
             purchase_date=form.purchase_date.data,
-            image_url=final_image_location, owner=current_user
+            purchase_price=form.purchase_price.data,
+            purchase_currency=form.purchase_currency.data,
+            condition=form.condition.data,
+            last_worn_date=form.last_worn_date.data,
+            image_url=final_image_location,
+            owner=current_user
         )
-        try:
-            db.session.add(new_sneaker)
-            db.session.commit()
+        db.session.add(new_sneaker)
+        db.session.commit()
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'status': 'success', 'message': 'Sneaker added successfully!'})
+        
+        flash('Sneaker added!', 'success')
+        return redirect(url_for('sneakers.dashboard'))
 
-            if is_ajax:
-                # Render the HTML for the new card
-                new_card_html = render_template('_single_sneaker_card.html', sneaker=new_sneaker)
-                
-                # Get updated counts
-                overall_total_count = Sneaker.query.filter_by(user_id=current_user.id).count()
-                
-                brand_specific_count = None
-                active_brand_filter = request.form.get('current_filter_brand_on_dashboard_for_count') # JS would need to send this if we want to be super accurate for this message
-                # For now, let's calculate based on the new sneaker's brand, which might be useful
-                if new_sneaker.brand:
-                    brand_query = Sneaker.query.filter_by(user_id=current_user.id, brand=new_sneaker.brand)
-                    brand_specific_count_for_new_sneakers_brand = brand_query.count()
-
-                return jsonify({
-                    'status': 'success', 
-                    'message': 'Sneaker added successfully!',
-                    'new_card_html': new_card_html,
-                    'sneaker_id': new_sneaker.id, 
-                    'overall_total_count': overall_total_count,
-                    'added_sneaker_brand': new_sneaker.brand, # So JS can check if it matches current filter
-                    'brand_specific_count_for_added_brand': brand_specific_count_for_new_sneakers_brand 
-                })
-            
-            flash('New sneaker added to your collection!', 'success')
-            return redirect(url_for('sneakers.dashboard'))
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Error adding sneaker to DB: {e}")
-            if is_ajax: return jsonify({'status': 'error', 'message': 'Database error while adding sneaker.'}), 500
-            flash('Error adding sneaker to database. Please try again.', 'danger')
-
-    elif is_ajax and request.method == 'POST' and form.errors:
-        return jsonify({'status': 'error', 'message': 'Validation errors occurred.', 'errors': form.errors}), 400
+    # Handle validation errors
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'status': 'error', 'errors': form.errors}), 400
     
-    return render_template('add_sneaker.html', title='Add New Sneaker', form=form)
+    flash('There were errors with your submission.', 'danger')
+    return redirect(url_for('sneakers.dashboard'))
 
 # Edit Sneaker Route
 
-@sneakers_bp.route('/edit-sneaker/<int:sneaker_id>', methods=['GET', 'POST'])
+@sneakers_bp.route('/edit-sneaker/<int:sneaker_id>', methods=['POST'])
 @login_required
 def edit_sneaker(sneaker_id):
     sneaker_to_edit = db.session.get(Sneaker, sneaker_id)
-    if not sneaker_to_edit:
-        abort(404)
-    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
-              (request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html)
+    if not sneaker_to_edit or sneaker_to_edit.owner != current_user:
+        abort(403)
+    
+    form = SneakerForm()
+    if form.validate_on_submit():
+        # Update text-based fields
+        sneaker_to_edit.brand = form.brand.data
+        sneaker_to_edit.model = form.model.data
+        sneaker_to_edit.size_type = form.size_type.data
+        sneaker_to_edit.size = form.size.data
+        sneaker_to_edit.purchase_date = form.purchase_date.data
+        sneaker_to_edit.purchase_price = form.purchase_price.data
+        sneaker_to_edit.purchase_currency = form.purchase_currency.data
+        sneaker_to_edit.condition = form.condition.data
+        sneaker_to_edit.last_worn_date = form.last_worn_date.data
+        
+        # Handle new image (URL or Upload)
+        if form.image_option.data == 'upload' and form.sneaker_image_file.data:
+            image_file = form.sneaker_image_file.data
+            if allowed_file(image_file.filename):
+                filename = secure_filename(image_file.filename)
+                unique_filename = str(uuid.uuid4()) + os.path.splitext(filename)[1]
+                image_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
+                image_file.save(image_path)
+                sneaker_to_edit.image_url = unique_filename
+        elif form.image_option.data == 'url' and form.sneaker_image_url.data:
+            sneaker_to_edit.image_url = form.sneaker_image_url.data
+        
+        db.session.commit()
 
-    if sneaker_to_edit.owner != current_user:
-        if is_ajax: 
-            return jsonify({'status': 'error', 'message': 'You do not have permission to edit this sneaker.'}), 403
-        flash('You do not have permission to edit this sneaker.', 'danger')
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'status': 'success', 'message': 'Sneaker updated successfully!'})
+            
+        flash('Your changes have been saved.', 'success')
         return redirect(url_for('sneakers.dashboard'))
 
-    # For GET, populate form with existing object data.
-    # For POST, form will populate from request.form if passed as SneakerForm(request.form)
-    # or WTForms handles it if form = SneakerForm() and then validate_on_submit() is called.
-    # Using obj= for GET is clean for pre-population.
-    form = SneakerForm(obj=sneaker_to_edit if request.method == 'GET' else None)
-
-    if form.validate_on_submit(): # This is True for valid POST submissions
-        old_image_url = sneaker_to_edit.image_url # Get current image before any updates
-
-        # Update sneaker attributes directly from form data
-        sneaker_to_edit.brand = form.brand.data.strip()
-        sneaker_to_edit.model = form.model.data.strip()
-        sneaker_to_edit.colorway = form.colorway.data.strip() if form.colorway.data else None
-        sneaker_to_edit.size_type = form.size_type.data if form.size_type.data else None
-        sneaker_to_edit.size = form.size.data.strip() if form.size.data else None
-        sneaker_to_edit.last_worn_date = form.last_worn_date.data
-        sneaker_to_edit.purchase_price = form.purchase_price.data
-        sneaker_to_edit.purchase_currency = form.purchase_currency.data if form.purchase_currency.data else None
-        sneaker_to_edit.condition = form.condition.data if form.condition.data else None
-        sneaker_to_edit.purchase_date = form.purchase_date.data
-
-        new_image_to_assign_to_sneaker = None # Will hold new URL or filename
-        image_option = form.image_option.data
-        image_url_from_form = form.sneaker_image_url.data
-        image_file_from_form = form.sneaker_image_file.data
-
-        if image_option == 'url' and image_url_from_form:
-            new_image_to_assign_to_sneaker = image_url_from_form.strip()
-        elif image_option == 'upload' and image_file_from_form:
-            if image_file_from_form.filename != '':
-                if allowed_file(image_file_from_form.filename): # Ensure you have allowed_file function
-                    original_filename = secure_filename(image_file_from_form.filename)
-                    extension = os.path.splitext(original_filename)[1].lower()
-                    unique_filename = str(uuid.uuid4().hex) + extension
-                    save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
-                    try:
-                        image_file_from_form.save(save_path)
-                        new_image_to_assign_to_sneaker = unique_filename
-                    except Exception as e:
-                        current_app.logger.error(f"Failed to save uploaded file during edit: {e}")
-                        if is_ajax: return jsonify({'status': 'error', 'message': 'Error uploading new image. Image not changed.'}), 400
-                        flash('There was an error uploading the new image. Image not changed.', 'danger')
-                else:
-                    if is_ajax: return jsonify({'status': 'error', 'message': 'Invalid file type for new image. Image not changed.', 'errors': {'sneaker_image_file': ['Invalid file type.']}}), 400
-                    flash('Invalid file type for new image. Image not changed.', 'warning')
-
-        if new_image_to_assign_to_sneaker:
-            # If there's a new image, delete the old one if it was an uploaded file
-            if old_image_url and not (old_image_url.startswith('http://') or old_image_url.startswith('https://')):
-                if old_image_url != new_image_to_assign_to_sneaker: # Don't delete if it's somehow the same
-                    old_file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], old_image_url)
-                    if os.path.exists(old_file_path):
-                        try:
-                            os.remove(old_file_path)
-                            current_app.logger.info(f"Deleted old image file: {old_file_path}")
-                        except Exception as e:
-                            current_app.logger.error(f"Error deleting old image file {old_file_path}: {e}")
-            sneaker_to_edit.image_url = new_image_to_assign_to_sneaker
-        # If no new image was provided, new_image_to_assign_to_sneaker remains None, 
-        # and sneaker_to_edit.image_url (which holds the original value) is not changed.
-
-        try:
-            db.session.commit()
-            if is_ajax:
-                updated_card_html = render_template('_single_sneaker_card.html', sneaker=sneaker_to_edit)
-                return jsonify({
-                    'status': 'success', 
-                    'message': 'Sneaker updated successfully!',
-                    'sneaker_id': sneaker_to_edit.id,
-                    'updated_card_html': updated_card_html
-                    # You might also want to send back updated counts if a field like 'brand' changed
-                    # and it affects the brand_specific_count display.
-                })
-            flash('Sneaker details updated successfully!', 'success')
-            return redirect(url_for('sneakers.dashboard'))
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Error updating sneaker {sneaker_id}: {e}")
-            if is_ajax: return jsonify({'status': 'error', 'message': 'Database error updating sneaker.'}), 500
-            flash('Error updating sneaker details. Please try again.', 'danger')
-            pass
-
-    elif is_ajax and request.method == 'POST' and form.errors: # WTForms validation failed for AJAX POST
-         return jsonify({'status': 'error', 'message': 'Validation errors occurred.', 'errors': form.errors}), 400
-
-    # For GET request: form is pre-populated with obj=sneaker_to_edit
-    # For non-AJAX POST with errors: form contains submitted data and errors.
-    return render_template('edit_sneaker.html', 
-                           title=f"Edit {sneaker_to_edit.brand} {sneaker_to_edit.model}", 
-                           form=form, 
-                           sneaker_id=sneaker_id, # For form action on standalone page
-                           current_image_url=sneaker_to_edit.image_url) # For displaying current image
+    # Handle validation errors
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'status': 'error', 'errors': form.errors}), 400
+        
+    flash('There were errors with your submission.', 'danger')
+    return redirect(url_for('sneakers.dashboard'))
 
 # Delete Sneaker Route
 
@@ -513,8 +420,6 @@ def delete_sneaker(sneaker_id):
     return redirect(url_for('sneakers.dashboard'))
 
 # Update Last Worn Route
-
-# routes/sneakers_routes.py
 
 @sneakers_bp.route('/update-last-worn/<int:sneaker_id>', methods=['POST'])
 @login_required
@@ -762,6 +667,44 @@ def select_for_rotation():
                            current_filter_brand=current_filter_brand,
                            current_search_term=current_search_term)
 
+# --- V2 FEATURE: API ENDPOINT FOR SNEAKER SEARCH ---
+@sneakers_bp.route('/api/search-sneakers')
+@login_required
+def search_sneakers():
+    """
+    Searches the local SneakerDB table and returns results as JSON.
+    """
+    search_query = request.args.get('q', '')
+    if not search_query:
+        return jsonify({'results': []}) # Return empty list if no query
+
+    # Build a search pattern for a LIKE query
+    search_pattern = f"%{search_query}%"
+
+    # Query our local SneakerDB table, searching across multiple fields
+    sneakers_found = SneakerDB.query.filter(
+        or_(
+            SneakerDB.name.ilike(search_pattern),
+            SneakerDB.brand.ilike(search_pattern),
+            SneakerDB.sku.ilike(search_pattern)
+        )
+    ).limit(20).all() # Limit to 20 results for performance
+
+    # Convert the sneaker objects into a list of dictionaries to be sent as JSON
+    results = []
+    for sneaker in sneakers_found:
+        results.append({
+            'name': sneaker.name,
+            'brand': sneaker.brand,
+            'sku': sneaker.sku,
+            'releaseDate': sneaker.release_date.strftime('%Y-%m-%d') if sneaker.release_date else None,
+            'retailPrice': float(sneaker.retail_price) if sneaker.retail_price else None,
+            'image': {
+                'original': sneaker.image_url
+            }
+        })
+
+    return jsonify({'results': results})
 
 
 

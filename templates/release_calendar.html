@@ -40,10 +40,16 @@
                         <div class="card h-100 shadow-sm d-flex flex-column">
                             
                             {# Card Image Section #}
-                            <div class="p-3" style="height: 250px; background-color: #f8f9fa;">
-                                {% set image_src = release.image_url or "https://via.placeholder.com/300x250.png?text=No+Image" %}
-                                <img src="{{ image_src }}" class="card-img-top" alt="{{ release.name }}" style="height: 100%; width: 100%; object-fit: contain;">
-                            </div>
+                            <a href="#" class="image-modal-trigger" data-bs-toggle="modal" data-bs-target="#sneakerImageModal"
+                                data-image-src="{{ release.image_url or url_for('static', filename='images/placeholder.png') }}"
+                                data-image-alt="{{ release.name }}">
+
+                                <img src="{{ release.image_url or url_for('static', filename='images/placeholder.png') }}" class="card-img-top p-3" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
+
+                                <span class="expand-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 1 0 .707z"/></svg>
+                                </span>
+                            </a>
 
                             {# Card Body with Sneaker Details #}
                             <div class="card-body p-3 pb-2">
@@ -79,8 +85,10 @@
                         </div>
                     </div>
                 {% endfor %}
-            </div> {% endfor %}
-    </div> {% else %}
+            </div> 
+        {% endfor %}
+    </div> 
+    {% else %}
     <div class="text-center mt-5 p-5 border rounded bg-light">
         <h4>No Upcoming Releases Found</h4>
         <p class="lead">Check back soon for updates or add a new release!</p>
@@ -183,8 +191,25 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!releaseContainer) console.error("DEBUG: Could not find release container with ID 'release-container'.");
         if (!csrfToken) console.error("DEBUG: Could not find CSRF meta tag.");
     }
+    // --- Image Lightbox Modal Handler for this page ---
+    const imageLightboxModal = document.getElementById('sneakerImageModal');
+    if (imageLightboxModal) {
+        imageLightboxModal.addEventListener('show.bs.modal', function (event) {
+            const triggerElement = event.relatedTarget;
+            if (triggerElement) {
+                const imageSrc = triggerElement.getAttribute('data-image-src');
+                const imageAlt = triggerElement.getAttribute('data-image-alt');
+                const modalTitle = imageLightboxModal.querySelector('.modal-title');
+                const modalImage = imageLightboxModal.querySelector('#modalSneakerImage');
+
+                if (modalTitle) modalTitle.textContent = imageAlt;
+                if (modalImage) modalImage.src = imageSrc;
+            }
+        });
+    }
 });
 </script>
+{% include '_sneaker_image_modal.html' %}
 {% endblock %}
 
 

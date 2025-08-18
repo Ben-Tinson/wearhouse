@@ -18,44 +18,18 @@ def validate_sneaker_size(form, field):
             raise ValidationError('Invalid size format. Size must be a numeric value.')
 
 class SneakerForm(FlaskForm):
-    brand = StringField('Brand', validators=[DataRequired(), Length(max=100)])
-    model = StringField('Model', validators=[DataRequired(), Length(max=100)])
-    colorway = StringField('Colorway', validators=[Optional(), Length(max=100)])
-
-    size_type_choices = [
-        ('UK', 'UK'), ('US M', "US Men's"), 
-        ('US W', "US Women's"), ('EU', 'EU'), ('CM', 'CM'), 
-        ('KR', 'KR')
-    ]
-    size_type = SelectField('Size Type', choices=size_type_choices, validators=[Optional()])
-    size = StringField('Size Value', validators=[Optional(), Length(max=20), validate_sneaker_size]) # Custom validator
-
-    last_worn_date = DateField('Last Worn Date', validators=[Optional()], format='%Y-%m-%d')
-
-    purchase_currency_choices = [
-        ('GBP', '£ GBP'), ('USD', '$ USD'), ('EUR', '€ EUR'),
-        ('JPY', '¥ JPY'), ('CAD', 'C$ CAD'), ('AUD', 'A$ AUD'), ('KRW', '₩ KRW')
-    ]
-    purchase_currency = SelectField('Currency', choices=purchase_currency_choices, validators=[Optional()])
-    purchase_price = DecimalField('Purchase Price', validators=[Optional(), NumberRange(min=0)], places=2) # Allows 2 decimal places
-
-    condition_choices = [
-        ("", "Select Condition..."), ('Deadstock', 'Deadstock'), ('Near New', 'Near New'),
-        ('Lightly Worn', 'Lightly Worn'), ('Heavily Worn', 'Heavily Worn')
-    ]
-    condition = SelectField('Condition', choices=condition_choices, validators=[Optional()])
-    purchase_date = DateField('Purchase Date', validators=[Optional()], format='%Y-%m-%d')
-
-    image_option = RadioField('Image Source', choices=[('url', 'Link to Image URL'), ('upload', 'Upload Image File')], 
-                              default='url', validators=[Optional()]) # Optional now, logic in route will handle
-    sneaker_image_url = URLField('Image URL', validators=[Optional(), URL(message="Invalid URL format.")])
-    sneaker_image_file = FileField('Image File', validators=[
-        Optional(),
-        FileAllowed(['jpg', 'jpeg', 'png', 'gif', 'avif'], 'Images only! (jpg, png, gif, avif)')
-    ])
-
-    submit = SubmitField('Save Sneaker') # Generic name for add/edit
-    pass
+    brand = StringField('Brand', validators=[DataRequired(), Length(max=150)])
+    model = StringField('Model', validators=[DataRequired(), Length(max=150)])
+    size_type = SelectField('Size Type', choices=[('UK', 'UK'), ('US M', "US Men's"), ('US W', "US Women's"), ('EU', 'EU')], validators=[Optional()])
+    size = StringField('Size', validators=[Optional(), Length(max=20)])
+    purchase_date = DateField('Purchase Date', format='%Y-%m-%d', validators=[Optional()])
+    purchase_price = DecimalField('Purchase Price', places=2, validators=[Optional()])
+    purchase_currency = SelectField('Currency', choices=[('GBP', '£ GBP'), ('USD', '$ USD'), ('EUR', '€ EUR')], validators=[Optional()])
+    condition = SelectField('Condition', choices=[("", "Select..."), ('Deadstock', 'Deadstock'), ('Near New', 'Near New')], validators=[Optional()])
+    last_worn_date = DateField('Last Worn Date', format='%Y-%m-%d', validators=[Optional()])
+    image_option = RadioField('Image Source', choices=[('url', 'Link to URL'), ('upload', 'Upload File')], default='url')
+    sneaker_image_url = StringField('Image URL', validators=[Optional(), Length(max=1024)])
+    sneaker_image_file = FileField('Image File', validators=[Optional(), FileAllowed(['jpg', 'jpeg', 'png', 'gif', 'webp'], 'Images only!')])
 
 # Your existing LoginForm should be here
 class LoginForm(FlaskForm):

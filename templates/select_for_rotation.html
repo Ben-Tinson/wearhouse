@@ -87,6 +87,7 @@
         </div>
     {% endif %}
 
+    {{ super() }}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('selection-form');
@@ -132,16 +133,38 @@
         
             // --- Event Listeners ---
             if (form) {
+                form.addEventListener('submit', function(event) {
+                    const selections = getSelections();
+                    if (selections.size === 0) {
+                        alert('Please select at least one sneaker to add.');
+                        event.preventDefault(); // Stop submission if nothing is selected
+                        return;
+                    }
+
+                    // Remove any old hidden inputs to avoid duplicates
+                    form.querySelectorAll('input[name="sneaker_ids_hidden"]').forEach(el => el.remove());
+
+                    // Add a hidden input for each selected ID
+                    selections.forEach(sneakerId => {
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = 'sneaker_ids'; // Ensure this matches what the backend expects
+                        hiddenInput.value = sneakerId;
+                        form.appendChild(hiddenInput);
+                    });
+
+                    // The form will now submit with ALL selected IDs.
+                });
+
+                // This listener still handles saving selections as you click
                 form.addEventListener('change', function(event) {
                     if (event.target.classList.contains('sneaker-select-checkbox')) {
                         const checkbox = event.target;
-                        const sneakerId = checkbox.dataset.id;
                         let selections = getSelections();
-        
                         if (checkbox.checked) {
-                            selections.add(sneakerId);
+                            selections.add(checkbox.dataset.id);
                         } else {
-                            selections.delete(sneakerId);
+                            selections.delete(checkbox.dataset.id);
                         }
                         saveSelections(selections);
                     }

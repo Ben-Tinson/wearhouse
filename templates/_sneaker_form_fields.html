@@ -29,19 +29,6 @@
         {% endif %}
     </div>
 
-    {# Colorway #}
-    <div class="mb-3">
-        {{ form.colorway.label(class="form-label") }} <small class="text-muted">(optional)</small>
-        {% if form.colorway.errors %}
-            {{ form.colorway(class="form-control is-invalid") }}
-            <div class="invalid-feedback">
-                {% for error in form.colorway.errors %}<span>{{ error }}</span><br>{% endfor %}
-            </div>
-        {% else %}
-            {{ form.colorway(class="form-control") }}
-        {% endif %}
-    </div>
-
     {# Size Type and Size Value #}
     <div class="mb-3">
         <label class="form-label">Size <small class="text-muted">(optional)</small></label> {# Combined label for the group #}

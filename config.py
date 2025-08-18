@@ -1,34 +1,35 @@
 # config.py
 import os
+from dotenv import load_dotenv
 
 basedir = os.path.abspath(os.path.dirname(__file__))
-UPLOAD_FOLDER = 'uploads'
+load_dotenv(os.path.join(basedir, '.env'))
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or '6238418573691154'
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    UPLOAD_FOLDER = os.path.join(basedir, UPLOAD_FOLDER)
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'avif'}
+    """Base config."""
+    # Security and App Keys
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'a_default_secret_key_for_development'
+    
+    # Database Configuration
     DATABASE_URL = os.environ.get('DATABASE_URL')
-     # If the URL exists and starts with the old 'postgres://', replace it
     if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-    # Set the final configuration variable
-    SQLALCHEMY_DATABASE_URI = DATABASE_URL or \
-        'sqlite:///' + os.path.join(basedir, 'site.db')
-
+    SQLALCHEMY_DATABASE_URI = DATABASE_URL or 'sqlite:///' + os.path.join(basedir, 'instance', 'site.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # File Upload Configuration
+    UPLOAD_FOLDER = os.path.join(basedir, 'uploads')
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'avif', 'webp'}
 
-    # Flask-Mail configuration
-    MAIL_SERVER = os.environ.get('MAIL_SERVER', 'smtp.example.com')
-    MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
-    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
+    # Email Configuration (using SendGrid API)
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER')
     SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
+    
+    # External API Keys
+    RETAILED_API_KEY = os.environ.get('RETAILED_API_KEY')
+    RAPIDAPI_KEY = os.environ.get('RAPIDAPI_KEY')
+
 
 class TestConfig(Config):
     TESTING = True
@@ -36,4 +37,6 @@ class TestConfig(Config):
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:' 
     # Disable CSRF protection in tests to simplify form submissions
     WTF_CSRF_ENABLED = False
+    SERVER_NAME = 'localhost.localdomain'
+
 

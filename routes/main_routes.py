@@ -396,7 +396,85 @@ def wishlist():
                            current_filter_month=current_filter_month,
                            current_search_term=current_search_term)
 
+# Select For Wishlist Route
+@main_bp.route('/select-for-wishlist', methods=['GET', 'POST'])
+@login_required
+def select_for_wishlist():
+    form = EmptyForm() # For CSRF protection on the POST
+    
+    if request.method == 'POST':
+        selected_ids = request.form.getlist('release_ids')
+        if not selected_ids:
+            flash('You did not select any releases to add.', 'warning')
+            return redirect(url_for('main.select_for_wishlist'))
 
+        releases_to_add = Release.query.filter(Release.id.in_(selected_ids)).all()
+        
+        added_count = 0
+        for release in releases_to_add:
+            # Avoid adding duplicates
+            if release not in current_user.wishlist:
+                current_user.wishlist.append(release)
+                added_count += 1
+        
+        if added_count > 0:
+            db.session.commit()
+            flash(f'Successfully added {added_count} new release(s) to your wishlist!', 'success')
+        else:
+            flash('The selected releases were already on your wishlist.', 'info')
+            
+        return redirect(url_for('main.wishlist'))
+
+    wishlist_release_ids = {release.id for release in current_user.wishlist}
+
+    today = date.today()
+    query = Release.query.filter(Release.release_date >= today)
+
+    # This is the same logic from your release_calendar route to handle filters
+    filter_brand_param = request.args.get('filter_brand')
+    filter_month_param = request.args.get('filter_month')
+    search_term_param = request.args.get('search_term')
+
+    distinct_brands_tuples = query.with_entities(Release.brand).distinct().order_by(Release.brand).all()
+    brands_for_filter = [brand[0] for brand in distinct_brands_tuples if brand[0]]
+
+    distinct_months_tuples = db.session.query(extract('year', Release.release_date), extract('month', Release.release_date)) \
+        .filter(Release.release_date >= today).distinct().order_by(extract('year', Release.release_date), extract('month', Release.release_date)).all()
+
+    months_for_filter = []
+    for year, month in distinct_months_tuples:
+        year, month = int(year), int(month)
+        date_obj = datetime(year, month, 1)
+        months_for_filter.append((f"{year}-{month:02d}", date_obj.strftime('%B %Y')))
+
+    current_filter_brand = filter_brand_param if filter_brand_param and filter_brand_param != 'all' else None
+    if current_filter_brand:
+        query = query.filter(Release.brand == current_filter_brand)
+
+    current_filter_month = filter_month_param if filter_month_param and filter_month_param != 'all' else None
+    if current_filter_month:
+        year, month = map(int, current_filter_month.split('-'))
+        query = query.filter(extract('year', Release.release_date) == year, extract('month', Release.release_date) == month)
+
+    current_search_term = search_term_param.strip() if search_term_param else None
+    if current_search_term:
+        query = query.filter(Release.name.ilike(f"%{current_search_term}%"))
+
+    available_releases = query.order_by(Release.release_date.asc()).all()
+
+    for release in available_releases:
+        release.is_on_wishlist = release.id in wishlist_release_ids
+
+    return render_template('select_for_wishlist.html',
+                           title='Add to Wishlist from Calendar',
+                           available_releases=available_releases,
+                           form=form,
+                           brands_for_filter=brands_for_filter,
+                           months_for_filter=months_for_filter,
+                           current_filter_brand=current_filter_brand,
+                           current_filter_month=current_filter_month,
+                           current_search_term=current_search_term,
+                           show_sort_controls=False) # No sorting on this page
 
 
 

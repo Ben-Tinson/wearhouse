@@ -136,6 +136,18 @@ class Release(db.Model):
     def __repr__(self):
         return f'<Release {self.name}>'
 
+class SneakerDB(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    brand = db.Column(db.String(150), index=True)
+    name = db.Column(db.String(255), index=True)
+    colorway = db.Column(db.String(255))
+    gender = db.Column(db.String(20))
+    release_date = db.Column(db.Date, nullable=True)
+    retail_price = db.Column(db.Numeric(10, 2), nullable=True)
+    sku = db.Column(db.String(50), index=True)
+    image_url = db.Column(db.String(1024))
 
+    def __repr__(self):
+        return f'<SneakerDB {self.name}>'
 
 

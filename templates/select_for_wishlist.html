@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">{{ title }}</h2>
+        <a href="{{ url_for('main.wishlist') }}" class="btn btn-secondary">Back to My Wishlist</a>
+    </div>
+    <p class="text-muted">Select the upcoming releases you want to track. Your selections will be remembered as you filter and search.</p>
+
+    {% with target_endpoint='main.select_for_wishlist', show_sort_controls=False %}
+        {% include '_controls_bar.html' %}
+    {% endwith %}
+    
+    {% if available_releases %}
+        <form method="POST" action="{{ url_for('main.select_for_wishlist') }}" id="selection-form">
+            {{ form.hidden_tag() }}
+            
+            <div class="row align-items-center mb-3">
+                <div class="col-auto me-auto">
+                    <h5 class="mb-0">
+                        Selected: <span id="selection-counter" class="badge bg-primary rounded-pill">0</span>
+                    </h5>
+                </div>
+                <div class="col-auto">
+                    <div class="row g-2">
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-outline-secondary" id="clear-selection-btn">Clear Selection</button>
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-success">Add Selected to Wishlist</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center" style="width: 5%;">Select</th>
+                                <th style="width: 15%;">Image</th>
+                                <th>Name</th>
+                                <th style="width: 20%;">Release Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for release in available_releases %}
+                                <tr class="{{ 'table-secondary text-muted' if release.is_on_wishlist else '' }}"
+                                    title="{{ 'This item is already on your wishlist' if release.is_on_wishlist else '' }}">
+                        
+                                    <td class="text-center align-middle p-3">
+                                        {% if release.is_on_wishlist %}
+                                            <span class="text-success small">On Wishlist</span>
+                                        {% else %}
+                                            <div class="form-check d-inline-flex">
+                                                <input class="form-check-input release-select-checkbox" type="checkbox" name="release_ids" value="{{ release.id }}" id="release-{{ release.id }}" data-id="{{ release.id }}">
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                        
+                                    <td class="align-middle">
+                                        <img src="{{ release.image_url or url_for('static', filename='images/placeholder.png') }}" class="img-thumbnail" alt="{{ release.name }}" style="width: 75px; height: 75px; object-fit: contain;">
+                                    </td>
+                                    <td class="align-middle">{{ release.name }}</td>
+                                    <td class="align-middle">{{ release.release_date.strftime('%b %d, %Y') if release.release_date else 'N/A' }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="text-center my-4">
+                <button type="submit" class="btn btn-success btn-lg">Add Selected to Wishlist</button>
+            </div>
+        </form>
+    {% else %}
+        <div class="text-center mt-4 p-5 border rounded bg-light">
+            <h4>No Upcoming Releases Found</h4>
+            <p class="lead">No releases match your current filter or search.</p>
+        </div>
+    {% endif %}
+
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('selection-form');
+    const clearButton = document.getElementById('clear-selection-btn');
+    const counterElement = document.getElementById('selection-counter');
+    const storageKey = 'wishlistSelection';
+
+    if (document.referrer && !document.referrer.includes('/select-for-wishlist')) {
+        sessionStorage.removeItem(storageKey);
+    }
+    
+    function getSelections() {
+        const stored = sessionStorage.getItem(storageKey);
+        // Use a Set for efficient add/delete operations
+        return stored ? new Set(JSON.parse(stored)) : new Set();
+    }
+
+    function saveSelections(selections) {
+        // Convert Set to Array for JSON storage
+        sessionStorage.setItem(storageKey, JSON.stringify(Array.from(selections)));
+        updateCounter(selections.size);
+    }
+
+    function updateCounter(count) {
+        if (counterElement) {
+            counterElement.textContent = count;
+        }
+    }
+
+    function applySelections() {
+        const selections = getSelections();
+        document.querySelectorAll('.release-select-checkbox').forEach(checkbox => {
+            // Use dataset.id which is guaranteed to be a string
+            checkbox.checked = selections.has(checkbox.dataset.id);
+        });
+        updateCounter(selections.size);
+    }
+
+    if (form) {
+        form.addEventListener('submit', function(event) {
+            const selections = getSelections();
+            if (selections.size === 0) {
+                alert('Please select at least one release to add.');
+                event.preventDefault(); // Stop submission
+                return;
+            }
+
+            form.querySelectorAll('input[name="release_ids_hidden"]').forEach(el => el.remove());
+
+            selections.forEach(releaseId => {
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'release_ids'; // This name must match the backend
+                hiddenInput.value = releaseId;
+                form.appendChild(hiddenInput);
+            });
+        });
+
+        // This listener still handles saving selections as you click
+        form.addEventListener('change', function(event) {
+            if (event.target.classList.contains('release-select-checkbox')) {
+                const checkbox = event.target;
+                let selections = getSelections();
+                if (checkbox.checked) {
+                    selections.add(checkbox.dataset.id);
+                } else {
+                    selections.delete(checkbox.dataset.id);
+                }
+                saveSelections(selections);
+            }
+        });
+    }
+    
+    // Always apply selections on every page load
+    applySelections();
+});
+</script>
+{% endblock %}
