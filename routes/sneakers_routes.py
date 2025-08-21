@@ -318,6 +318,9 @@ def add_sneaker():
 def edit_sneaker(sneaker_id):
     sneaker_to_edit = db.session.get(Sneaker, sneaker_id)
     if not sneaker_to_edit or sneaker_to_edit.owner != current_user:
+        # For AJAX, return a JSON error; otherwise, abort
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'status': 'error', 'message': 'Permission denied.'}), 403
         abort(403)
     
     form = SneakerForm()
@@ -469,10 +472,17 @@ def update_last_worn(sneaker_id):
 @login_required
 def get_sneaker_data(sneaker_id):
     sneaker = db.session.get(Sneaker, sneaker_id)
-    if not sneaker:
-        abort(404)
-    if sneaker.owner != current_user:
-        return jsonify({'status': 'error', 'message': 'Permission denied.'}), 403
+    if not sneaker or sneaker.owner != current_user:
+        return jsonify({'status': 'error', 'message': 'Sneaker not found or permission denied.'}), 404
+
+    # Determine the correct URL for the preview image
+    image_display_url = None
+    if sneaker.image_url:
+        if sneaker.image_url.startswith('http'):
+            image_display_url = sneaker.image_url
+        else:
+            # Use _external=True to generate a full URL for AJAX
+            image_display_url = url_for('main.uploaded_file', filename=sneaker.image_url, _external=True)
 
     sneaker_data = {
         'brand': sneaker.brand,
@@ -481,16 +491,12 @@ def get_sneaker_data(sneaker_id):
         'size': sneaker.size,
         'size_type': sneaker.size_type,
         'last_worn_date': sneaker.last_worn_date.strftime('%Y-%m-%d') if sneaker.last_worn_date else '',
-        'purchase_price': str(sneaker.purchase_price) if sneaker.purchase_price is not None else '',        'purchase_currency': sneaker.purchase_currency,
+        'purchase_price': str(sneaker.purchase_price) if sneaker.purchase_price is not None else '',
+        'purchase_currency': sneaker.purchase_currency,
         'condition': sneaker.condition,
         'purchase_date': sneaker.purchase_date.strftime('%Y-%m-%d') if sneaker.purchase_date else '',
-        'image_url': sneaker.image_url, # This could be a URL or a filename
-        # We don't directly send image_option or sneaker_image_file here;
-        # The form will handle how a new image is provided.
-        # We will need to know if image_url is an actual URL or a local file for display purposes if we show current image in modal.
-        'is_external_image_url': True if sneaker.image_url and (sneaker.image_url.startswith('http://') or sneaker.image_url.startswith('https://')) else False,
-        'image_filename_for_display': url_for('main.uploaded_file', filename=sneaker.image_url, _external=True) if sneaker.image_url and not (sneaker.image_url.startswith('http://') or sneaker.image_url.startswith('https://')) else sneaker.image_url
-
+        'sneaker_image_url': sneaker.image_url if sneaker.image_url and sneaker.image_url.startswith('http') else '',
+        'current_image_display_url': image_display_url
     }
     return jsonify({'status': 'success', 'sneaker': sneaker_data})
 

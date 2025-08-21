@@ -17,15 +17,19 @@
                 </div>
                 <hr>
                 <h5 class="mb-3">2. Your Sneaker Details</h5>
-                <div id="newImagePreviewArea" class="mt-3 text-center" style="display: none;">
-                    <p class="mb-1"><small>New image preview:</small></p>
-                    <img src="#" id="newSneakerImagePreview" class="img-thumbnail" style="max-width: 200px; max-height: 200px;">
-                </div>
                 <form id="sneakerModalForm" method="POST" enctype="multipart/form-data">
                     <div id="sneakerModalFormContent">
                        {% with form = form_for_modal %}{% include '_sneaker_form_fields.html' %}{% endwith %}
                     </div>
                 </form>
+                <div id="currentImagePreviewContainer" class="mb-3 text-center" style="display: none;">
+                    <p class="mb-1"><small><strong>Current Image:</strong></small></p>
+                    <img src="#" id="currentImagePreviewInModal" class="img-thumbnail" style="max-width: 250px; max-height: 250px; object-fit: contain;">
+                </div>
+                <div class="mb-3" id="newImagePreviewArea" style="display: none; text-align: center;">
+                    <p class="mb-1"><small class="text-muted">New image preview:</small></p>
+                    <img src="#" id="newSneakerImagePreview" class="img-thumbnail" style="max-width: 250px; max-height: 250px; object-fit: contain;" alt="New image preview">
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>

@@ -25,11 +25,11 @@ class SneakerForm(FlaskForm):
     purchase_date = DateField('Purchase Date', format='%Y-%m-%d', validators=[Optional()])
     purchase_price = DecimalField('Purchase Price', places=2, validators=[Optional()])
     purchase_currency = SelectField('Currency', choices=[('GBP', '£ GBP'), ('USD', '$ USD'), ('EUR', '€ EUR')], validators=[Optional()])
-    condition = SelectField('Condition', choices=[("", "Select..."), ('Deadstock', 'Deadstock'), ('Near New', 'Near New')], validators=[Optional()])
+    condition = SelectField('Condition', choices=[("", "Select..."), ('Deadstock', 'Deadstock'), ('Near New', 'Near New'), ('Used - Good', 'Used - Good'), ('Used - Fair', 'Used - Fair'), ('Beater', 'Beater')], validators=[Optional()])
     last_worn_date = DateField('Last Worn Date', format='%Y-%m-%d', validators=[Optional()])
     image_option = RadioField('Image Source', choices=[('url', 'Link to URL'), ('upload', 'Upload File')], default='url')
-    sneaker_image_url = StringField('Image URL', validators=[Optional(), Length(max=1024)])
-    sneaker_image_file = FileField('Image File', validators=[Optional(), FileAllowed(['jpg', 'jpeg', 'png', 'gif', 'webp'], 'Images only!')])
+    sneaker_image_url = StringField('Image URL', validators=[Optional(), Length(max=1024)], render_kw={"id": "modal_sneaker_image_url"})
+    sneaker_image_file = FileField('Image File', validators=[Optional(), FileAllowed(['jpg', 'jpeg', 'png', 'gif', 'webp'], 'Images only!')], render_kw={"id": "modal_sneaker_image_file"})
 
 # Your existing LoginForm should be here
 class LoginForm(FlaskForm):

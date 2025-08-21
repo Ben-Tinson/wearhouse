@@ -38,30 +38,6 @@
         {% with target_endpoint='sneakers.dashboard', show_sort_controls=True %}{% include '_controls_bar.html' %}{% endwith %}
     </div>
 
-    <!-- <div class="collection-summary mb-3 text-muted">
-        {% if current_filter_brand and brand_specific_count is not none %}
-            {# Message when filtering by brand #}
-            <p class="mb-1">
-                Displaying {{ displayed_count }} of your {{ brand_specific_count }} pair{{ 's' if brand_specific_count != 1 else '' }} of <strong>{{ current_filter_brand }}</strong> sneakers in rotation
-                {% if current_search_term %}
-                    matching your search for "<em>{{ current_search_term }}</em>".
-                {% endif %}
-            </p>
-
-        {% elif current_search_term %}
-            {# Message when only searching #}
-            <p>Found {{ displayed_count }} pair{{ 's' if displayed_count != 1 else '' }} in your rotation matching your search for "<em>{{ current_search_term }}</em>".</p>
-
-        {% else %}
-            {# Default message for the rotation page #}
-            <p>You currently have {{ rotation_total_count }} pair{{ 's' if rotation_total_count != 1 else '' }} in your rotation.</p>
-        {% endif %}
-
-        {# Always show the overall collection total for context #}
-        <p class="mb-0">
-            <small>From your total collection of {{ overall_collection_count }} pair{{ 's' if overall_collection_count != 1 else '' }}.</small>
-        </p>
-    </div>-->
     <div class="collection-summary mb-3 text-muted">
         {% include '_collection_summary_message.html' %}
     </div>
@@ -73,20 +49,11 @@
     </div>
 
     {% include '_sneaker_form_modal.html' %}
+    {% include '_sneaker_image_modal.html' %}
 
-    <div class="modal fade" id="sneakerImageModal" tabindex="-1" aria-labelledby="sneakerImageModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title" id="sneakerImageModalLabel">Sneaker Image</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
-                <div class="modal-body text-center"><img src="" id="modalSneakerImage" class="img-fluid" alt="Sneaker Image Large View"></div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
-            </div>
-        </div>
-    </div>
-<!--
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            
+        document.addEventListener('DOMContentLoaded', function() {
+        
             // --- 1. SHARED ELEMENTS & STATE ---
             let brandChart = null;
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -96,7 +63,7 @@
             const sneakerGridContainer = document.getElementById('sneaker-grid-container');
             const summaryContainer = document.querySelector('.collection-summary');
             const chartCanvas = document.getElementById('brandPieChart');
-
+        
             // Modal Elements
             const sneakerFormModalEl = document.getElementById('sneakerFormModal');
             const sneakerModal = sneakerFormModalEl ? new bootstrap.Modal(sneakerFormModalEl) : null;
@@ -109,75 +76,75 @@
             const searchInput = document.getElementById('sneaker-search-input');
             const searchButton = document.getElementById('sneaker-search-btn');
             const searchResultsContainer = document.getElementById('sneaker-search-results');
-
+        
             // Modal Image Preview Elements
             const currentImagePreviewContainer = document.getElementById('currentImagePreviewContainer');
             const currentImagePreviewImg = document.getElementById('currentImagePreviewInModal');
             const newImagePreviewArea = document.getElementById('newImagePreviewArea');
             const newSneakerImagePreview = document.getElementById('newSneakerImagePreview');
-            const modalUrlInput = document.getElementById('sneaker_image_url');
-            const modalFileInput = document.getElementById('sneaker_image_file');
-
+            const modalUrlInput = document.getElementById('modal_sneaker_image_url');
+            const modalFileInput = document.getElementById('modal_sneaker_image_file');
+        
             // --- 2. HELPER FUNCTIONS ---
             function displayTemporaryAjaxMessage(message, category = 'info') {
                 const mainContainer = document.querySelector('main.container');
                 if (!mainContainer) return;
                 const existingAlert = mainContainer.querySelector('.ajax-temp-message');
-                if(existingAlert) existingAlert.remove();
+                if (existingAlert) existingAlert.remove();
                 
                 const alertDiv = document.createElement('div');
                 alertDiv.className = `alert alert-${category} alert-dismissible fade show mt-3 ajax-temp-message`;
                 alertDiv.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
                 mainContainer.insertBefore(alertDiv, mainContainer.firstChild);
-                setTimeout(() => { new bootstrap.Alert(alertDiv).close(); }, 5000);
+                setTimeout(() => { 
+                    const alertInstance = bootstrap.Alert.getOrCreateInstance(alertDiv);
+                    if (alertInstance) alertInstance.close();
+                }, 5000);
             }
-
+        
             function clearValidationErrors(formElement = modalForm) {
                 if (!formElement) return;
                 formElement.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
                 formElement.querySelectorAll('.invalid-feedback').forEach(el => el.innerHTML = '');
                 if (sneakerFormGeneralErrorsEl) sneakerFormGeneralErrorsEl.innerHTML = '';
             }
-
+        
             function displayValidationErrors(errors, formElement = modalForm) {
                 clearValidationErrors(formElement);
                 for (const fieldName in errors) {
                     const inputElement = formElement.querySelector(`[name="${fieldName}"]`);
-                    const feedbackEl = inputElement ? inputElement.closest('.mb-3').querySelector('.invalid-feedback') : null;
-                    if (inputElement && feedbackEl) {
-                        inputElement.classList.add('is-invalid');
-                        feedbackEl.innerHTML = errors[fieldName].join('<br>');
+                    if (inputElement) {
+                        const container = inputElement.closest('.mb-3') || inputElement.closest('.input-group')?.parentElement;
+                        if(container){
+                            const feedbackEl = container.querySelector('.invalid-feedback');
+                            if (feedbackEl) {
+                                inputElement.classList.add('is-invalid');
+                                feedbackEl.innerHTML = errors[fieldName].join('<br>');
+                            }
+                        }
                     } else if (sneakerFormGeneralErrorsEl) {
                         sneakerFormGeneralErrorsEl.innerHTML += `<p class="text-danger small">${errors[fieldName].join('<br>')}</p>`;
                     }
                 }
             }
-
+        
             function toggleModalImageInputs() {
                 const urlWrapper = document.getElementById('modal_image_url_wrapper');
                 const fileWrapper = document.getElementById('modal_image_file_wrapper');
                 const urlRadio = modalForm.querySelector('[name="image_option"][value="url"]');
                 if (urlRadio && urlWrapper && fileWrapper) {
-                    if (urlRadio.checked) {
-                        urlWrapper.style.display = 'block';
-                        fileWrapper.style.display = 'none';
-                    } else {
-                        urlWrapper.style.display = 'none';
-                        fileWrapper.style.display = 'block';
-                    }
+                    urlWrapper.style.display = urlRadio.checked ? 'block' : 'none';
+                    fileWrapper.style.display = urlRadio.checked ? 'none' : 'block';
                 }
             }
-
+        
             // --- 3. CORE AJAX UPDATE FUNCTION ---
             function updateDashboard(url, isPopState = false) {
                 if (!sneakerGridContainer) return;
                 const scrollPosition = window.scrollY;
                 sneakerGridContainer.style.opacity = '0.5';
-
-                if (!isPopState) {
-                    history.pushState({ path: url }, '', url);
-                }
-
+                if (!isPopState) history.pushState({ path: url }, '', url);
+        
                 fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(res => res.ok ? res.json() : Promise.reject(new Error('Network response was not ok.')))
                 .then(data => {
@@ -189,12 +156,7 @@
                     document.getElementById('stat-most-owned').textContent = data.most_owned_brand || 'N/A';
                     document.getElementById('stat-total-sneakers').textContent = data.overall_total_count || 0;
                     document.getElementById('stat-in-rotation').textContent = data.in_rotation_count || 0;
-
-                    if (brandChart) {
-                        brandChart.data.labels = data.brand_labels;
-                        brandChart.data.datasets[0].data = data.brand_data;
-                        brandChart.update();
-                    }
+                    initializeChart(data.brand_labels, data.brand_data);
                 })
                 .catch(error => console.error('Dashboard update failed:', error))
                 .finally(() => {
@@ -202,78 +164,27 @@
                     requestAnimationFrame(() => window.scrollTo(0, scrollPosition));
                 });
             }
-
-            // Prepare modal for ADDING
-            document.getElementById('openAddSneakerModalBtn').addEventListener('click', () => {
+        
+            // --- 4. EVENT LISTENERS ---
+        
+            // A. Main Page Controls (Sort/Filter/Search)
+            document.getElementById('openAddSneakerModalBtn')?.addEventListener('click', () => {
                 modalForm.reset();
                 modalTitle.textContent = 'Add New Sneaker';
                 modalSaveBtn.textContent = 'Add Sneaker';
                 modalForm.setAttribute('action', "{{ url_for('sneakers.add_sneaker') }}");
-                clearValidationErrors(modalForm);
-                currentImagePreviewContainer.style.display = 'none';
-                newImagePreviewArea.style.display = 'none';
-                document.getElementById('image_option-0').checked = true;
+                clearValidationErrors();
+                if (currentImagePreviewContainer) currentImagePreviewContainer.style.display = 'none';
+                if (newImagePreviewArea) newImagePreviewArea.style.display = 'none';
+                const urlRadio = document.getElementById('image_option-0');
+                if(urlRadio) urlRadio.checked = true;
                 toggleModalImageInputs();
-                currentImagePreviewContainer.style.display = 'none';
-                newImagePreviewArea.style.display = 'none';
             });
 
-            // Delegated listener for EDITING
-            sneakerGridContainer.addEventListener('click', event => {
-                const editButton = event.target.closest('.open-edit-sneaker-modal-btn');
-                if (editButton) {
-                    fetch(editButton.dataset.fetchUrl).then(res => res.json()).then(data => {
-                        if (data.status === 'success' && data.sneaker) {
-                            // ... (Logic to populate form fields) ...
-
-                            // Handle Current Image Preview
-                            if (data.sneaker.current_image_display_url) {
-                                currentImagePreviewImg.src = data.sneaker.current_image_display_url;
-                                currentImagePreviewContainer.style.display = 'block';
-                            } else {
-                                currentImagePreviewContainer.style.display = 'none';
-                            }
-                            newImagePreviewArea.style.display = 'none';
-                            sneakerModal.show();
-                        }
-                    });
-                }
-            });
-
-            // Listeners for Live Image Previews
-            if (modalUrlInput) {
-                modalUrlInput.addEventListener('input', function() {
-                    const url = this.value.trim();
-                    newImagePreviewArea.style.display = url ? 'block' : 'none';
-                    newSneakerImagePreview.src = url || '#';
-                });
-            }
-            if (modalFileInput) {
-                modalFileInput.addEventListener('change', function(event) {
-                    const file = event.target.files[0];
-                    if (file) {
-                        const reader = new FileReader();
-                        reader.onload = e => {
-                            newSneakerImagePreview.src = e.target.result;
-                            newImagePreviewArea.style.display = 'block';
-                        };
-                        reader.readAsDataURL(file);
-                    } else {
-                        newImagePreviewArea.style.display = 'none';
-                    }
-                });
-            }
-
-            // --- 4. EVENT LISTENERS ---
-
-            // Listeners for the main controls bar (Sort/Filter/Search)
             if (controlsBarContainer) {
                 controlsBarContainer.addEventListener('click', event => {
                     const link = event.target.closest('a');
-                    if (link && link.closest('.controls-bar')) {
-                        event.preventDefault();
-                        updateDashboard(link.href);
-                    }
+                    if (link && link.closest('.controls-bar')) { event.preventDefault(); updateDashboard(link.href); }
                 });
                 controlsBarContainer.addEventListener('submit', event => {
                     const form = event.target;
@@ -285,11 +196,13 @@
                 });
             }
             window.addEventListener('popstate', () => updateDashboard(location.href, true));
-
-            // Delegated listeners for all actions on sneaker cards (Edit, Delete, etc.)
+        
+            // B. Delegated Listeners for dynamically loaded Sneaker Cards
             if (sneakerGridContainer) {
                 sneakerGridContainer.addEventListener('click', function(event) {
                     const editButton = event.target.closest('.open-edit-sneaker-modal-btn');
+                    const imageTrigger = event.target.closest('.image-modal-trigger');
+
                     if (editButton) {
                         const fetchUrl = editButton.dataset.fetchUrl;
                         const editActionUrl = editButton.dataset.editActionUrl;
@@ -312,12 +225,19 @@
                                     } else {
                                         currentImagePreviewContainer.style.display = 'none';
                                     }
-                                    newImagePreviewArea.style.display = 'none';
+                                    if (newImagePreviewArea) newImagePreviewArea.style.display = 'none';
                                     document.getElementById('image_option-0').checked = true;
                                     toggleModalImageInputs();
                                     sneakerModal.show();
                                 }
-                            }).catch(err => console.error(err));
+                            }).catch(err => console.error("Edit button fetch error:", err));
+                    }
+
+                    if (imageTrigger) {
+                        const imageSrc = imageTrigger.getAttribute('data-image-src');
+                        const imageAlt = imageTrigger.getAttribute('data-image-alt');
+                        document.getElementById('modalSneakerImage').src = imageSrc;
+                        document.getElementById('sneakerImageModalLabel').textContent = imageAlt;
                     }
                 });
 
@@ -326,32 +246,52 @@
                     if (form.matches('.delete-sneaker-ajax-form')) {
                         event.preventDefault();
                         if (confirm('Are you sure?')) {
-                            fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': csrfToken } })
+                            fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' } })
                             .then(res => res.ok ? res.json() : Promise.reject('Delete failed'))
                             .then(data => {
-                                if(data.status === 'success') updateDashboard(location.href, true);
+                                if (data.status === 'success') {
+                                    updateDashboard(location.pathname, true);
+                                }
                             }).catch(console.error);
                         }
                     }
-                    // Add delegated listener for update last worn here if needed
+                    if (form.matches('.update-last-worn-ajax-form')) {
+                        event.preventDefault();
+                        const formData = new FormData(form);
+                        const statusElement = form.querySelector('.ajax-status-message');
+                        const displayElement = form.previousElementSibling;
+                        const submitButton = form.querySelector('button[type="submit"]');
+
+                        if (submitButton) submitButton.disabled = true;
+
+                        fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: formData })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                if (displayElement) displayElement.querySelector('small').textContent = 'Last Worn: ' + data.new_date_display;
+                                if (statusElement) {
+                                    statusElement.textContent = 'Updated!';
+                                    statusElement.classList.add('visible');
+                                    setTimeout(() => statusElement.classList.remove('visible'), 2000);
+                                }
+                            } else {
+                                if (statusElement) {
+                                    statusElement.textContent = data.message || 'Failed!';
+                                    statusElement.classList.add('visible');
+                                    setTimeout(() => statusElement.classList.remove('visible'), 3000);
+                                }
+                            }
+                        })
+                        .catch(err => console.error(err))
+                        .finally(() => {
+                            if (submitButton) submitButton.disabled = false;
+                        });
+                    }
                 });
             }
 
-            // Prepare modal for ADDING a new sneaker
-            document.getElementById('openAddSneakerModalBtn')?.addEventListener('click', function() {
-                modalForm.reset();
-                modalTitle.textContent = 'Add New Sneaker';
-                modalSaveBtn.textContent = 'Add Sneaker';
-                modalForm.setAttribute('action', "{{ url_for('sneakers.add_sneaker') }}");
-                clearValidationErrors();
-                currentImagePreviewContainer.style.display = 'none';
-                newImagePreviewArea.style.display = 'none';
-                document.getElementById('image_option-0').checked = true;
-                toggleModalImageInputs();
-            });
-
-            // Handle the main Add/Edit form submission
-            if (modalForm) {
+            // C. Listeners for the Modal
+            if (modalForm) { 
                 modalForm.addEventListener('submit', function(event) {
                     event.preventDefault();
                     const actionUrl = modalForm.getAttribute('action');
@@ -359,9 +299,14 @@
                     
                     modalSaveBtn.disabled = true;
                     modalSaveBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Saving...`;
-
+        
                     fetch(actionUrl, { method: 'POST', body: formData, headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' } })
-                    .then(response => response.status === 400 ? response.json().then(data => Promise.reject(data)) : response.json())
+                    .then(response => {
+                        if (response.status === 400 || response.status === 500) {
+                            return response.json().then(data => Promise.reject(data));
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         if (data.status === 'success') {
                             sneakerModal.hide();
@@ -377,306 +322,10 @@
                     })
                     .finally(() => {
                         modalSaveBtn.disabled = false;
-                        // Text will be 'Add Sneaker' or 'Save Changes' based on how modal was opened
+                        // Button text will be updated by the 'Add' or 'Edit' listeners
                     });
                 });
-            }
-
-            // Handle the API search in the modal
-            if (searchButton) {
-                searchButton.addEventListener('click', function() {
-                    const query = searchInput.value.trim();
-                    if (!query) return;
-                    searchResultsContainer.innerHTML = '<div class="spinner-border spinner-border-sm"></div>';
-                    fetch(`/api/search-sneakers?q=${encodeURIComponent(query)}`)
-                        .then(res => res.json())
-                        .then(data => {
-                            searchResultsContainer.innerHTML = '';
-                            if (data.results && data.results.length > 0) {
-                                const list = document.createElement('ul');
-                                list.className = 'list-group';
-                                data.results.forEach(sneaker => {
-                                    const li = document.createElement('li');
-                                    li.className = 'list-group-item list-group-item-action';
-                                    li.style.cursor = 'pointer';
-                                    li.textContent = sneaker.name;
-                                    li.dataset.sneakerData = JSON.stringify(sneaker);
-                                    list.appendChild(li);
-                                });
-                                searchResultsContainer.appendChild(list);
-                            } else {
-                                searchResultsContainer.innerHTML = '<p class="text-muted small">No results found.</p>';
-                            }
-                        }).catch(err => console.error(err));
-                });
-            }
-            if (searchResultsContainer) {
-                searchResultsContainer.addEventListener('click', function(event) {
-                    const targetLi = event.target.closest('li');
-                    if (!targetLi) return;
-                    const sneakerData = JSON.parse(targetLi.dataset.sneakerData);
-                    modalForm.querySelector('[name="brand"]').value = sneakerData.brand || '';
-                    modalForm.querySelector('[name="model"]').value = sneakerData.name || '';
-                    const imageUrlInput = modalForm.querySelector('[name="sneaker_image_url"]');
-                    if(imageUrlInput) {
-                        imageUrlInput.value = sneakerData.image?.original || '';
-                        imageUrlInput.dispatchEvent(new Event('input'));
-                    }
-                    document.getElementById('image_option-0').checked = true;
-                    toggleModalImageInputs();
-                    searchResultsContainer.innerHTML = '';
-                    searchInput.value = '';
-                });
-            }
-
-           document.querySelectorAll('[name="image_option"]').forEach(radio => radio.addEventListener('change', toggleModalImageInputs));
-
-            // --- 5. INITIALIZATION ---
-            function initializeChart(labels, data) {
-                if (!chartCanvas) return;
-                if (brandChart) brandChart.destroy();
-                if (data && data.length > 0) {
-                    brandChart = new Chart(chartCanvas, {
-                        type: 'pie',
-                        data: { labels, datasets: [{ data, backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'] }] },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    });
-                }
-            }
-            initializeChart(JSON.parse('{{ brand_labels|tojson|safe }}'), JSON.parse('{{ brand_data|tojson|safe }}'));
-        });
-    </script>
--->
-
-    {{ super() }}
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-
-            // --- 1. SHARED ELEMENTS & STATE ---
-            let brandChart = null;
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            
-            // Main Page Containers
-            const controlsBarContainer = document.getElementById('controls-bar-container');
-            const sneakerGridContainer = document.getElementById('sneaker-grid-container');
-            const summaryContainer = document.querySelector('.collection-summary');
-            const chartCanvas = document.getElementById('brandPieChart');
-
-            // Modal Elements
-            const sneakerFormModalEl = document.getElementById('sneakerFormModal');
-            const sneakerModal = sneakerFormModalEl ? new bootstrap.Modal(sneakerFormModalEl) : null;
-            const modalForm = document.getElementById('sneakerModalForm');
-            const modalTitle = document.getElementById('sneakerFormModalLabel');
-            const modalSaveBtn = document.getElementById('saveSneakerModalButton');
-            const sneakerFormGeneralErrorsEl = document.getElementById('sneakerFormGeneralErrors');
-            
-            // Modal Search Elements
-            const searchInput = document.getElementById('sneaker-search-input');
-            const searchButton = document.getElementById('sneaker-search-btn');
-            const searchResultsContainer = document.getElementById('sneaker-search-results');
-
-            // Modal Image Preview Elements
-            const currentImagePreviewContainer = document.getElementById('currentImagePreviewContainer');
-            const currentImagePreviewImg = document.getElementById('currentImagePreviewInModal');
-            const newImagePreviewArea = document.getElementById('newImagePreviewArea');
-            const newSneakerImagePreview = document.getElementById('newSneakerImagePreview');
-            const modalUrlInput = document.getElementById('sneaker_image_url');
-            const modalFileInput = document.getElementById('sneaker_image_file');
-
-            // --- 2. HELPER FUNCTIONS ---
-            function displayTemporaryAjaxMessage(message, category = 'info') {
-                const mainContainer = document.querySelector('main.container');
-                if (!mainContainer) return;
-                const existingAlert = mainContainer.querySelector('.ajax-temp-message');
-                if (existingAlert) existingAlert.remove();
-                
-                const alertDiv = document.createElement('div');
-                alertDiv.className = `alert alert-${category} alert-dismissible fade show mt-3 ajax-temp-message`;
-                alertDiv.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
-                mainContainer.insertBefore(alertDiv, mainContainer.firstChild);
-                setTimeout(() => { new bootstrap.Alert(alertDiv).close(); }, 5000);
-            }
-
-            function clearValidationErrors(formElement = modalForm) {
-                if (!formElement) return;
-                formElement.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
-                formElement.querySelectorAll('.invalid-feedback').forEach(el => el.innerHTML = '');
-                if (sneakerFormGeneralErrorsEl) sneakerFormGeneralErrorsEl.innerHTML = '';
-            }
-
-            function displayValidationErrors(errors, formElement = modalForm) {
-                clearValidationErrors(formElement);
-                for (const fieldName in errors) {
-                    const inputElement = formElement.querySelector(`[name="${fieldName}"]`);
-                    const feedbackEl = inputElement ? (inputElement.closest('.mb-3') || inputElement.closest('.input-group')).querySelector('.invalid-feedback') : null;
-                    if (inputElement && feedbackEl) {
-                        inputElement.classList.add('is-invalid');
-                        feedbackEl.innerHTML = errors[fieldName].join('<br>');
-                    } else if (sneakerFormGeneralErrorsEl) {
-                        sneakerFormGeneralErrorsEl.innerHTML += `<p class="text-danger small">${errors[fieldName].join('<br>')}</p>`;
-                    }
-                }
-            }
-
-            function toggleModalImageInputs() {
-                const urlWrapper = document.getElementById('modal_image_url_wrapper');
-                const fileWrapper = document.getElementById('modal_image_file_wrapper');
-                const urlRadio = modalForm.querySelector('[name="image_option"][value="url"]');
-                if (urlRadio && urlWrapper && fileWrapper) {
-                    if (urlRadio.checked) {
-                        urlWrapper.style.display = 'block';
-                        fileWrapper.style.display = 'none';
-                    } else {
-                        urlWrapper.style.display = 'none';
-                        fileWrapper.style.display = 'block';
-                    }
-                }
-            }
-
-            // --- 3. CORE AJAX UPDATE FUNCTION ---
-            function updateDashboard(url, isPopState = false) {
-                if (!sneakerGridContainer) return;
-                const scrollPosition = window.scrollY;
-                sneakerGridContainer.style.opacity = '0.5';
-
-                if (!isPopState) {
-                    history.pushState({ path: url }, '', url);
-                }
-
-                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                .then(res => res.ok ? res.json() : Promise.reject(new Error('Network response was not ok.')))
-                .then(data => {
-                    if (controlsBarContainer && data.controls_bar_html) controlsBarContainer.innerHTML = data.controls_bar_html;
-                    if (sneakerGridContainer && data.sneaker_grid_html) sneakerGridContainer.innerHTML = data.sneaker_grid_html;
-                    if (summaryContainer && data.summary_message_html) summaryContainer.innerHTML = data.summary_message_html;
-                    
-                    document.getElementById('stat-total-value').textContent = `£${parseFloat(data.total_value || 0).toFixed(2)}`;
-                    document.getElementById('stat-most-owned').textContent = data.most_owned_brand || 'N/A';
-                    document.getElementById('stat-total-sneakers').textContent = data.overall_total_count || 0;
-                    document.getElementById('stat-in-rotation').textContent = data.in_rotation_count || 0;
-
-                    initializeChart(data.brand_labels, data.brand_data);
-                })
-                .catch(error => console.error('Dashboard update failed:', error))
-                .finally(() => {
-                    sneakerGridContainer.style.opacity = '1';
-                    requestAnimationFrame(() => window.scrollTo(0, scrollPosition));
-                });
-            }
-
-            // --- 4. EVENT LISTENERS ---
-
-            // A. Listeners for main page controls (Sort/Filter/Search)
-            if (controlsBarContainer) {
-                controlsBarContainer.addEventListener('click', event => {
-                    const link = event.target.closest('a');
-                    if (link && link.closest('.controls-bar')) {
-                        event.preventDefault();
-                        updateDashboard(link.href);
-                    }
-                });
-                controlsBarContainer.addEventListener('submit', event => {
-                    const form = event.target;
-                    if (form && form.closest('.controls-bar')) {
-                        event.preventDefault();
-                        const params = new URLSearchParams(new FormData(form));
-                        updateDashboard(`${form.action}?${params.toString()}`);
-                    }
-                });
-            }
-            window.addEventListener('popstate', () => updateDashboard(location.href, true));
-
-            // B. Delegated Listeners for dynamically loaded Sneaker Cards
-            if (sneakerGridContainer) {
-                sneakerGridContainer.addEventListener('click', function(event) {
-                    const editButton = event.target.closest('.open-edit-sneaker-modal-btn');
-                    if (editButton) {
-                        fetch(editButton.dataset.fetchUrl)
-                            .then(res => res.json())
-                            .then(data => {
-                                if (data.status === 'success' && data.sneaker) {
-                                    modalForm.reset();
-                                    clearValidationErrors();
-                                    modalTitle.textContent = `Edit: ${data.sneaker.brand} ${data.sneaker.model}`;
-                                    modalSaveBtn.textContent = 'Save Changes';
-                                    modalForm.setAttribute('action', editButton.dataset.editActionUrl);
-                                    for (const key in data.sneaker) {
-                                        const input = modalForm.querySelector(`[name="${key}"]`);
-                                        if (input) input.value = data.sneaker[key];
-                                    }
-                                    if (data.sneaker.current_image_display_url) {
-                                        currentImagePreviewImg.src = data.sneaker.current_image_display_url;
-                                        currentImagePreviewContainer.style.display = 'block';
-                                    } else {
-                                        currentImagePreviewContainer.style.display = 'none';
-                                    }
-                                    newImagePreviewArea.style.display = 'none';
-                                    document.getElementById('image_option-0').checked = true;
-                                    toggleModalImageInputs();
-                                    sneakerModal.show();
-                                }
-                            }).catch(err => console.error(err));
-                    }
-                });
-
-                sneakerGridContainer.addEventListener('submit', function(event) {
-                    const form = event.target;
-                    if (form.matches('.delete-sneaker-ajax-form')) {
-                        event.preventDefault();
-                        if (confirm('Are you sure?')) {
-                            fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' } })
-                            .then(res => res.ok ? res.json() : Promise.reject('Delete failed'))
-                            .then(data => {
-                                if (data.status === 'success') {
-                                    updateDashboard(location.pathname, true); // Refresh without query params
-                                }
-                            }).catch(console.error);
-                        }
-                    }
-                    if (form.matches('.update-last-worn-ajax-form')) {
-                        event.preventDefault();
-                        const formData = new FormData(form);
-                        const statusElement = form.querySelector('.ajax-status-message');
-                        const displayElement = form.previousElementSibling;
-
-                        fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': csrfToken }, body: formData })
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.status === 'success') {
-                                if(displayElement) displayElement.querySelector('small').textContent = 'Last Worn: ' + data.new_date_display;
-                                if(statusElement) {
-                                    statusElement.textContent = 'Updated!';
-                                    statusElement.classList.add('visible');
-                                    setTimeout(() => statusElement.classList.remove('visible'), 2000);
-                                }
-                            } else {
-                                if(statusElement) {
-                                    statusElement.textContent = data.message || 'Failed!';
-                                    statusElement.classList.add('visible');
-                                    setTimeout(() => statusElement.classList.remove('visible'), 3000);
-                                }
-                            }
-                        }).catch(err => console.error(err));
-                    }
-                });
-            }
-
-            // C. Listeners for the Modal
-            if (sneakerFormModalEl) {
-                // Prepare modal for ADDING
-                document.getElementById('openAddSneakerModalBtn').addEventListener('click', () => {
-                    modalForm.reset();
-                    modalTitle.textContent = 'Add New Sneaker';
-                    modalSaveBtn.textContent = 'Add Sneaker';
-                    modalForm.setAttribute('action', "{{ url_for('sneakers.add_sneaker') }}");
-                    clearValidationErrors();
-                    currentImagePreviewContainer.style.display = 'none';
-                    newImagePreviewArea.style.display = 'none';
-                    document.getElementById('image_option-0').checked = true;
-                    toggleModalImageInputs();
-                });
-
-                // Handle the API search in the modal
+        
                 const performSearch = () => {
                     const query = searchInput.value.trim();
                     if (!query) return;
@@ -704,76 +353,46 @@
                 };
                 searchButton.addEventListener('click', performSearch);
                 searchInput.addEventListener('keydown', event => {
-                    if (event.key === 'Enter') {
-                        event.preventDefault();
-                        performSearch();
-                    }
+                    if (event.key === 'Enter') { event.preventDefault(); performSearch(); }
                 });
-
-                // Handle clicking on a search result to auto-fill
+                
                 searchResultsContainer.addEventListener('click', function(event) {
                     const targetLi = event.target.closest('li');
                     if (!targetLi) return;
-
                     const sneakerData = JSON.parse(targetLi.dataset.sneakerData);
-                    
-                    // Auto-fill the main form fields
                     modalForm.querySelector('[name="brand"]').value = sneakerData.brand || '';
                     modalForm.querySelector('[name="model"]').value = sneakerData.name || '';
-                    
-                    // Find the image URL input, set its value, and trigger the preview
-                    const imageUrlInput = modalForm.querySelector('[name="sneaker_image_url"]');
-                    if (imageUrlInput) {
-                        imageUrlInput.value = sneakerData.image?.original || '';
-                        // Manually trigger the 'input' event to make the live preview update
-                        imageUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    if (modalUrlInput) {
+                        modalUrlInput.value = sneakerData.image?.original || '';
+                        modalUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
                     }
-
-                    // Set the image source option to 'URL'
                     document.getElementById('image_option-0').checked = true;
-                    toggleModalImageInputs(); // Update the visibility of the URL/File inputs
-
-                    // Clean up the search interface
+                    toggleModalImageInputs();
                     searchResultsContainer.innerHTML = '';
                     searchInput.value = '';
                 });
-
-
-                // Handle image previews and radio button toggling
-                if (modalUrlInput) {
-                    modalUrlInput.addEventListener('input', function() {
-                        const url = this.value.trim();
-                        if (url) {
-                            newSneakerImagePreview.src = url;
-                            newImagePreviewArea.style.display = 'block';
-                        } else {
-                            newImagePreviewArea.style.display = 'none';
-                        }
-                    });
-                }
-                if (modalFileInput) {
-                    modalFileInput.addEventListener('change', function(event) {
-                        const file = event.target.files[0];
-                        if (file) {
-                            const reader = new FileReader();
-                            reader.onload = e => {
-                                newSneakerImagePreview.src = e.target.result;
-                                newImagePreviewArea.style.display = 'block';
-                            };
-                            reader.readAsDataURL(file);
-                        } else {
-                            newImagePreviewArea.style.display = 'none';
-                        }
-                    });
-                }
-
-                document.querySelectorAll('[name="image_option"]').forEach(radio => {
-                    radio.addEventListener('change', toggleModalImageInputs);
+        
+                if (modalUrlInput) modalUrlInput.addEventListener('input', () => {
+                    const url = modalUrlInput.value.trim();
+                    if (newImagePreviewArea) newImagePreviewArea.style.display = url ? 'block' : 'none';
+                    if (newSneakerImagePreview) newSneakerImagePreview.src = url || '#';
                 });
-
-                toggleModalImageInputs();
+                if (modalFileInput) modalFileInput.addEventListener('change', event => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = e => {
+                            if (newSneakerImagePreview) newSneakerImagePreview.src = e.target.result;
+                            if (newImagePreviewArea) newImagePreviewArea.style.display = 'block';
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        if (newImagePreviewArea) newImagePreviewArea.style.display = 'none';
+                    }
+                });
+                document.querySelectorAll('[name="image_option"]').forEach(radio => radio.addEventListener('change', toggleModalImageInputs));
             }
-
+        
             // --- 5. INITIALIZATION ---
             function initializeChart(labels, data) {
                 if (!chartCanvas) return;
@@ -787,7 +406,7 @@
                 }
             }
             initializeChart(JSON.parse('{{ brand_labels|tojson|safe }}'), JSON.parse('{{ brand_data|tojson|safe }}'));
-
+            toggleModalImageInputs(); // Initial call to set correct visibility
         });
     </script>
 

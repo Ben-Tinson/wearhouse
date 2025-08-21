@@ -52,6 +52,7 @@
 
             <p class="card-text mb-2" id="last-worn-display-{{ sneaker.id }}"><small class="text-muted">Last Worn: {% if sneaker.last_worn_date %}{{ sneaker.last_worn_date.strftime('%b %d, %Y') }}{% else %}Not set{% endif %}</small></p>
             <form method="POST" action="{{ url_for('sneakers.update_last_worn', sneaker_id=sneaker.id) }}" class="mb-2 update-last-worn-ajax-form">
+                {{ form_for_modal.hidden_tag() }}
                 <label for="last_worn_input_{{ sneaker.id }}" class="form-label visually-hidden">Update Last Worn Date</label>
                 <div class="input-group input-group-sm">
                     <input type="date" name="new_last_worn" id="last_worn_input_{{ sneaker.id }}"
@@ -74,6 +75,7 @@
                 {% if on_rotation_page %}
                     {# On the "My Rotation" page, show this button: #}
                     <form method="POST" action="{{ url_for('sneakers.remove_from_rotation', sneaker_id=sneaker.id) }}" class="d-inline remove-from-rotation-ajax-form">
+                        {{ form_for_modal.hidden_tag() }}
                         <button type="submit" class="btn btn-outline-danger btn-sm">
                             Remove from Rotation
                         </button>
