@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Health History{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="mb-1">Health History</h2>
+            <div class="text-muted">{{ sneaker.brand }} {{ sneaker.model }}</div>
+        </div>
+        <a href="{{ url_for('sneakers.my_sneaker_detail', sneaker_id=sneaker.id, slug=build_my_sneaker_slug(sneaker)) }}" class="btn btn-outline-secondary btn-sm">Back to Sneaker</a>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Health Score Timeline</h5>
+                    {% if snapshots %}
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Recorded</th>
+                                        <th scope="col">Score</th>
+                                        <th scope="col">Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for snapshot in snapshots %}
+                                        <tr>
+                                            <td>{{ snapshot.recorded_at.strftime('%b %d, %Y %H:%M') }}</td>
+                                            <td>{{ "%.1f"|format(snapshot.health_score) }}</td>
+                                            <td class="text-capitalize">{{ snapshot.reason }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-muted">No health snapshots yet.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Wears</h5>
+                    {% if wear_history %}
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Date</th>
+                                        <th scope="col">Steps</th>
+                                        <th scope="col">Exposure</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for wear in wear_history %}
+                                        <tr>
+                                            <td>{{ wear.date.strftime('%b %d, %Y') }}</td>
+                                            <td>{% if wear.steps is not none %}{{ "{:,}".format(wear.steps) }}{% else %}N/A{% endif %}</td>
+                                            <td>
+                                                {% set exposure_parts = [] %}
+                                                {% if wear.got_wet %}
+                                                    {% set _ = exposure_parts.append('Wet' ~ (' (' ~ wear.wet_severity ~ ')' if wear.wet_severity else '')) %}
+                                                {% endif %}
+                                                {% if wear.got_dirty %}
+                                                    {% set _ = exposure_parts.append('Dirty' ~ (' (' ~ wear.dirty_severity ~ ')' if wear.dirty_severity else '')) %}
+                                                {% endif %}
+                                                {% if wear.stain_flag %}
+                                                    {% set _ = exposure_parts.append('Stain' ~ (' (' ~ wear.stain_severity ~ ')' if wear.stain_severity else '')) %}
+                                                {% endif %}
+                                                {% if exposure_parts %}
+                                                    {{ exposure_parts | join(', ') }}
+                                                {% else %}
+                                                    None
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-muted">No wears logged yet.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Cleans</h5>
+                    {% if clean_events %}
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Date</th>
+                                        <th scope="col">Stain Removed</th>
+                                        <th scope="col">Material Impact</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for event in clean_events %}
+                                        <tr>
+                                            <td>{{ event.cleaned_at.strftime('%b %d, %Y %H:%M') }}</td>
+                                            <td>
+                                                {% if event.stain_removed is none %}
+                                                    N/A
+                                                {% elif event.stain_removed %}
+                                                    Yes
+                                                {% else %}
+                                                    No
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ 'Yes' if event.lasting_material_impact else 'No' }}</td>
+                                        </tr>
+                                        {% if event.notes %}
+                                            <tr>
+                                                <td colspan="3" class="small text-muted">{{ event.notes }}</td>
+                                            </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-muted">No cleans logged yet.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Damage</h5>
+                    {% if damage_events %}
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Date</th>
+                                        <th scope="col">Type</th>
+                                        <th scope="col">Severity</th>
+                                        <th scope="col">Penalty</th>
+                                        <th scope="col">Active</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for event in damage_events %}
+                                        <tr>
+                                            <td>{{ event.reported_at.strftime('%b %d, %Y %H:%M') }}</td>
+                                            <td>{{ event.damage_type.replace('_', ' ') }}</td>
+                                            <td>{{ event.severity }}</td>
+                                            <td>{{ "%.1f"|format(event.health_penalty_points) }}</td>
+                                            <td>{{ 'Yes' if event.is_active else 'No' }}</td>
+                                        </tr>
+                                        {% if event.notes %}
+                                            <tr>
+                                                <td colspan="5" class="small text-muted">{{ event.notes }}</td>
+                                            </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-muted">No damage reported.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Repairs / Restorations</h5>
+                    {% if repair_events %}
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Date</th>
+                                        <th scope="col">Kind</th>
+                                        <th scope="col">Type</th>
+                                        <th scope="col">Cost</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for event in repair_events %}
+                                        <tr>
+                                            <td>{{ event.repaired_at.strftime('%b %d, %Y %H:%M') }}</td>
+                                            <td class="text-capitalize">{{ event.repair_kind }}</td>
+                                            <td>
+                                                {% if event.repair_type_other %}
+                                                    {{ event.repair_type_other }}
+                                                {% elif event.repair_type == 'full_restoration' %}
+                                                    Full restoration
+                                                {% else %}
+                                                    {{ event.repair_type }}
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if event.cost_amount %}
+                                                    {{ event.cost_amount|money(event.cost_currency or 'GBP') }}
+                                                {% else %}
+                                                    N/A
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% if event.provider or event.provider_other or event.repair_area or event.baseline_delta_applied %}
+                                            <tr>
+                                                <td colspan="4" class="small text-muted">
+                                                    {% if event.provider or event.provider_other %}
+                                                        Provider: {{ event.provider_other or event.provider }}
+                                                    {% endif %}
+                                                    {% if event.repair_area %}
+                                                        {% if event.provider or event.provider_other %} · {% endif %}
+                                                        Area: {{ event.repair_area }}
+                                                    {% endif %}
+                                                    {% if event.baseline_delta_applied %}
+                                                        {% if event.provider or event.provider_other or event.repair_area %} · {% endif %}
+                                                        Baseline +{{ "%.1f"|format(event.baseline_delta_applied) }}
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                        {% if event.notes %}
+                                            <tr>
+                                                <td colspan="4" class="small text-muted">{{ event.notes }}</td>
+                                            </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-muted">No repairs or restorations logged.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -28,6 +28,21 @@
                                 </div>
                             {% endif %}
                         </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Regional MSRP (optional)</label>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    {{ form.regional_price_gbp(class="form-control", placeholder="GBP") }}
+                                </div>
+                                <div class="col-md-4">
+                                    {{ form.regional_price_usd(class="form-control", placeholder="USD") }}
+                                </div>
+                                <div class="col-md-4">
+                                    {{ form.regional_price_eur(class="form-control", placeholder="EUR") }}
+                                </div>
+                            </div>
+                        </div>
                         
                         <hr class="my-4">
                         <h4 class="mb-3">Release Image</h4>

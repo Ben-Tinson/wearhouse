@@ -62,7 +62,7 @@
                                     </td>
                         
                                     <td class="align-middle">
-                                        <img src="{{ release.image_url or url_for('static', filename='images/placeholder.png') }}" class="img-thumbnail" alt="{{ release.name }}" style="width: 75px; height: 75px; object-fit: contain;">
+                                        <img src="{{ release.image_url | release_image }}" class="img-thumbnail" alt="{{ release.name }}" style="width: 75px; height: 75px; object-fit: contain;">
                                     </td>
                                     <td class="align-middle">{{ release.name }}</td>
                                     <td class="align-middle">{{ release.release_date.strftime('%b %d, %Y') if release.release_date else 'N/A' }}</td>

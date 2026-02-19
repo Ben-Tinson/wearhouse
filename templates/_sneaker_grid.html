@@ -9,6 +9,35 @@
             </div>
         {% endfor %}
     </div>
+    {% if total_pages and total_pages > 1 %}
+        <div class="d-flex flex-wrap justify-content-center align-items-center gap-3 mt-4 pagination-controls">
+            <a class="btn btn-outline-secondary btn-sm {% if page <= 1 %}disabled{% endif %}"
+               href="{{ url_for(pagination_endpoint, page=page-1, **pagination_params) }}">
+                Previous
+            </a>
+            <form method="GET" action="{{ url_for(pagination_endpoint) }}" class="d-flex align-items-center gap-2 mb-0">
+                {% for key, value in pagination_params.items() %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endfor %}
+                <span class="text-muted">Page</span>
+                <input
+                    type="number"
+                    name="page"
+                    class="form-control form-control-sm text-center"
+                    min="1"
+                    max="{{ total_pages }}"
+                    value="{{ page }}"
+                    style="width: 70px;"
+                >
+                <span class="text-muted">of {{ total_pages }}</span>
+                <button type="submit" class="btn btn-outline-secondary btn-sm">Go</button>
+            </form>
+            <a class="btn btn-outline-secondary btn-sm {% if page >= total_pages %}disabled{% endif %}"
+               href="{{ url_for(pagination_endpoint, page=page+1, **pagination_params) }}">
+                Next
+            </a>
+        </div>
+    {% endif %}
 {% else %}
     {# This 'else' block runs if the 'sneakers' list is empty #}
     <div class="text-center mt-5 p-5 border rounded bg-light shadow-sm" id="emptyCollectionMessage">

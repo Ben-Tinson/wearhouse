@@ -18,6 +18,7 @@ def test_update_profile_details(test_client, auth, init_database):
     new_last_name = "UpdatedLast"
 
     response = test_client.post('/edit-profile', data={
+        'username': user.username,
         'first_name': new_first_name,
         'last_name': new_last_name,
         'email': user.email, # Keep the email the same for this test
@@ -52,6 +53,7 @@ def test_profile_email_change_flow(test_client, auth, init_database):
 
     # 2. POST the new email address to the edit_profile route
     response_request = test_client.post('/edit-profile', data={
+        'username': user.username,
         'first_name': user.first_name,
         'last_name': user.last_name,
         'email': new_email, # Provide the new email
@@ -101,6 +103,7 @@ def test_edit_profile_duplicate_email(test_client, auth, init_database, another_
 
     # 2. POST to the edit_profile route, attempting to take user_2's email
     response = test_client.post('/edit-profile', data={
+        'username': user_1.username,
         'first_name': user_1.first_name,
         'last_name': user_1.last_name,
         'email': email_of_user_2, # Attempting to use the duplicate email
@@ -117,7 +120,6 @@ def test_edit_profile_duplicate_email(test_client, auth, init_database, another_
     # 5. Check the database to ensure user_1's email was NOT changed
     user1_in_db = db.session.get(User, user_1.id)
     assert user1_in_db.email != email_of_user_2
-
 
 
 

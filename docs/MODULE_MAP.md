@@ -2,22 +2,41 @@
 
 Quick reference for where things live and how they connect.
 
-- `app.py` — Creates Flask app, configures extensions, registers blueprints (`routes/auth_routes.py`, `routes/main_routes.py`, `routes/sneakers_routes.py`).
+- `app.py` — Creates Flask app, configures extensions, registers blueprints (`routes/auth_routes.py`, `routes/main_routes.py`, `routes/news_routes.py`, `routes/sneakers_routes.py`).
 - `config.py` — Configuration source (secrets, DB URI, mail, API keys); uses environment variables.
 - `extensions.py` — Shared extension instances (`db`, `migrate`, `login_manager`, `mail`, `csrf`).
-- `models.py` — SQLAlchemy models: `User`, `Sneaker`, `Release`, `SneakerDB`, and `wishlist_items` join table.
-- `forms.py` — WTForms for auth, profile, sneakers, releases, and an `EmptyForm` for CSRF-only cases.
-- `routes/auth_routes.py` — Auth flows (register/login/logout, password reset, email confirmation) and email helpers.
-- `routes/main_routes.py` — Home/profile pages, release calendar, admin add-release.
-- `routes/sneakers_routes.py` — Collection/rotation CRUD, wishlist/rotation toggles, AJAX helpers, SneakerDB search.
-- `templates/` — Jinja templates and partials (email templates under `templates/email/`).
-- `static/` — Assets (currently `images/`; CSS/JS to be organized per standards).
-- `uploads/` — User-uploaded sneaker/release images (stored by UUID filename).
+- `models.py` — SQLAlchemy models: `User`, `UserApiToken`, `Sneaker`, `SneakerDB`, `Release`, `Article`, `ArticleBlock`, `SiteSchema`, `AffiliateOffer`, `ReleasePrice`, `ExchangeRate`, `SneakerNote`, `SneakerSale`, `SneakerWear`, `StepBucket`, `StepAttribution`, `ExposureEvent`, `SneakerExposureAttribution`, `ReleaseSizeBid`, `ReleaseSalePoint`, and `wishlist_items`.
+- `forms.py` — WTForms for auth, profile, sneakers, releases, FX rates, news/SEO, and an `EmptyForm` for CSRF‑only cases.
+- `routes/auth_routes.py` — Auth flows (register/login/logout, password reset, email confirmation).
+- `routes/main_routes.py` — Home/profile pages, release calendar, product detail (`/products/...`), wishlist, admin FX + sales breakdown.
+- `routes/news_routes.py` — Public news feed + article detail and admin authoring (create/edit/delete).
+- `routes/sneakers_routes.py` — Collection/rotation CRUD, slugged my‑sneaker detail (`/my/sneakers/...`), wear logging, resale refresh, materials management, steps/exposure attribution, AJAX helpers, SneakerDB search.
+- `templates/` — Jinja templates and partials (partials prefixed `_`; email templates under `templates/email/`).
+- `templates/news/` — News feed + article detail templates.
+- `templates/admin/news_form.html` — Admin article create/edit form with SEO + JSON‑LD sections and markdown toolbars.
+- `static/` — Assets under `static/brand/`, `static/images/`, `static/js/`.
+- `static/js/markdown_toolbar.js` — Markdown toolbar for article textareas.
+- `static/js/sneaker_lookup.js` — Autocomplete lookup UI for the Add Sneaker form (calls `/api/sneaker-lookup`).
+- `uploads/` — User‑uploaded sneaker/release/article images (stored by UUID filename).
 - `email_utils.py` — SendGrid email sender.
-- `decorators.py` — `admin_required` decorator.
-- `utils.py` — Shared helpers (file type validation).
-- `services/kicks_client.py` — KicksDB API client (StockX/GOAT search + detail).
-- `services/sneaker_lookup_service.py` — Local-first lookup, scoring, staleness checks, and SneakerDB upserts.
-- `migrations/` — Alembic env and migration scripts.
-- `tests/` — Pytest suite covering auth, profile, sneakers, releases, wishlist, and smoke tests.
-- Scripts: `release_updater.py` (API ingest), `scraper.py` (scrape drop dates), `sneaker_db_updater.py` (SneakerDB sync), `import_data.py` (data import), `make_admin.py` (elevate a user).
+- `decorators.py` — `admin_required` and bearer/session auth helpers.
+- `utils/money.py` — Currency formatting + conversion helpers using cached `ExchangeRate`.
+- `utils/sku.py` — SKU normalisation helpers (space/hyphen/case variants).
+- `utils/slugs.py` — Slug helpers for user sneaker URLs and product URLs.
+- `services/kicks_client.py` — KicksDB API client (StockX/GOAT list + detail, prices, sales history).
+- `services/sneaker_lookup_service.py` — Local‑first lookup, scoring, staleness checks, and SneakerDB upserts.
+- `services/materials_extractor.py` — Keyword‑based materials extraction from descriptions.
+- `services/news_service.py` — Article slug + tags helpers.
+- `services/article_render.py` — Safe Markdown rendering (Markdown → HTML + Bleach sanitisation) for articles.
+- `services/api_tokens.py` — Mobile bearer token generation + hashing.
+- `services/steps_attribution_service.py` — Step bucket attribution (v1 equal split per day).
+- `services/steps_seed_service.py` — Dev‑only helpers for seeding and verifying step buckets/attribution.
+- `services/exposure_service.py` — Daily exposure attribution (wet/dirty) + material weighting.
+- `services/release_ingestion_service.py` — Low‑cost release ingestion, GOAT backfill, resale refresh helpers.
+- `docs/MOBILE_SYNC.md` — Steps sync payload formats, timezone rules, and mobile token usage.
+- `docs/steps_debug.md` — Dev‑only steps pipeline verification guide.
+- `docs/SNEAKER_HEALTH.md` — Health score inputs, exposure events, and privacy notes.
+- `docs/DECISIONS.md` — Key architectural/product decisions.
+- `migrations/` — Alembic env and migration scripts (news SEO fields, schema JSON‑LD fields, steps/exposure tables, etc.).
+- `tests/` — Pytest suite covering auth, profile, admin sales, sneakers, releases, wishlist, money utils, steps, exposure, news, and API behaviour.
+- Scripts: `release_updater.py` (KicksDB ingest + pricing refresh), `scripts/set_fx_rate.py` (manual FX), `scraper.py` (drop dates), `sneaker_db_updater.py` (SneakerDB sync), `import_data.py` (data import), `make_admin.py` (elevate a user).

@@ -4,8 +4,8 @@
 {% block title %}My Collection{% endblock %}
 
 {% block content %}
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">My Collection</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3 page-header-actions">
+        <h2 class="mb-0 text-start w-100">My Collection</h2>
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#sneakerFormModal" id="openAddSneakerModalBtn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill me-1" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/></svg> Add New Sneaker
         </button>
@@ -14,18 +14,33 @@
     <p>Hey, {{ current_user.first_name or current_user.username }}! Here is your sneaker collection.</p>
 
     
-    <div class="row mb-4">
-        <div class="col-lg-3 col-md-6 mb-3 mb-lg-0"><div class="card h-100 shadow-sm"><div class="card-body text-center">
+    <div class="stats-grid mb-4">
+        <div class="stats-card"><div class="card h-100 shadow-sm"><div class="card-body text-center stats-card-center">
             <h6 class="card-subtitle mb-2 text-muted">Total Sneakers</h6><p class="card-text fs-2 fw-bold" id="stat-total-sneakers">{{ overall_total_count }}</p>
         </div></div></div>
-        <div class="col-lg-3 col-md-6 mb-3 mb-lg-0"><div class="card h-100 shadow-sm"><div class="card-body text-center">
-            <h6 class="card-subtitle mb-2 text-muted">Total Purchase Value</h6><p class="card-text fs-2 fw-bold" id="stat-total-value">£{{ "%.2f"|format(total_value) }}</p>
+        <div class="stats-card"><div class="card h-100 shadow-sm"><div class="card-body text-center stats-card-center">
+            <h6 class="card-subtitle mb-2 text-muted">Total Brands</h6><p class="card-text fs-2 fw-bold" id="stat-total-brands">{{ total_brands }}</p>
         </div></div></div>
-        <div class="col-lg-3 col-md-6 mb-3 mb-md-0"><div class="card h-100 shadow-sm"><div class="card-body text-center">
+        <div class="stats-card"><div class="card h-100 shadow-sm"><div class="card-body text-center stats-card-center">
             <h6 class="card-subtitle mb-2 text-muted">Most Owned Brand</h6><p class="card-text fs-2 fw-bold" id="stat-most-owned">{{ most_owned_brand }}</p>
         </div></div></div>
-         <div class="col-lg-3 col-md-6"><div class="card h-100 shadow-sm"><div class="card-body text-center">
-            <h6 class="card-subtitle mb-2 text-muted">In Rotation</h6><p class="card-text fs-2 fw-bold" id="stat-in-rotation">{{ in_rotation_count }}</p>
+        <div class="stats-card"><div class="card h-100 shadow-sm"><div class="card-body text-center stats-card-center">
+            <h6 class="card-subtitle mb-2 text-muted">Total Purchase Value</h6>
+            <p class="card-text fs-2 fw-bold" id="stat-total-value" data-preferred-currency="{{ preferred_currency }}">
+                {{ total_value_display or 'N/A' }}
+            </p>
+        </div></div></div>
+        <div class="stats-card"><div class="card h-100 shadow-sm"><div class="card-body text-center stats-card-center">
+            <h6 class="card-subtitle mb-2 text-muted">Total Resale Value</h6>
+            <p class="card-text fs-2 fw-bold" id="stat-total-resale-value" data-preferred-currency="{{ preferred_currency }}">
+                {{ total_resale_value_display or 'N/A' }}
+            </p>
+        </div></div></div>
+        <div class="stats-card"><div class="card h-100 shadow-sm"><div class="card-body text-center stats-card-center">
+            <h6 class="card-subtitle mb-2 text-muted">ROI</h6>
+            <p class="card-text fs-2 fw-bold" id="stat-total-resale-delta" data-preferred-currency="{{ preferred_currency }}">
+                {{ total_resale_delta_display or 'N/A' }}
+            </p>
         </div></div></div>
     </div>
 
@@ -49,6 +64,7 @@
     </div>
 
     {% include '_sneaker_form_modal.html' %}
+    {% include '_sneaker_sale_modal.html' %}
     {% include '_sneaker_image_modal.html' %}
 
     <script>
@@ -57,12 +73,12 @@
             // --- 1. SHARED ELEMENTS & STATE ---
             let brandChart = null;
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            
             // Main Page Containers
             const controlsBarContainer = document.getElementById('controls-bar-container');
             const sneakerGridContainer = document.getElementById('sneaker-grid-container');
             const summaryContainer = document.querySelector('.collection-summary');
             const chartCanvas = document.getElementById('brandPieChart');
+            const preferredCurrency = document.getElementById('stat-total-value')?.dataset.preferredCurrency || 'GBP';
         
             // Modal Elements
             const sneakerFormModalEl = document.getElementById('sneakerFormModal');
@@ -72,11 +88,6 @@
             const modalSaveBtn = document.getElementById('saveSneakerModalButton');
             const sneakerFormGeneralErrorsEl = document.getElementById('sneakerFormGeneralErrors');
             
-            // Modal Search Elements
-            const searchInput = document.getElementById('sneaker-search-input');
-            const searchButton = document.getElementById('sneaker-search-btn');
-            const searchResultsContainer = document.getElementById('sneaker-search-results');
-        
             // Modal Image Preview Elements
             const currentImagePreviewContainer = document.getElementById('currentImagePreviewContainer');
             const currentImagePreviewImg = document.getElementById('currentImagePreviewInModal');
@@ -152,10 +163,35 @@
                     if (sneakerGridContainer && data.sneaker_grid_html) sneakerGridContainer.innerHTML = data.sneaker_grid_html;
                     if (summaryContainer && data.summary_message_html) summaryContainer.innerHTML = data.summary_message_html;
                     
-                    document.getElementById('stat-total-value').textContent = `£${parseFloat(data.total_value || 0).toFixed(2)}`;
+                    if (data.total_value_display) {
+                        document.getElementById('stat-total-value').textContent = data.total_value_display;
+                    } else {
+                        const preferredCurrency = document.getElementById('stat-total-value').dataset.preferredCurrency || 'GBP';
+                        const symbols = { GBP: '£', USD: '$', EUR: '€' };
+                        const symbol = symbols[preferredCurrency] || '';
+                        document.getElementById('stat-total-value').textContent = `${symbol}${parseFloat(data.total_value || 0).toFixed(2)}`;
+                    }
+                    if (data.total_resale_value_display) {
+                        document.getElementById('stat-total-resale-value').textContent = data.total_resale_value_display;
+                    } else {
+                        const preferredCurrency = document.getElementById('stat-total-resale-value')?.dataset.preferredCurrency || 'GBP';
+                        const symbols = { GBP: '£', USD: '$', EUR: '€' };
+                        const symbol = symbols[preferredCurrency] || '';
+                        const valueText = data.total_resale_value ? `${symbol}${parseFloat(data.total_resale_value || 0).toFixed(2)}` : 'N/A';
+                        document.getElementById('stat-total-resale-value').textContent = data.total_resale_is_estimate ? `Est. ${valueText}` : valueText;
+                    }
+                    if (data.total_resale_delta_display) {
+                        document.getElementById('stat-total-resale-delta').textContent = data.total_resale_delta_display;
+                    } else {
+                        const preferredCurrency = document.getElementById('stat-total-resale-delta')?.dataset.preferredCurrency || 'GBP';
+                        const symbols = { GBP: '£', USD: '$', EUR: '€' };
+                        const symbol = symbols[preferredCurrency] || '';
+                        const valueText = data.total_resale_delta ? `${symbol}${parseFloat(data.total_resale_delta || 0).toFixed(2)}` : 'N/A';
+                        document.getElementById('stat-total-resale-delta').textContent = data.total_resale_is_estimate ? `Est. ${valueText}` : valueText;
+                    }
                     document.getElementById('stat-most-owned').textContent = data.most_owned_brand || 'N/A';
                     document.getElementById('stat-total-sneakers').textContent = data.overall_total_count || 0;
-                    document.getElementById('stat-in-rotation').textContent = data.in_rotation_count || 0;
+                    document.getElementById('stat-total-brands').textContent = data.total_brands || 0;
                     initializeChart(data.brand_labels, data.brand_data);
                 })
                 .catch(error => console.error('Dashboard update failed:', error))
@@ -199,8 +235,15 @@
             // B. Delegated Listeners for dynamically loaded Sneaker Cards
             if (sneakerGridContainer) {
                 sneakerGridContainer.addEventListener('click', function(event) {
+                    const paginationLink = event.target.closest('.pagination-controls a');
                     const editButton = event.target.closest('.open-edit-sneaker-modal-btn');
                     const imageTrigger = event.target.closest('.image-modal-trigger');
+
+                    if (paginationLink) {
+                        event.preventDefault();
+                        updateDashboard(paginationLink.href);
+                        return;
+                    }
 
                     if (editButton) {
                         const fetchUrl = editButton.dataset.fetchUrl;
@@ -242,27 +285,32 @@
 
                 sneakerGridContainer.addEventListener('submit', function(event) {
                     const form = event.target;
+                    if (form.closest('.pagination-controls')) {
+                        event.preventDefault();
+                        const params = new URLSearchParams(new FormData(form));
+                        updateDashboard(`${form.action}?${params.toString()}`);
+                        return;
+                    }
                     if (form.matches('.delete-sneaker-ajax-form')) {
                         event.preventDefault();
-                        if (confirm('Are you sure?')) {
-                            fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' } })
-                            .then(res => res.ok ? res.json() : Promise.reject('Delete failed'))
-                            .then(data => {
-                                if (data.status === 'success') {
-                                    updateDashboard(location.pathname, true);
-                                }
-                            }).catch(console.error);
-                        }
+                        openSneakerSaleModal(form);
                     }
                     
                     if (form.matches('.update-last-worn-ajax-form')) {
                         event.preventDefault();
+                        if (form.dataset.useExposureModal === 'true' && !form.dataset.exposureConfirmed) {
+                            if (window.openExposureModal) {
+                                window.openExposureModal(form);
+                                return;
+                            }
+                        }
                         const formData = new FormData(form);
                         const statusElement = form.querySelector('.ajax-status-message');
                         const displayElement = form.previousElementSibling;
                         const submitButton = form.querySelector('button[type="submit"]');
 
                         if (submitButton) submitButton.disabled = true;
+                        form.dataset.exposureConfirmed = '';
 
                         fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: formData })
                         .then(res => res.json())
@@ -287,6 +335,94 @@
                             if (submitButton) submitButton.disabled = false;
                         });
                     }
+                });
+            }
+
+            const saleModalEl = document.getElementById('sneakerSaleModal');
+            const saleModal = saleModalEl ? new bootstrap.Modal(saleModalEl) : null;
+            const soldToggle = document.getElementById('soldSneakerToggle');
+            const soldFields = document.getElementById('soldDetailsFields');
+            const soldPriceInput = document.getElementById('soldPriceInput');
+            const soldCurrencySelect = document.getElementById('soldCurrencySelect');
+            const soldDateInput = document.getElementById('soldDateInput');
+            const soldErrorMessage = document.getElementById('soldErrorMessage');
+            const confirmDeleteBtn = document.getElementById('confirmSneakerDelete');
+            let pendingDeleteForm = null;
+
+            function resetSaleModal() {
+                if (soldToggle) soldToggle.checked = false;
+                if (soldFields) soldFields.style.display = 'none';
+                if (soldPriceInput) soldPriceInput.value = '';
+                if (soldDateInput) soldDateInput.value = '';
+                if (soldErrorMessage) {
+                    soldErrorMessage.style.display = 'none';
+                    soldErrorMessage.textContent = '';
+                }
+            }
+
+            function openSneakerSaleModal(form) {
+                if (!saleModal) return;
+                pendingDeleteForm = form;
+                resetSaleModal();
+                if (soldCurrencySelect) {
+                    soldCurrencySelect.value = preferredCurrency || 'GBP';
+                }
+                if (soldDateInput) {
+                    soldDateInput.value = new Date().toISOString().slice(0, 10);
+                }
+                saleModal.show();
+            }
+
+            if (soldToggle && soldFields) {
+                soldToggle.addEventListener('change', () => {
+                    soldFields.style.display = soldToggle.checked ? 'block' : 'none';
+                });
+            }
+
+            if (confirmDeleteBtn) {
+                confirmDeleteBtn.addEventListener('click', () => {
+                    if (!pendingDeleteForm) return;
+                    const formData = new FormData(pendingDeleteForm);
+                    if (soldToggle && soldToggle.checked) {
+                        if (!soldPriceInput || !soldPriceInput.value) {
+                            if (soldErrorMessage) {
+                                soldErrorMessage.textContent = 'Please enter a sale price.';
+                                soldErrorMessage.style.display = 'block';
+                            }
+                            return;
+                        }
+                        formData.append('sold', '1');
+                        formData.append('sold_price', soldPriceInput.value);
+                        if (soldCurrencySelect) {
+                            formData.append('sold_currency', soldCurrencySelect.value);
+                        }
+                        if (soldDateInput && soldDateInput.value) {
+                            formData.append('sold_date', soldDateInput.value);
+                        }
+                    }
+                    fetch(pendingDeleteForm.action, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                        body: formData
+                    })
+                    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+                    .then(({ ok, data }) => {
+                        if (!ok || data.status !== 'success') {
+                            if (soldErrorMessage) {
+                                soldErrorMessage.textContent = data.message || 'Unable to remove sneaker.';
+                                soldErrorMessage.style.display = 'block';
+                            }
+                            return;
+                        }
+                        updateDashboard(location.pathname, true);
+                        saleModal.hide();
+                    })
+                    .catch(() => {
+                        if (soldErrorMessage) {
+                            soldErrorMessage.textContent = 'Unable to remove sneaker.';
+                            soldErrorMessage.style.display = 'block';
+                        }
+                    });
                 });
             }
 
@@ -324,52 +460,6 @@
                         modalSaveBtn.disabled = false;
                         // Button text will be updated by the 'Add' or 'Edit' listeners
                     });
-                });
-        
-                const performSearch = () => {
-                    const query = searchInput.value.trim();
-                    if (!query) return;
-                    searchResultsContainer.innerHTML = '<div class="spinner-border spinner-border-sm"></div>';
-                    fetch(`/api/search-sneakers?q=${encodeURIComponent(query)}`)
-                        .then(res => res.json())
-                        .then(data => {
-                            searchResultsContainer.innerHTML = '';
-                            if (data.results && data.results.length > 0) {
-                                const list = document.createElement('ul');
-                                list.className = 'list-group';
-                                data.results.forEach(sneaker => {
-                                    const li = document.createElement('li');
-                                    li.className = 'list-group-item list-group-item-action';
-                                    li.style.cursor = 'pointer';
-                                    li.textContent = sneaker.name;
-                                    li.dataset.sneakerData = JSON.stringify(sneaker);
-                                    list.appendChild(li);
-                                });
-                                searchResultsContainer.appendChild(list);
-                            } else {
-                                searchResultsContainer.innerHTML = '<p class="text-muted small">No results found.</p>';
-                            }
-                        }).catch(err => console.error(err));
-                };
-                searchButton.addEventListener('click', performSearch);
-                searchInput.addEventListener('keydown', event => {
-                    if (event.key === 'Enter') { event.preventDefault(); performSearch(); }
-                });
-                
-                searchResultsContainer.addEventListener('click', function(event) {
-                    const targetLi = event.target.closest('li');
-                    if (!targetLi) return;
-                    const sneakerData = JSON.parse(targetLi.dataset.sneakerData);
-                    modalForm.querySelector('[name="brand"]').value = sneakerData.brand || '';
-                    modalForm.querySelector('[name="model"]').value = sneakerData.name || '';
-                    if (modalUrlInput) {
-                        modalUrlInput.value = sneakerData.image?.original || '';
-                        modalUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
-                    }
-                    document.getElementById('image_option-0').checked = true;
-                    toggleModalImageInputs();
-                    searchResultsContainer.innerHTML = '';
-                    searchInput.value = '';
                 });
         
                 if (modalUrlInput) modalUrlInput.addEventListener('input', () => {

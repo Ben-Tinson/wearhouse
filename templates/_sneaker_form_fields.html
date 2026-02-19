@@ -2,76 +2,88 @@
 {{ form.hidden_tag() }}
 
 {# Brand, Model, Colorway Fields #}
-<div class="mb-3">
-    {{ form.brand.label(class="form-label") }}
-    {{ form.brand(class="form-control" + (" is-invalid" if form.brand.errors else "")) }}
-    <div class="invalid-feedback">{% for error in form.brand.errors %}{{ error }}{% endfor %}</div>
-</div>
-<div class="mb-3">
-    {{ form.model.label(class="form-label") }}
-    {{ form.model(class="form-control" + (" is-invalid" if form.model.errors else "")) }}
-    <div class="invalid-feedback">{% for error in form.model.errors %}{{ error }}{% endfor %}</div>
-</div>
-<div class="mb-3">
-    {{ form.sku.label(class="form-label") }} <small class="text-muted">(optional)</small>
-    {{ form.sku(class="form-control" + (" is-invalid" if form.sku.errors else "")) }}
-    <div class="invalid-feedback">{% for error in form.sku.errors %}{{ error }}{% endfor %}</div>
-</div>
-<div class="mb-3">
-    {{ form.colorway.label(class="form-label") }} <small class="text-muted">(optional)</small>
-    {{ form.colorway(class="form-control" + (" is-invalid" if form.colorway.errors else "")) }}
-    <div class="invalid-feedback">{% for error in form.colorway.errors %}{{ error }}{% endfor %}</div>
+<div class="sneaker-form-section" data-section="all">
+    <div class="mb-3">
+        {{ form.brand.label(class="form-label") }}
+        {{ form.brand(class="form-control" + (" is-invalid" if form.brand.errors else "")) }}
+        <div class="invalid-feedback">{% for error in form.brand.errors %}{{ error }}{% endfor %}</div>
+    </div>
+    <div class="mb-3">
+        {{ form.model.label(class="form-label") }}
+        {{ form.model(class="form-control" + (" is-invalid" if form.model.errors else "")) }}
+        <div class="invalid-feedback">{% for error in form.model.errors %}{{ error }}{% endfor %}</div>
+    </div>
+    <div class="mb-3">
+        {{ form.sku.label(class="form-label") }} <small class="text-muted">(optional)</small>
+        {{ form.sku(class="form-control" + (" is-invalid" if form.sku.errors else "")) }}
+        <div class="invalid-feedback">{% for error in form.sku.errors %}{{ error }}{% endfor %}</div>
+    </div>
+    <div class="mb-3">
+        {{ form.colorway.label(class="form-label") }} <small class="text-muted">(optional)</small>
+        {{ form.colorway(class="form-control" + (" is-invalid" if form.colorway.errors else "")) }}
+        <div class="invalid-feedback">{% for error in form.colorway.errors %}{{ error }}{% endfor %}</div>
+    </div>
 </div>
 
-<hr class="my-4">
-<h5 class="mb-3">Your Purchase Details</h5>
-{# Size, Price, Date, Condition Fields #}
-<div class="mb-3">
-    <label class="form-label">Size <small class="text-muted">(optional)</small></label>
-    <div class="input-group">
-        {{ form.size_type(class="form-select", style="flex: 0 0 auto; width: auto; max-width: 130px;") }}
-        {{ form.size(class="form-control", placeholder="e.g., 10 or 10.5") }}
-    </div>
-    <div class="invalid-feedback d-block"></div>
-</div>
-<div class="mb-3">
-    <label class="form-label">Purchase Price <small class="text-muted">(optional)</small></label>
-    <div class="input-group">
-        {{ form.purchase_currency(class="form-select", style="flex: 0 0 auto; width: auto; max-width: 100px;") }}
-        {{ form.purchase_price(class="form-control", placeholder="Amount") }}
-    </div>
-    <div class="invalid-feedback d-block"></div>
-</div>
-<div class="mb-3">
-    {{ form.purchase_date.label(class="form-label") }} <small class="text-muted">(optional)</small>
-    {{ form.purchase_date(class="form-control") }}
-</div>
-<div class="mb-3">
-    {{ form.condition.label(class="form-label") }} <small class="text-muted">(optional)</small>
-    {{ form.condition(class="form-select") }}
-</div>
-<div class="mb-3">
-    {{ form.last_worn_date.label(class="form-label") }} <small class="text-muted">(optional)</small>
-    {{ form.last_worn_date(class="form-control") }}
-</div>
-
-<hr class="my-4">
-<h4 class="mb-3">Sneaker Image <small class="text-muted">(optional)</small></h4>
-<div class="mb-3">
-    <label class="form-label d-block">New Image Source Option:</label>
-    {% for subfield in form.image_option %}
-        <div class="form-check form-check-inline">
-            {{ subfield(class="form-check-input") }}
-            {{ subfield.label(class="form-check-label") }}
+<div class="sneaker-form-section" data-section="details">
+    <hr class="my-4">
+    <h5 class="mb-3">Your Sneaker Details</h5>
+    {# Size, Date, Condition Fields #}
+    <div class="mb-3">
+        <label class="form-label">Size <small class="text-muted">(optional)</small></label>
+        <div class="input-group">
+            {{ form.size_type(class="form-select", style="flex: 0 0 auto; width: auto; max-width: 130px;") }}
+            {{ form.size(class="form-control", placeholder="e.g., 10 or 10.5") }}
         </div>
-    {% endfor %}
+        <div class="invalid-feedback d-block"></div>
+    </div>
+    <div class="mb-3">
+        {{ form.purchase_date.label(class="form-label") }} <small class="text-muted">(optional)</small>
+        {{ form.purchase_date(class="form-control") }}
+    </div>
+    <div class="mb-3">
+        {{ form.condition.label(class="form-label") }} <small class="text-muted">(optional)</small>
+        {{ form.condition(class="form-select") }}
+    </div>
+    <div class="mb-3">
+        {{ form.last_worn_date.label(class="form-label") }} <small class="text-muted">(optional)</small>
+        {{ form.last_worn_date(class="form-control") }}
+    </div>
 </div>
-<div class="mb-3" id="modal_image_url_wrapper">
-    {{ form.sneaker_image_url.label(class="form-label") }}
-    {{ form.sneaker_image_url(class="form-control", id="modal_sneaker_image_url") }}
+
+<div class="sneaker-form-section" data-section="finances">
+    <hr class="my-4">
+    <h5 class="mb-3">Your Sneaker Finances</h5>
+    {# Price Fields #}
+    <div class="mb-3">
+        <label class="form-label">Purchase Price <small class="text-muted">(optional)</small></label>
+        <div class="input-group">
+            {{ form.purchase_currency(class="form-select", style="flex: 0 0 auto; width: auto; max-width: 100px;") }}
+            {{ form.purchase_price(class="form-control", placeholder="Amount") }}
+        </div>
+        <div class="invalid-feedback d-block"></div>
+    </div>
 </div>
-<div class="mb-3" id="modal_image_file_wrapper">
-    {{ form.sneaker_image_file.label(class="form-label") }}
-    {{ form.sneaker_image_file(class="form-control", id="modal_sneaker_image_file") }}
-    <div class="form-text">Allowed types: png, jpg, jpeg, gif, avif</div>
+
+<div class="sneaker-form-section" data-section="all">
+    <hr class="my-4">
+    <h4 class="mb-3">Sneaker Image <small class="text-muted">(optional)</small></h4>
+    <div class="mb-3">
+        <label class="form-label d-block">New Image Source Option:</label>
+        {% for subfield in form.image_option %}
+            <div class="form-check form-check-inline">
+                {{ subfield(class="form-check-input") }}
+                {{ subfield.label(class="form-check-label") }}
+            </div>
+        {% endfor %}
+    </div>
+    <div class="mb-3" id="modal_image_url_wrapper">
+        {{ form.sneaker_image_url.label(class="form-label") }}
+        {{ form.sneaker_image_url(class="form-control", id="modal_sneaker_image_url") }}
+    </div>
+    <div class="mb-3" id="modal_image_file_wrapper">
+        {{ form.sneaker_image_file.label(class="form-label") }}
+        {{ form.sneaker_image_file(class="form-control", id="modal_sneaker_image_file") }}
+        <div class="form-text">Allowed types: png, jpg, jpeg, gif, avif</div>
+    </div>
 </div>

@@ -1,7 +1,8 @@
 # tests/test_releases.py
-from models import Release, User
+from models import Release, User, AffiliateOffer
 from extensions import db
 from datetime import date, timedelta
+from utils.slugs import build_product_key, build_product_slug
 
 def test_admin_can_add_release(test_client, auth, admin_user):
     """
@@ -73,6 +74,63 @@ def test_non_admin_cannot_access_add_release_page(test_client, auth, init_databa
     assert unauthorized_release is None
 
 
+def test_release_detail_page_shows_release(test_client, test_app):
+    with test_app.app_context():
+        release = Release(
+            name="Detail Release",
+            brand="Nike",
+            release_date=date.today() + timedelta(days=1),
+        )
+        db.session.add(release)
+        db.session.commit()
+
+        product_key = build_product_key(release)
+        product_slug = build_product_slug(release)
+        response = test_client.get(f"/products/{product_key}-{product_slug}")
+        assert response.status_code == 200
+        assert b"Detail Release" in response.data
 
 
+def test_release_detail_groups_offers(test_client, test_app):
+    with test_app.app_context():
+        release = Release(
+            name="Grouped Release",
+            release_date=date.today() + timedelta(days=1),
+        )
+        db.session.add(release)
+        db.session.commit()
 
+        offers = [
+            AffiliateOffer(
+                release_id=release.id,
+                retailer="nike",
+                base_url="https://example.com/nike",
+                offer_type="retailer",
+                is_active=True,
+            ),
+            AffiliateOffer(
+                release_id=release.id,
+                retailer="stockx",
+                base_url="https://example.com/stockx",
+                offer_type="aftermarket",
+                is_active=True,
+            ),
+            AffiliateOffer(
+                release_id=release.id,
+                retailer="raffleco",
+                base_url="https://example.com/raffle",
+                offer_type="raffle",
+                is_active=True,
+            ),
+        ]
+        db.session.add_all(offers)
+        db.session.commit()
+
+        product_key = build_product_key(release)
+        product_slug = build_product_slug(release)
+        response = test_client.get(f"/products/{product_key}-{product_slug}")
+        assert response.status_code == 200
+        assert b"Retailers" in response.data
+        assert b"Aftermarket" in response.data
+        assert b"Raffles" in response.data
+        assert b"/out/" in response.data

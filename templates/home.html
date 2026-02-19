@@ -4,6 +4,8 @@
 
 {% block content %}
 
+<div class="home-page">
+
 {# This top-level 'if' statement creates two completely different versions of the page #}
 {% if current_user.is_authenticated %}
 
@@ -22,7 +24,7 @@
         </div>
     </div>
 
-    <div class="container px-4 py-5" id="featured-3">
+    <div class="py-5" id="featured-3">
         <h2 class="mb-3">Features</h2>
         <hr class="mb-4">
         <div class="row g-4 py-4 row-cols-1 row-cols-lg-2">
@@ -68,29 +70,53 @@
     </div>
 
     {# --- NEW: "At a Glance" Stats Section --- #}
-    <div class="container px-4 py-5" id="stats-section">
+    <div class="py-5" id="stats-section">
         <h2 class="mb-3">At a Glance</h2>
         <hr class="mb-4">
-        <div class="row">
-            <div class="col-lg-3 col-md-6 mb-4"><div class="card h-100 shadow-sm"><div class="card-body text-center">
+        {% set preferred_currency = current_user.preferred_currency if current_user.is_authenticated else 'GBP' %}
+        <div class="stats-grid">
+            <div class="stats-card"><div class="card h-100 shadow-sm"><div class="card-body text-center stats-card-center">
                 <h6 class="card-subtitle mb-2 text-muted">Total Sneakers</h6><p class="card-text fs-2 fw-bold" id="stat-total-sneakers">{{ stats.overall_total_count }}</p>
             </div></div></div>
-            <div class="col-lg-3 col-md-6 mb-4"><div class="card h-100 shadow-sm"><div class="card-body text-center">
-                <h6 class="card-subtitle mb-2 text-muted">Total Purchase Value</h6><p class="card-text fs-2 fw-bold" id="stat-total-value">£{{ "%.2f"|format(stats.total_value) }}</p>
+            <div class="stats-card"><div class="card h-100 shadow-sm"><div class="card-body text-center stats-card-center">
+                <h6 class="card-subtitle mb-2 text-muted">Total Brands</h6><p class="card-text fs-2 fw-bold" id="stat-total-brands">{{ stats.total_brands }}</p>
             </div></div></div>
-            <div class="col-lg-3 col-md-6 mb-4"><div class="card h-100 shadow-sm"><div class="card-body text-center">
+            <div class="stats-card"><div class="card h-100 shadow-sm"><div class="card-body text-center stats-card-center">
                 <h6 class="card-subtitle mb-2 text-muted">Most Owned Brand</h6><p class="card-text fs-2 fw-bold" id="stat-most-owned">{{ stats.most_owned_brand }}</p>
             </div></div></div>
-             <div class="col-lg-3 col-md-6 mb-4"><div class="card h-100 shadow-sm"><div class="card-body text-center">
-                <h6 class="card-subtitle mb-2 text-muted">In Rotation</h6><p class="card-text fs-2 fw-bold" id="stat-in-rotation">{{ stats.in_rotation_count }}</p>
+            <div class="stats-card"><div class="card h-100 shadow-sm"><div class="card-body text-center stats-card-center">
+                <h6 class="card-subtitle mb-2 text-muted">Total Purchase Value</h6>
+                <p class="card-text fs-2 fw-bold" id="stat-total-value">{{ stats.total_value|money(preferred_currency) or 'N/A' }}</p>
+            </div></div></div>
+            <div class="stats-card"><div class="card h-100 shadow-sm"><div class="card-body text-center stats-card-center">
+                <h6 class="card-subtitle mb-2 text-muted">Total Resale Value</h6>
+                <p class="card-text fs-2 fw-bold" id="stat-total-resale-value">
+                    {% if stats.total_resale_value %}
+                        {% if stats.total_resale_is_estimate %}Est. {% endif %}
+                        {{ stats.total_resale_value|money(preferred_currency) }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </p>
+            </div></div></div>
+            <div class="stats-card"><div class="card h-100 shadow-sm"><div class="card-body text-center stats-card-center">
+                <h6 class="card-subtitle mb-2 text-muted">ROI</h6>
+                <p class="card-text fs-2 fw-bold" id="stat-total-resale-delta">
+                    {% if stats.total_resale_delta %}
+                        {% if stats.total_resale_is_estimate %}Est. {% endif %}
+                        {{ stats.total_resale_delta|money(preferred_currency) }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </p>
             </div></div></div>
         </div>
     </div>
 
     {# --- Recently Added Sneakers Section --- #}
     {% if recent_sneakers %}
-    <div class="container px-4 py-5" id="recent-sneakers">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="py-5" id="recent-sneakers">
+        <div class="d-flex justify-content-between align-items-center mb-3 home-section-header">
             <h2 class="mb-0">Recently Added</h2>
             <a href="{{ url_for('sneakers.dashboard') }}" class="btn btn-outline-secondary btn-sm">View Full Collection</a>
         </div>
@@ -103,8 +129,8 @@
 
     {# --- In Your Rotation Section --- #}
     {% if rotation_sneakers %}
-        <div class="container px-4 py-5" id="rotation-preview">
-            <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="py-5" id="rotation-preview">
+            <div class="d-flex justify-content-between align-items-center mb-3 home-section-header">
                 <h2 class="mb-0">In Your Rotation</h2>
                 <a href="{{ url_for('sneakers.rotation') }}" class="btn btn-outline-secondary btn-sm">View Rotation</a>
             </div>
@@ -122,20 +148,63 @@
     
     {# --- Upcoming on Your Wishlist Section --- #}
     {% if upcoming_wishlist %}
-        <div class="container px-4 py-5" id="wishlist-preview">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2 class="mb-0">Upcoming on Your Wishlist</h2>
-                <a href="{{ url_for('main.wishlist') }}" class="btn btn-outline-secondary btn-sm">View Wishlist</a>
+        <div class="py-5" id="wishlist-preview">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-3 home-section-header">
+                <h2 class="mb-0 text-start w-100">Upcoming on Your Wishlist</h2>
+                <a href="{{ url_for('main.wishlist') }}" class="btn btn-outline-secondary btn-sm mt-2 mt-sm-0 align-self-start">View Wishlist</a>
             </div>
             <hr class="mb-4">
             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
                 {% for release in upcoming_wishlist %}
                 <div class="col">
-                     <div class="card h-100 shadow-sm">
-                        <img src="{{ release.image_url or url_for('static', filename='images/placeholder.png') }}" class="card-img-top p-3" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
-                        <div class="card-body">
-                            <h5 class="card-title fs-6">{{ release.name }}</h5>
-                            <p class="card-text"><small class="text-muted">Releases: {{ release.release_date.strftime('%b %d, %Y') }}</small></p>
+
+                     <div class="card h-100 shadow-sm release-card">
+                         <a href="#" data-bs-toggle="modal" data-bs-target="#sneakerImageModal"
+                            data-image-src="{{ release.image_url | release_image }}"
+                            data-image-alt="{{ release.name }}"
+                            class="d-none d-md-block image-modal-trigger">
+                             <img src="{{ release.image_url | release_image }}" class="card-img-top" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
+                             <span class="expand-icon">
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
+                             </span>
+                         </a>
+                         <div class="card-body p-3 pb-2 d-flex flex-column">
+                             <div class="row g-2 mb-2 d-md-none align-items-center">
+                                 <div class="col-8">
+                                     <h5 class="card-title fs-6 mb-0">
+                                        <a href="{{ url_for('main.product_detail', product_key=build_product_key(release), slug=build_product_slug(release), source='wishlist') }}" class="text-decoration-none text-reset">
+                                             {{ release.name }}
+                                         </a>
+                                     </h5>
+                                 </div>
+                                 <div class="col-4 text-center">
+                                     <a href="#" data-bs-toggle="modal" data-bs-target="#sneakerImageModal"
+                                        data-image-src="{{ release.image_url | release_image }}"
+                                        data-image-alt="{{ release.name }}"
+                                        class="image-modal-trigger">
+                                         <img src="{{ release.image_url | release_image }}" class="img-fluid rounded" alt="{{ release.name }} mobile" style="max-height: 75px; object-fit: contain; background-color: #f8f9fa;">
+                                         <span class="expand-icon expand-icon-mobile">
+                                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
+                                         </span>
+                                     </a>
+                                 </div>
+                             </div>
+
+                             <h5 class="card-title fs-6 mb-1 d-none d-md-block">
+                                 <a href="{{ url_for('main.product_detail', product_key=build_product_key(release), slug=build_product_slug(release), source='wishlist') }}" class="text-decoration-none text-reset">
+                                     {{ release.name }}
+                                 </a>
+                             </h5>
+                             {% if release.brand %}
+                                 <p class="card-text mb-0"><small class="text-muted">Brand: {{ release.brand }}</small></p>
+                             {% endif %}
+                             {% if release.sku %}
+                                 <p class="card-text mb-0"><small class="text-muted">SKU: {{ release.sku }}</small></p>
+                             {% endif %}
+                             <p class="card-text mb-0"><small class="text-muted">Releases: {{ release.release_date.strftime('%b %d, %Y') }}</small></p>
+                         </div>
+                        <div class="card-footer bg-transparent border-top-0 px-3 pb-3">
+                            <a href="{{ url_for('main.product_detail', product_key=build_product_key(release), slug=build_product_slug(release), source='wishlist') }}" class="btn btn-outline-secondary btn-sm w-100">View Details</a>
                         </div>
                     </div>
                 </div>
@@ -144,10 +213,52 @@
         </div>
     {% endif %}
 
+    {% if latest_articles %}
+        <div class="py-5" id="latest-articles-preview">
+            <div class="d-flex justify-content-between align-items-center mb-3 home-section-header">
+                <h2 class="mb-0">Latest Articles</h2>
+                <a href="{{ url_for('news.news_index') }}" class="btn btn-outline-secondary btn-sm">View All News</a>
+            </div>
+            <hr class="mb-4">
+            <div class="row row-cols-1 row-cols-md-3 g-4">
+                {% for article in latest_articles %}
+                    <div class="col">
+                        <div class="card h-100 shadow-sm news-card">
+                            {% if article.hero_image_url %}
+                                {% if article.hero_image_url.startswith('http') %}
+                                    {% set hero_src = article.hero_image_url %}
+                                {% else %}
+                                    {% set hero_src = url_for('main.uploaded_file', filename=article.hero_image_url) %}
+                                {% endif %}
+                                <a href="{{ url_for('news.news_detail', slug=article.slug) }}">
+                                    <img src="{{ hero_src }}" class="card-img-top" alt="{{ article.title }}" style="height: 180px; object-fit: cover;">
+                                </a>
+                            {% endif %}
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <a href="{{ url_for('news.news_detail', slug=article.slug) }}" class="text-decoration-none text-reset">
+                                        {{ article.title }}
+                                    </a>
+                                </h5>
+                                {% if article.excerpt %}
+                                    <p class="card-text text-muted">{{ article.excerpt }}</p>
+                                {% endif %}
+                                <div class="small text-muted">
+                                    {% if article.brand %}{{ article.brand }} · {% endif %}
+                                    {{ article.published_at.strftime('%b %d, %Y') if article.published_at else '' }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
     {# --- From the Release Calendar Section --- #}
     {% if general_releases %}
-        <div class="container px-4 py-5" id="release-calendar-preview">
-            <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="py-5" id="release-calendar-preview">
+            <div class="d-flex justify-content-between align-items-center mb-3 home-section-header">
                 <h2 class="mb-0">Hot Upcoming Releases</h2>
                 <a href="{{ url_for('main.release_calendar') }}" class="btn btn-outline-secondary btn-sm">View Full Calendar</a>
             </div>
@@ -155,11 +266,54 @@
             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
                 {% for release in general_releases %}
                 <div class="col">
-                     <div class="card h-100 shadow-sm">
-                        <img src="{{ release.image_url or url_for('static', filename='images/placeholder.png') }}" class="card-img-top p-3" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
-                        <div class="card-body">
-                            <h5 class="card-title fs-6">{{ release.name }}</h5>
-                            <p class="card-text"><small class="text-muted">Releases: {{ release.release_date.strftime('%b %d, %Y') }}</small></p>
+
+                     <div class="card h-100 shadow-sm release-card">
+                         <a href="#" data-bs-toggle="modal" data-bs-target="#sneakerImageModal"
+                            data-image-src="{{ release.image_url | release_image }}"
+                            data-image-alt="{{ release.name }}"
+                            class="d-none d-md-block image-modal-trigger">
+                             <img src="{{ release.image_url | release_image }}" class="card-img-top" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
+                             <span class="expand-icon">
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
+                             </span>
+                         </a>
+                         <div class="card-body p-3 pb-2 d-flex flex-column">
+                             <div class="row g-2 mb-2 d-md-none align-items-center">
+                                 <div class="col-8">
+                                     <h5 class="card-title fs-6 mb-0">
+                                         <a href="{{ url_for('main.product_detail', product_key=build_product_key(release), slug=build_product_slug(release)) }}" class="text-decoration-none text-reset">
+                                             {{ release.name }}
+                                         </a>
+                                     </h5>
+                                 </div>
+                                 <div class="col-4 text-center">
+                                     <a href="#" data-bs-toggle="modal" data-bs-target="#sneakerImageModal"
+                                        data-image-src="{{ release.image_url | release_image }}"
+                                        data-image-alt="{{ release.name }}"
+                                        class="image-modal-trigger">
+                                         <img src="{{ release.image_url | release_image }}" class="img-fluid rounded" alt="{{ release.name }} mobile" style="max-height: 75px; object-fit: contain; background-color: #f8f9fa;">
+                                         <span class="expand-icon expand-icon-mobile">
+                                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
+                                         </span>
+                                     </a>
+                                 </div>
+                             </div>
+
+                             <h5 class="card-title fs-6 mb-1 d-none d-md-block">
+                                 <a href="{{ url_for('main.product_detail', product_key=build_product_key(release), slug=build_product_slug(release)) }}" class="text-decoration-none text-reset">
+                                     {{ release.name }}
+                                 </a>
+                             </h5>
+                             {% if release.brand %}
+                                 <p class="card-text mb-0"><small class="text-muted">Brand: {{ release.brand }}</small></p>
+                             {% endif %}
+                             {% if release.sku %}
+                                 <p class="card-text mb-0"><small class="text-muted">SKU: {{ release.sku }}</small></p>
+                             {% endif %}
+                             <p class="card-text mb-0"><small class="text-muted">Releases: {{ release.release_date.strftime('%b %d, %Y') }}</small></p>
+                         </div>
+                        <div class="card-footer bg-transparent border-top-0 px-3 pb-3">
+                            <a href="{{ url_for('main.product_detail', product_key=build_product_key(release), slug=build_product_slug(release)) }}" class="btn btn-outline-secondary btn-sm w-100">View Details</a>
                         </div>
                     </div>
                 </div>
@@ -179,7 +333,7 @@
         <p class="mt-3">Already have an account? <a href="{{ url_for('auth.login') }}">Log in here</a>.</p>
     </div>
 
-    <div class="container px-4 py-5" id="featured-3">
+    <div class="py-5" id="featured-3">
         <h2 class="mb-3">Features</h2>
         <hr class="mb-4">
         <div class="row g-4 py-4 row-cols-1 row-cols-lg-2">
@@ -224,7 +378,7 @@
         </div>
     </div>
 
-    <div class="container px-4 py-5">
+    <div class="py-5">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="mb-0">Hot Upcoming Releases</h2>
             <a href="{{ url_for('main.release_calendar') }}" class="btn btn-outline-secondary btn-sm">View Full Calendar</a>
@@ -234,7 +388,7 @@
             {% for release in general_releases %}
                 <div class="col">
                     <div class="card h-100 shadow-sm">
-                        <img src="{{ release.image_url or url_for('static', filename='images/placeholder.png') }}" class="card-img-top p-3" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
+                        <img src="{{ release.image_url | release_image }}" class="card-img-top p-3" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
                         <div class="card-body">
                             <h5 class="card-title fs-6">{{ release.name }}</h5>
                             <p class="card-text"><small class="text-muted">Releases: {{ release.release_date.strftime('%b %d, %Y') }}</small></p>
@@ -248,4 +402,6 @@
     </div>
 
 {% endif %}
+
+</div>
 {% endblock %}

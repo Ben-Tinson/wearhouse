@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <h2 class="mb-4">{{ title }}</h2>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">Overview</div>
+            <div class="card-body">
+                {% if total_sales_count %}
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="text-muted small">Total Sales</div>
+                            <div class="fw-semibold">{{ total_sales_count }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small">Total Sale Value</div>
+                            <div class="fw-semibold">{{ total_sales_display or 'N/A' }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small">Total ROI</div>
+                            <div class="fw-semibold">{{ total_roi_display or 'N/A' }}</div>
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-muted mb-0">No sales recorded yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">Sales by Time</div>
+            <div class="card-body">
+                {% if sales_by_time %}
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Sneaker</th>
+                                    <th>SKU</th>
+                                    <th>Sold</th>
+                                    <th>Purchase</th>
+                                    <th>ROI</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in sales_by_time %}
+                                    <tr>
+                                        <td>{{ row.date.strftime('%Y-%m-%d') }}</td>
+                                        <td>{{ row.name }}</td>
+                                        <td>{{ row.sku or 'N/A' }}</td>
+                                        <td>{{ row.sold_display or 'N/A' }}</td>
+                                        <td>{{ row.purchase_display or 'N/A' }}</td>
+                                        <td>{{ row.roi_display or 'N/A' }}</td>
+                                        <td class="text-end">
+                                            <form method="POST" action="{{ url_for('main.delete_sale_record', sale_id=row.id) }}">
+                                                {{ delete_form.hidden_tag() }}
+                                                <button type="submit" class="btn btn-outline-danger btn-sm">Remove</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted mb-0">No sales data available.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">Sales by Brand</div>
+            <div class="card-body">
+                {% if sales_by_brand %}
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Brand</th>
+                                    <th>Sales</th>
+                                    <th>Total Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in sales_by_brand %}
+                                    <tr>
+                                        <td>{{ row.brand }}</td>
+                                        <td>{{ row.sale_count }}</td>
+                                        <td>{{ row.total_display or 'N/A' }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted mb-0">No brand breakdown available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,816 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% macro info_tooltip(label, text) -%}
+<button type="button" class="btn btn-link p-0 text-muted" data-bs-toggle="tooltip" title="{{ text }}" aria-label="{{ label }}">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+        <path d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14Zm0 1A8 8 0 1 1 8 0a8 8 0 0 1 0 16Z"/>
+        <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533l.738-3.468c.194-.897-.105-1.319-.808-1.319-.545 0-1.178.252-1.465.598l-.088.416c.2-.176.492-.246.686-.246.275 0 .375.193.304.533Z"/>
+        <circle cx="8" cy="4.5" r="1"/>
+    </svg>
+</button>
+{%- endmacro %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="mb-4">
+        <a href="{{ url_for('news.news_index') }}" class="text-muted small">&larr; Back to News</a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h1 class="mb-4">{{ title }}</h1>
+            <form method="POST" enctype="multipart/form-data">
+                {{ form.hidden_tag() }}
+                <div class="accordion mb-4" id="seoAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="seoHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#seoCollapse" aria-expanded="false" aria-controls="seoCollapse">
+                                SEO
+                            </button>
+                        </h2>
+                        <div id="seoCollapse" class="accordion-collapse collapse" aria-labelledby="seoHeading" data-bs-parent="#seoAccordion">
+                            <div class="accordion-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label d-flex align-items-center gap-2">
+                                            {{ form.meta_title.label.text }}
+                                            {{ info_tooltip('Meta title help', 'Optional. If blank, the article title is used. Aim for 50–60 characters.') }}
+                                        </label>
+                                        {{ form.meta_title(class="form-control", id="meta-title-input") }}
+                                        <div class="form-text"><span id="meta-title-count">0</span>/70 characters</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label d-flex align-items-center gap-2">
+                                            {{ form.meta_description.label.text }}
+                                            {{ info_tooltip('Meta description help', 'Optional. If blank, the excerpt is used. Aim for 140–160 characters.') }}
+                                        </label>
+                                        {{ form.meta_description(class="form-control", id="meta-description-input") }}
+                                        <div class="form-text"><span id="meta-description-count">0</span>/300 characters</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label d-flex align-items-center gap-2">
+                                            {{ form.canonical_url.label.text }}
+                                            {{ info_tooltip('Canonical help', 'Optional. If blank, the article URL is used.') }}
+                                        </label>
+                                        {{ form.canonical_url(class="form-control") }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label d-flex align-items-center gap-2">
+                                            {{ form.robots.label.text }}
+                                            {{ info_tooltip('Robots help', 'Controls indexing and following behaviour for search engines.') }}
+                                        </label>
+                                        {{ form.robots(class="form-select") }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label d-flex align-items-center gap-2">
+                                            {{ form.og_title.label.text }}
+                                            {{ info_tooltip('OG title help', 'Optional. Falls back to meta title or article title.') }}
+                                        </label>
+                                        {{ form.og_title(class="form-control") }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label d-flex align-items-center gap-2">
+                                            {{ form.og_description.label.text }}
+                                            {{ info_tooltip('OG description help', 'Optional. Falls back to meta description or excerpt.') }}
+                                        </label>
+                                        {{ form.og_description(class="form-control") }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label d-flex align-items-center gap-2">
+                                            {{ form.og_image_url.label.text }}
+                                            {{ info_tooltip('OG image help', 'Optional. If blank, hero image is used.') }}
+                                        </label>
+                                        {{ form.og_image_url(class="form-control") }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label d-flex align-items-center gap-2">
+                                            {{ form.twitter_card.label.text }}
+                                            {{ info_tooltip('Twitter card help', 'Summary large image is recommended for visual posts.') }}
+                                        </label>
+                                        {{ form.twitter_card(class="form-select") }}
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <h6 class="text-muted">SEO checklist</h6>
+                                    <ul class="small mb-0" id="seo-checklist">
+                                        <li data-check="meta-title">Meta title length within 50–60 characters</li>
+                                        <li data-check="meta-description">Meta description length within 140–160 characters</li>
+                                        <li data-check="hero-alt">Hero image has alt text</li>
+                                        <li data-check="heading-h2">At least one H2 heading</li>
+                                        <li data-check="tags-count">No more than 8 tags</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion mb-4" id="schemaAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="schemaHeading">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#schemaCollapse" aria-expanded="true" aria-controls="schemaCollapse">
+                                Schema Markup (JSON-LD)
+                                <span class="ms-2 text-muted small">Hybrid: global + per-article</span>
+                            </button>
+                        </h2>
+                        <div id="schemaCollapse" class="accordion-collapse collapse show" aria-labelledby="schemaHeading" data-bs-parent="#schemaAccordion">
+                            <div class="accordion-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label d-flex align-items-center gap-2">
+                                Global Organization schema
+                                {{ info_tooltip('Organization schema help', 'Global schema applied to all articles. Paste valid JSON-LD.') }}
+                            </label>
+                            <textarea class="form-control json-schema-input" name="global_org_schema" rows="4" data-preview-id="global-org-preview">{{ global_org_schema }}</textarea>
+                            <div class="form-text json-schema-status" id="global-org-status"></div>
+                            <pre class="json-schema-preview border rounded p-2 mt-2 d-none" id="global-org-preview"></pre>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label d-flex align-items-center gap-2">
+                                Global WebSite schema
+                                {{ info_tooltip('Website schema help', 'Global schema applied to all articles. Paste valid JSON-LD.') }}
+                            </label>
+                            <textarea class="form-control json-schema-input" name="global_site_schema" rows="4" data-preview-id="global-site-preview">{{ global_site_schema }}</textarea>
+                            <div class="form-text json-schema-status" id="global-site-status"></div>
+                            <pre class="json-schema-preview border rounded p-2 mt-2 d-none" id="global-site-preview"></pre>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-light border small mb-0">
+                                Article schema is generated automatically from the article data (title, author, dates, hero image).
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label d-flex align-items-center gap-2">
+                                {{ form.product_schema_json.label.text }}
+                                {{ info_tooltip('Product schema help', 'Optional. Use only when the article references a specific product.') }}
+                            </label>
+                            {{ form.product_schema_json(class="form-control json-schema-input", rows=4, **{'data-preview-id': 'product-schema-preview'}) }}
+                            <div class="form-text json-schema-status" id="product-schema-status"></div>
+                            <pre class="json-schema-preview border rounded p-2 mt-2 d-none" id="product-schema-preview"></pre>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label d-flex align-items-center gap-2">
+                                {{ form.faq_schema_json.label.text }}
+                                {{ info_tooltip('FAQ schema help', 'Optional. Include only if the article contains FAQ content.') }}
+                            </label>
+                            {{ form.faq_schema_json(class="form-control json-schema-input", rows=4, **{'data-preview-id': 'faq-schema-preview'}) }}
+                            <div class="form-text json-schema-status" id="faq-schema-status"></div>
+                            <pre class="json-schema-preview border rounded p-2 mt-2 d-none" id="faq-schema-preview"></pre>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label d-flex align-items-center gap-2">
+                                {{ form.video_schema_json.label.text }}
+                                {{ info_tooltip('Video schema help', 'Optional. Use when the article embeds video content.') }}
+                            </label>
+                            {{ form.video_schema_json(class="form-control json-schema-input", rows=4, **{'data-preview-id': 'video-schema-preview'}) }}
+                            <div class="form-text json-schema-status" id="video-schema-status"></div>
+                            <pre class="json-schema-preview border rounded p-2 mt-2 d-none" id="video-schema-preview"></pre>
+                        </div>
+                    </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label d-flex align-items-center gap-2">
+                            {{ form.title.label.text }}
+                            {{ info_tooltip('Title help', 'Use a concise headline that tells readers what to expect. Aim for 6–12 words.') }}
+                        </label>
+                        {{ form.title(class="form-control") }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label d-flex align-items-center gap-2">
+                            {{ form.slug.label.text }}
+                            {{ info_tooltip('Slug help', 'Leave blank to auto-generate. Use lowercase and hyphens for readability.') }}
+                        </label>
+                        {{ form.slug(class="form-control", id="slug-input") }}
+                        <div class="form-text">Leave blank to auto-generate.</div>
+                        <div class="form-text">Preview: <span id="slug-preview">{{ url_for('news.news_detail', slug='your-slug') }}</span></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label d-flex align-items-center gap-2">
+                            {{ form.brand.label.text }}
+                            {{ info_tooltip('Brand help', 'Optional. Use the sneaker brand most relevant to this article.') }}
+                        </label>
+                        {{ form.brand(class="form-control") }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label d-flex align-items-center gap-2">
+                            {{ form.tags.label.text }}
+                            {{ info_tooltip('Tags help', 'Comma-separated topics. Keep to 3–6 tags for cleaner filters.') }}
+                        </label>
+                        {{ form.tags(class="form-control") }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label d-flex align-items-center gap-2">
+                            {{ form.published_at.label.text }}
+                            {{ info_tooltip('Published date help', 'Defaults to today when published. Adjust if you need a backdated or scheduled post.') }}
+                        </label>
+                        {{ form.published_at(class="form-control", type="date") }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label d-flex align-items-center gap-2">
+                            {{ form.excerpt.label.text }}
+                            {{ info_tooltip('Excerpt help', 'Short summary for cards and meta description. Aim for 140–200 characters.') }}
+                        </label>
+                        <div class="md-toolbar btn-group btn-group-sm mb-2" data-target="excerpt-text">
+                            <button type="button" class="btn btn-outline-secondary" data-md="bold"><strong>B</strong></button>
+                            <button type="button" class="btn btn-outline-secondary" data-md="italic"><em>I</em></button>
+                            <button type="button" class="btn btn-outline-secondary" data-md="link">Link</button>
+                        </div>
+                        {{ form.excerpt(class="form-control", rows=3, id="excerpt-text") }}
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label d-flex align-items-center gap-2">
+                            Hero Image
+                            {{ info_tooltip('Hero image help', 'Choose one source. Use a wide image (1200x630 works well).') }}
+                        </label>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label d-flex align-items-center gap-2">
+                            {{ form.hero_image_file.label.text }}
+                            {{ info_tooltip('Hero upload help', 'Upload JPG/PNG/WebP for the hero image.') }}
+                        </label>
+                        {{ form.hero_image_file(class="form-control", id="hero-image-input") }}
+                        <div class="form-text">Suggested size: 1200×630 (landscape).</div>
+                        <div class="mt-2">
+                            <label class="form-label d-flex align-items-center gap-2">
+                                {{ form.hero_image_alt.label.text }}
+                                {{ info_tooltip('Hero alt help', 'Describe the image in 5–12 words. Required for best SEO.') }}
+                            </label>
+                            {{ form.hero_image_alt(class="form-control") }}
+                        </div>
+                        {% if article and article.hero_image_url %}
+                            {% if article.hero_image_url.startswith('http') %}
+                                {% set hero_preview = article.hero_image_url %}
+                            {% else %}
+                                {% set hero_preview = url_for('main.uploaded_file', filename=article.hero_image_url) %}
+                            {% endif %}
+                            <div class="mt-2">
+                                <img src="{{ hero_preview }}" alt="Current hero image" style="max-width: 220px; border-radius: 8px;">
+                            </div>
+                            <input type="hidden" name="hero_image_existing" value="{{ article.hero_image_url }}">
+                        {% endif %}
+                        <div class="mt-2">
+                            <img id="hero-image-preview" src="" alt="Hero image preview" style="max-width: 220px; border-radius: 8px; display: none;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-check form-switch mt-3 d-flex align-items-center gap-2">
+                    {{ form.is_published(class="form-check-input") }}
+                    {{ form.is_published.label(class="form-check-label") }}
+                    {{ info_tooltip('Published toggle help', 'Turn this on to publish. Drafts stay hidden from public view.') }}
+                </div>
+
+                <hr class="my-4">
+
+                <h4 class="mb-3">Content Blocks</h4>
+                <p class="text-muted">Fill in the blocks you want to show in order. Leave unused blocks empty.</p>
+                {% for slot in slots %}
+                    <div class="border rounded p-3 mb-3 block-slot" data-block-position="{{ slot.position }}">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <strong class="block-title">Block {{ slot.position }}</strong>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-secondary block-move-up">Move up</button>
+                                <button type="button" class="btn btn-outline-secondary block-move-down">Move down</button>
+                            </div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label d-flex align-items-center gap-2">
+                                    Type
+                                    {{ info_tooltip('Block type help', 'Heading adds a section title. Body is paragraph text. Side Image pairs image + text. Full Image is standalone.') }}
+                                </label>
+                                <select class="form-select block-type-select" name="block_type_{{ slot.position }}">
+                                    <option value="">None</option>
+                                    {% for value, label in block_types %}
+                                        <option value="{{ value }}" {% if slot.block_type == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label d-flex align-items-center gap-2">
+                                    Align
+                                    {{ info_tooltip('Align help', 'Left/right only applies to side images. Full images ignore alignment.') }}
+                                </label>
+                                <select class="form-select block-align-select" name="block_align_{{ slot.position }}">
+                                    <option value="">Auto</option>
+                                    {% for align in align_choices %}
+                                        <option value="{{ align }}" {% if slot.align == align %}selected{% endif %}>{{ align|capitalize }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 block-heading-field">
+                                <label class="form-label d-flex align-items-center gap-2">
+                                    Heading
+                                    {{ info_tooltip('Heading help', 'Section headline. Keep it short.') }}
+                                </label>
+                                <input type="text" class="form-control" name="block_heading_{{ slot.position }}" value="{{ slot.heading_text }}">
+                            </div>
+                            <div class="col-md-3 block-heading-level-field">
+                                <label class="form-label d-flex align-items-center gap-2">
+                                    Heading level
+                                    {{ info_tooltip('Heading level help', 'Use H2 for main sections and H3 for subsections.') }}
+                                </label>
+                                <select class="form-select" name="block_heading_level_{{ slot.position }}">
+                                    <option value="h2" {% if (slot.heading_level or 'h2') == 'h2' %}selected{% endif %}>H2</option>
+                                    <option value="h3" {% if slot.heading_level == 'h3' %}selected{% endif %}>H3</option>
+                                </select>
+                            </div>
+                            <div class="col-12 block-body-field">
+                                <label class="form-label d-flex align-items-center gap-2">
+                                    Body
+                                    {{ info_tooltip('Body help', 'Paragraph text. Keep lines short for readability.') }}
+                                </label>
+                                <div class="md-toolbar btn-group btn-group-sm mb-2" data-target="block-body-{{ slot.position }}">
+                                    <button type="button" class="btn btn-outline-secondary" data-md="bold"><strong>B</strong></button>
+                                    <button type="button" class="btn btn-outline-secondary" data-md="italic"><em>I</em></button>
+                                    <button type="button" class="btn btn-outline-secondary" data-md="link">Link</button>
+                                </div>
+                                <textarea class="form-control" name="block_body_{{ slot.position }}" id="block-body-{{ slot.position }}" rows="3">{{ slot.body_text }}</textarea>
+                            </div>
+                            <div class="col-12 block-carousel-field">
+                                <label class="form-label d-flex align-items-center gap-2">
+                                    Carousel images
+                                    {{ info_tooltip('Carousel help', 'Upload multiple images to create a carousel. Use this for official product galleries.') }}
+                                </label>
+                                <input type="file" class="form-control block-carousel-file-input" name="block_carousel_files_{{ slot.position }}" multiple data-block-position="{{ slot.position }}">
+                                <div class="form-text">Recommended: 3–6 images. JPG/PNG/WebP.</div>
+                                {% if slot.carousel_images %}
+                                    <div class="d-flex flex-wrap gap-2 mt-2">
+                                        {% for img in slot.carousel_images %}
+                                            {% if img.url %}
+                                                {% if img.url.startswith('http') %}
+                                                    {% set carousel_src = img.url %}
+                                                {% else %}
+                                                    {% set carousel_src = url_for('main.uploaded_file', filename=img.url) %}
+                                                {% endif %}
+                                                <img src="{{ carousel_src }}" alt="{{ img.alt or '' }}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;">
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <input type="hidden" name="block_carousel_existing_{{ slot.position }}" value='{{ slot.carousel_images | tojson }}'>
+                                {% endif %}
+                                <div class="mt-2">
+                                    <img id="block-carousel-preview-{{ slot.position }}" src="" alt="Carousel preview" style="max-width: 200px; border-radius: 8px; display: none;">
+                                </div>
+                            </div>
+                            <div class="col-12 block-carousel-field">
+                                <label class="form-label d-flex align-items-center gap-2">
+                                    Carousel image alt text
+                                    {{ info_tooltip('Carousel alt help', 'Optional. One alt description per line, in the same order as the images.') }}
+                                </label>
+                                <textarea class="form-control" name="block_carousel_alts_{{ slot.position }}" rows="2">{{ slot.carousel_alts_text }}</textarea>
+                            </div>
+                            <div class="col-md-6 block-image-url-field">
+                                <label class="form-label d-flex align-items-center gap-2">
+                                    Image URL
+                                    {{ info_tooltip('Block image URL help', 'Paste a full image URL for this block. Hidden when not needed.') }}
+                                </label>
+                                <div class="text-muted small">Upload only (URL option removed).</div>
+                            </div>
+                            <div class="col-md-6 block-image-file-field">
+                                <label class="form-label d-flex align-items-center gap-2">
+                                    Image Upload
+                                    {{ info_tooltip('Block image upload help', 'Upload an image for this block.') }}
+                                </label>
+                                <input type="file" class="form-control block-image-file-input" name="block_image_file_{{ slot.position }}" data-block-position="{{ slot.position }}">
+                                <div class="form-text">Suggested size: 1200×800 (full) or 600×800 (side).</div>
+                                <div class="mt-2">
+                                    <label class="form-label d-flex align-items-center gap-2">
+                                        Image alt text
+                                        {{ info_tooltip('Image alt help', 'Describe the image for accessibility and SEO.') }}
+                                    </label>
+                                    <input type="text" class="form-control" name="block_image_alt_{{ slot.position }}" value="{{ slot.image_alt }}">
+                                </div>
+                                {% if slot.image_url %}
+                                    {% if slot.image_url.startswith('http') %}
+                                        {% set block_preview = slot.image_url %}
+                                    {% else %}
+                                        {% set block_preview = url_for('main.uploaded_file', filename=slot.image_url) %}
+                                    {% endif %}
+                                    <div class="mt-2">
+                                        <img src="{{ block_preview }}" alt="Current block image" style="max-width: 200px; border-radius: 8px;">
+                                    </div>
+                                    <input type="hidden" name="block_image_existing_{{ slot.position }}" value="{{ slot.image_url }}">
+                                {% endif %}
+                                <div class="mt-2">
+                                    <img id="block-image-preview-{{ slot.position }}" src="" alt="Block image preview" style="max-width: 200px; border-radius: 8px; display: none;">
+                                </div>
+                            </div>
+                            <div class="col-12 block-caption-field">
+                                <label class="form-label d-flex align-items-center gap-2">
+                                    Caption
+                                    {{ info_tooltip('Caption help', 'Optional caption shown under images.') }}
+                                </label>
+                                <input type="text" class="form-control" name="block_caption_{{ slot.position }}" value="{{ slot.caption }}">
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+
+                <div class="border rounded p-3 mb-4">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h4 class="mb-0">Author Details</h4>
+                        <span class="text-muted small">Required for published articles</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label d-flex align-items-center gap-2">
+                                {{ form.author_name.label.text }}
+                                {{ info_tooltip('Author name help', 'Author display name.') }}
+                            </label>
+                            {{ form.author_name(class="form-control") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label d-flex align-items-center gap-2">
+                                {{ form.author_title.label.text }}
+                                {{ info_tooltip('Author title help', 'Role or title, e.g. Editor or WearHouse Team.') }}
+                            </label>
+                            {{ form.author_title(class="form-control") }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label d-flex align-items-center gap-2">
+                                {{ form.author_bio.label.text }}
+                                {{ info_tooltip('Author bio help', 'Short bio for the author card (max 500 characters).') }}
+                            </label>
+                            <div class="md-toolbar btn-group btn-group-sm mb-2" data-target="author-bio-text">
+                                <button type="button" class="btn btn-outline-secondary" data-md="bold"><strong>B</strong></button>
+                                <button type="button" class="btn btn-outline-secondary" data-md="italic"><em>I</em></button>
+                                <button type="button" class="btn btn-outline-secondary" data-md="link">Link</button>
+                            </div>
+                            {{ form.author_bio(class="form-control", rows=3, id="author-bio-text") }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label d-flex align-items-center gap-2">
+                                Author Image Source
+                                {{ info_tooltip('Author image source help', 'Choose one source for the author image.') }}
+                            </label>
+                            <div class="text-muted small">Upload only (URL option removed).</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label d-flex align-items-center gap-2">
+                                {{ form.author_image_file.label.text }}
+                                {{ info_tooltip('Author image upload help', 'Upload an author image.') }}
+                            </label>
+                            {{ form.author_image_file(class="form-control", id="author-image-input") }}
+                            <div class="mt-2">
+                                <label class="form-label d-flex align-items-center gap-2">
+                                    {{ form.author_image_alt.label.text }}
+                                    {{ info_tooltip('Author alt help', 'Optional. Describe the author image briefly.') }}
+                                </label>
+                                {{ form.author_image_alt(class="form-control") }}
+                            </div>
+                            {% if article and article.author_image_url %}
+                                {% if article.author_image_url.startswith('http') %}
+                                    {% set author_preview = article.author_image_url %}
+                                {% else %}
+                                    {% set author_preview = url_for('main.uploaded_file', filename=article.author_image_url) %}
+                                {% endif %}
+                                <div class="mt-2">
+                                    <img src="{{ author_preview }}" alt="Current author image" style="max-width: 160px; border-radius: 999px;">
+                                </div>
+                                <input type="hidden" name="author_image_existing" value="{{ article.author_image_url }}">
+                            {% endif %}
+                            <div class="mt-2">
+                                <img id="author-image-preview" src="" alt="Author image preview" style="max-width: 160px; border-radius: 999px; display: none;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+                    <a href="{{ url_for('news.news_index') }}" class="btn btn-outline-secondary">Cancel</a>
+                    <button type="button" class="btn btn-outline-primary" id="add-block-btn">Add another block</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/markdown_toolbar.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(el => new bootstrap.Tooltip(el));
+
+        const addBlockBtn = document.getElementById('add-block-btn');
+        const minVisibleBlocks = 3;
+        let visibleCount = 0;
+
+        const getBlockSlots = () => Array.from(document.querySelectorAll('.block-slot'));
+
+        getBlockSlots().forEach(slot => {
+            const select = slot.querySelector('.block-type-select');
+            const hasValue = select && select.value;
+            if (hasValue || visibleCount < minVisibleBlocks) {
+                slot.classList.remove('d-none');
+                visibleCount += 1;
+            } else {
+                slot.classList.add('d-none');
+            }
+        });
+
+        const updateAddBlockButton = () => {
+            if (!addBlockBtn) return;
+            const remaining = getBlockSlots().some(slot => slot.classList.contains('d-none'));
+            addBlockBtn.disabled = !remaining;
+        };
+
+        if (addBlockBtn) {
+            addBlockBtn.addEventListener('click', () => {
+                const nextSlot = getBlockSlots().find(slot => slot.classList.contains('d-none'));
+                if (nextSlot) {
+                    nextSlot.classList.remove('d-none');
+                    const select = nextSlot.querySelector('.block-type-select');
+                    if (select) select.focus();
+                }
+                updateAddBlockButton();
+            });
+        }
+        updateAddBlockButton();
+
+        const renumberBlocks = () => {
+            getBlockSlots().forEach((slot, index) => {
+                const newPos = index + 1;
+                slot.dataset.blockPosition = newPos;
+                const title = slot.querySelector('.block-title');
+                if (title) title.textContent = `Block ${newPos}`;
+
+                slot.querySelectorAll('[name]').forEach(el => {
+                    const name = el.getAttribute('name');
+                    if (!name) return;
+                    const updated = name.replace(/_(\d+)$/, `_${newPos}`);
+                    if (updated !== name) el.setAttribute('name', updated);
+                });
+
+                slot.querySelectorAll('[id]').forEach(el => {
+                    const id = el.getAttribute('id');
+                    if (!id) return;
+                    const updated = id.replace(/-(\d+)$/, `-${newPos}`);
+                    if (updated !== id) el.setAttribute('id', updated);
+                });
+
+                slot.querySelectorAll('label[for]').forEach(label => {
+                    const target = label.getAttribute('for');
+                    if (!target) return;
+                    const updated = target.replace(/-(\d+)$/, `-${newPos}`);
+                    if (updated !== target) label.setAttribute('for', updated);
+                });
+
+                slot.querySelectorAll('.block-image-file-input').forEach(input => {
+                    input.dataset.blockPosition = newPos;
+                });
+            });
+        };
+
+        const moveSlot = (slot, direction) => {
+            const slots = getBlockSlots();
+            const index = slots.indexOf(slot);
+            if (index === -1) return;
+            const targetIndex = direction === 'up' ? index - 1 : index + 1;
+            if (targetIndex < 0 || targetIndex >= slots.length) return;
+            const parent = slot.parentElement;
+            const target = slots[targetIndex];
+            if (direction === 'up') {
+                parent.insertBefore(slot, target);
+            } else {
+                parent.insertBefore(target, slot);
+            }
+            renumberBlocks();
+        };
+
+        document.querySelectorAll('.block-move-up').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const slot = btn.closest('.block-slot');
+                if (slot) moveSlot(slot, 'up');
+            });
+        });
+        document.querySelectorAll('.block-move-down').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const slot = btn.closest('.block-slot');
+                if (slot) moveSlot(slot, 'down');
+            });
+        });
+
+        const heroInput = document.getElementById('hero-image-input');
+        const heroPreview = document.getElementById('hero-image-preview');
+        if (heroInput && heroPreview) {
+            heroInput.addEventListener('change', () => {
+                const file = heroInput.files && heroInput.files[0];
+                if (file) {
+                    heroPreview.src = URL.createObjectURL(file);
+                    heroPreview.style.display = 'block';
+                } else {
+                    heroPreview.src = '';
+                    heroPreview.style.display = 'none';
+                }
+            });
+        }
+
+        const authorInput = document.getElementById('author-image-input');
+        const authorPreview = document.getElementById('author-image-preview');
+        if (authorInput && authorPreview) {
+            authorInput.addEventListener('change', () => {
+                const file = authorInput.files && authorInput.files[0];
+                if (file) {
+                    authorPreview.src = URL.createObjectURL(file);
+                    authorPreview.style.display = 'block';
+                } else {
+                    authorPreview.src = '';
+                    authorPreview.style.display = 'none';
+                }
+            });
+        }
+
+        document.querySelectorAll('.block-image-file-input').forEach(input => {
+            input.addEventListener('change', () => {
+                const file = input.files && input.files[0];
+                const position = input.dataset.blockPosition;
+                const preview = document.getElementById(`block-image-preview-${position}`);
+                if (!preview) return;
+                if (file) {
+                    preview.src = URL.createObjectURL(file);
+                    preview.style.display = 'block';
+                } else {
+                    preview.src = '';
+                    preview.style.display = 'none';
+                }
+            });
+        });
+
+        document.querySelectorAll('.block-carousel-file-input').forEach(input => {
+            input.addEventListener('change', () => {
+                const file = input.files && input.files[0];
+                const position = input.dataset.blockPosition;
+                const preview = document.getElementById(`block-carousel-preview-${position}`);
+                if (!preview) return;
+                if (file) {
+                    preview.src = URL.createObjectURL(file);
+                    preview.style.display = 'block';
+                } else {
+                    preview.src = '';
+                    preview.style.display = 'none';
+                }
+            });
+        });
+
+        document.querySelectorAll('.block-slot').forEach(slot => {
+            const select = slot.querySelector('.block-type-select');
+            const alignField = slot.querySelector('.block-align-select')?.closest('.col-md-3');
+            const headingField = slot.querySelector('.block-heading-field');
+            const headingLevelField = slot.querySelector('.block-heading-level-field');
+            const bodyField = slot.querySelector('.block-body-field');
+            const imageUrlField = slot.querySelector('.block-image-url-field');
+            const imageFileField = slot.querySelector('.block-image-file-field');
+            const captionField = slot.querySelector('.block-caption-field');
+            const carouselFields = slot.querySelectorAll('.block-carousel-field');
+
+            const updateBlockVisibility = () => {
+                const type = select ? select.value : '';
+                const showHeading = type === 'heading';
+                const showBody = type === 'body' || type === 'side_image';
+                const showImage = type === 'side_image' || type === 'image';
+                const showCarousel = type === 'carousel';
+
+                if (headingField) headingField.classList.toggle('d-none', !showHeading);
+                if (headingLevelField) headingLevelField.classList.toggle('d-none', !showHeading);
+                if (bodyField) bodyField.classList.toggle('d-none', !showBody);
+                if (imageUrlField) imageUrlField.classList.toggle('d-none', !showImage);
+                if (imageFileField) imageFileField.classList.toggle('d-none', !showImage);
+                if (captionField) captionField.classList.toggle('d-none', !showImage);
+                if (alignField) alignField.classList.toggle('d-none', type !== 'side_image');
+                carouselFields.forEach(field => field.classList.toggle('d-none', !showCarousel));
+            };
+
+            if (select) select.addEventListener('change', updateBlockVisibility);
+            updateBlockVisibility();
+        });
+
+        const metaTitleInput = document.getElementById('meta-title-input');
+        const metaDescInput = document.getElementById('meta-description-input');
+        const metaTitleCount = document.getElementById('meta-title-count');
+        const metaDescCount = document.getElementById('meta-description-count');
+        const slugInput = document.getElementById('slug-input');
+        const slugPreview = document.getElementById('slug-preview');
+        const seoChecklist = document.getElementById('seo-checklist');
+
+        const updateSeoCounters = () => {
+            if (metaTitleInput && metaTitleCount) {
+                metaTitleCount.textContent = metaTitleInput.value.length;
+            }
+            if (metaDescInput && metaDescCount) {
+                metaDescCount.textContent = metaDescInput.value.length;
+            }
+        };
+
+        const updateSlugPreview = () => {
+            if (!slugInput || !slugPreview) return;
+            const slug = slugInput.value.trim() || 'your-slug';
+            const base = slugPreview.textContent.split('/news/')[0] + '/news/';
+            slugPreview.textContent = `${base}${slug}`;
+        };
+
+        const updateChecklist = () => {
+            if (!seoChecklist) return;
+            const titleLen = metaTitleInput ? metaTitleInput.value.length : 0;
+            const descLen = metaDescInput ? metaDescInput.value.length : 0;
+            const tagsInput = document.querySelector('input[name="{{ form.tags.name }}"]');
+            const tagsCount = tagsInput && tagsInput.value ? tagsInput.value.split(',').filter(t => t.trim()).length : 0;
+            const heroAltInput = document.querySelector('input[name="{{ form.hero_image_alt.name }}"]');
+            const heroExisting = document.querySelector('input[name="hero_image_existing"]');
+            const heroInputFile = document.getElementById('hero-image-input');
+            const heroHasImage = (heroExisting && heroExisting.value.trim().length > 0) || (heroInputFile && heroInputFile.files && heroInputFile.files.length > 0);
+            const heroAltOk = !heroHasImage || (heroAltInput && heroAltInput.value.trim().length > 0);
+            let hasH2 = false;
+            document.querySelectorAll('.block-type-select').forEach(select => {
+                if (select.value === 'heading') {
+                    const slot = select.closest('.block-slot');
+                    const level = slot?.querySelector('select[name^="block_heading_level_"]');
+                    if (!level || level.value === 'h2') hasH2 = true;
+                }
+            });
+
+            seoChecklist.querySelectorAll('li').forEach(item => {
+                const check = item.dataset.check;
+                let ok = true;
+                if (check === 'meta-title') ok = titleLen === 0 || (titleLen >= 50 && titleLen <= 60);
+                if (check === 'meta-description') ok = descLen === 0 || (descLen >= 140 && descLen <= 160);
+                if (check === 'hero-alt') ok = heroAltOk;
+                if (check === 'heading-h2') ok = hasH2;
+                if (check === 'tags-count') ok = tagsCount <= 8;
+                item.classList.toggle('text-success', ok);
+                item.classList.toggle('text-danger', !ok);
+            });
+        };
+
+        updateSeoCounters();
+        updateSlugPreview();
+        updateChecklist();
+
+        metaTitleInput?.addEventListener('input', () => {
+            updateSeoCounters();
+            updateChecklist();
+        });
+        metaDescInput?.addEventListener('input', () => {
+            updateSeoCounters();
+            updateChecklist();
+        });
+        slugInput?.addEventListener('input', updateSlugPreview);
+        document.querySelector('input[name="{{ form.tags.name }}"]')?.addEventListener('input', updateChecklist);
+        document.querySelectorAll('.block-type-select, select[name^="block_heading_level_"]').forEach(select => {
+            select.addEventListener('change', updateChecklist);
+        });
+        document.querySelector('input[name="{{ form.hero_image_alt.name }}"]')?.addEventListener('input', updateChecklist);
+
+        const schemaInputs = document.querySelectorAll('.json-schema-input');
+        const validateSchema = (input) => {
+            const previewId = input.dataset.previewId;
+            const status = document.getElementById(previewId?.replace('preview', 'status')) || input.closest('.col-12')?.querySelector('.json-schema-status');
+            const preview = previewId ? document.getElementById(previewId) : input.closest('.col-12')?.querySelector('.json-schema-preview');
+            const raw = input.value.trim();
+            if (!raw) {
+                if (status) status.textContent = '';
+                if (preview) preview.classList.add('d-none');
+                return;
+            }
+            try {
+                const parsed = JSON.parse(raw);
+                if (status) {
+                    status.textContent = 'Valid JSON';
+                    status.classList.remove('text-danger');
+                    status.classList.add('text-success');
+                }
+                if (preview) {
+                    preview.textContent = JSON.stringify(parsed, null, 2);
+                    preview.classList.remove('d-none');
+                }
+            } catch (err) {
+                if (status) {
+                    status.textContent = 'Invalid JSON';
+                    status.classList.remove('text-success');
+                    status.classList.add('text-danger');
+                }
+                if (preview) {
+                    preview.textContent = '';
+                    preview.classList.add('d-none');
+                }
+            }
+        };
+
+        schemaInputs.forEach(input => {
+            validateSchema(input);
+            input.addEventListener('input', () => validateSchema(input));
+        });
+    });
+</script>
+{% endblock %}

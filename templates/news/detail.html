@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% set disable_chartjs = true %}
+
+{% block title %}{{ article.meta_title or article.title }}{% endblock %}
+
+{% block head_extra %}
+    {% set meta_title = article.meta_title or article.title %}
+    {% set meta_description = article.meta_description or article.excerpt or '' %}
+    {% set canonical_url = article.canonical_url or url_for('news.news_detail', slug=article.slug, _external=True) %}
+    {% set robots_value = article.robots or 'index,follow' %}
+    {% set og_title = article.og_title or meta_title %}
+    {% set og_description = article.og_description or meta_description %}
+    {% set twitter_card = article.twitter_card or 'summary_large_image' %}
+    {% set ns_head = namespace(og_image=None) %}
+    {% if article.og_image_url %}
+        {% set ns_head.og_image = article.og_image_url %}
+    {% elif article.hero_image_url %}
+        {% set ns_head.og_image = article.hero_image_url %}
+    {% else %}
+        {% for block in article.blocks %}
+            {% if not ns_head.og_image and block.image_url %}
+                {% set ns_head.og_image = block.image_url %}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+    {% if ns_head.og_image %}
+        {% if ns_head.og_image.startswith('http') %}
+            {% set og_image = ns_head.og_image %}
+        {% else %}
+            {% set og_image = url_for('main.uploaded_file', filename=ns_head.og_image, _external=True) %}
+        {% endif %}
+    {% endif %}
+    <meta name="description" content="{{ meta_description }}">
+    <link rel="canonical" href="{{ canonical_url }}">
+    <meta name="robots" content="{{ robots_value }}">
+    <meta property="og:title" content="{{ og_title }}">
+    <meta property="og:description" content="{{ og_description }}">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="{{ canonical_url }}">
+    {% if og_image %}
+        <meta property="og:image" content="{{ og_image }}">
+    {% endif %}
+    <meta name="twitter:card" content="{{ twitter_card }}">
+    <meta name="twitter:title" content="{{ og_title }}">
+    <meta name="twitter:description" content="{{ og_description }}">
+    {% if og_image %}
+        <meta name="twitter:image" content="{{ og_image }}">
+    {% endif %}
+    {% if global_org_schema %}
+        <script type="application/ld+json">{{ global_org_schema | safe }}</script>
+    {% endif %}
+    {% if global_site_schema %}
+        <script type="application/ld+json">{{ global_site_schema | safe }}</script>
+    {% endif %}
+    {% if article_schema %}
+        <script type="application/ld+json">{{ article_schema | tojson }}</script>
+    {% endif %}
+    {% if author_schema %}
+        <script type="application/ld+json">{{ author_schema | tojson }}</script>
+    {% endif %}
+    {% if breadcrumb_schema %}
+        <script type="application/ld+json">{{ breadcrumb_schema | tojson }}</script>
+    {% endif %}
+    {% if article.product_schema_json %}
+        <script type="application/ld+json">{{ article.product_schema_json | safe }}</script>
+    {% endif %}
+    {% if article.faq_schema_json %}
+        <script type="application/ld+json">{{ article.faq_schema_json | safe }}</script>
+    {% endif %}
+    {% if article.video_schema_json %}
+        <script type="application/ld+json">{{ article.video_schema_json | safe }}</script>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="py-2 news-article-page">
+    <div class="mb-4">
+        <a href="{{ url_for('news.news_index') }}" class="text-muted small">&larr; Back to News</a>
+    </div>
+
+    <article class="card shadow-sm p-4">
+        <div class="mb-3">
+            <h1 class="mb-2">{{ article.title }}</h1>
+            <div class="text-muted small">
+                {% if article.brand %}{{ article.brand }} · {% endif %}
+                {{ article.published_at.strftime('%b %d, %Y') if article.published_at else 'Draft' }}
+                {% if reading_time_minutes %}
+                    · {{ reading_time_minutes }} min read
+                {% endif %}
+                {% if article.updated_at %}
+                    · Updated {{ article.updated_at.strftime('%b %d, %Y') }}
+                {% endif %}
+            </div>
+        </div>
+        {% set share_url = url_for('news.news_detail', slug=article.slug, _external=True) %}
+        {% set share_title = article.meta_title or article.title %}
+        {% set ns = namespace(hero_src=None) %}
+        {% if article.hero_image_url %}
+            {% set ns.hero_src = article.hero_image_url %}
+        {% else %}
+            {% for block in article.blocks %}
+                {% if not ns.hero_src and block.image_url %}
+                    {% set ns.hero_src = block.image_url %}
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+        {% if ns.hero_src %}
+            {% if ns.hero_src.startswith('http') %}
+                {% set hero_src = ns.hero_src %}
+            {% else %}
+                {% set hero_src = url_for('main.uploaded_file', filename=ns.hero_src) %}
+            {% endif %}
+            <img src="{{ hero_src }}" class="news-hero mb-4" alt="{{ article.hero_image_alt or '' }}" loading="lazy" decoding="async" width="1200" height="630">
+        {% endif %}
+
+        {% if article.excerpt %}
+            <div class="lead text-muted">{{ render_markdown(article.excerpt) }}</div>
+        {% endif %}
+
+        {% if tags %}
+            <div class="news-tags mb-4">
+                {% for tag in tags %}
+                    <span class="news-tag">{{ tag }}</span>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if heading_links and heading_links|length >= 2 %}
+            <div class="border rounded p-3 mb-4 d-none d-md-block">
+                <div class="fw-semibold mb-2">Jump to</div>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for link in heading_links %}
+                        <a class="btn btn-outline-secondary btn-sm" href="#{{ link.id }}">{{ link.text }}</a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% for block in article.blocks %}
+            {% if block.block_type == 'heading' %}
+                {% set heading_level = (block.heading_level or 'h2') %}
+                {% if heading_level == 'h3' %}
+                    <h3 class="mt-4" id="{{ block.anchor_id }}">{{ block.heading_text }}</h3>
+                {% else %}
+                    <h2 class="mt-4" id="{{ block.anchor_id }}">{{ block.heading_text }}</h2>
+                {% endif %}
+            {% elif block.block_type == 'body' %}
+                <div>{{ render_markdown(block.body_text) }}</div>
+            {% elif block.block_type == 'carousel' %}
+                {% if block.carousel_images %}
+                    <div id="carousel-{{ block.id }}" class="carousel slide carousel-fade mb-4 news-carousel news-carousel-fade" data-bs-ride="carousel">
+                        <div class="carousel-indicators">
+                            {% for img in block.carousel_images %}
+                                <button type="button" data-bs-target="#carousel-{{ block.id }}" data-bs-slide-to="{{ loop.index0 }}" class="{% if loop.first %}active{% endif %}" {% if loop.first %}aria-current="true"{% endif %} aria-label="Slide {{ loop.index }}"></button>
+                            {% endfor %}
+                        </div>
+                        <div class="carousel-inner">
+                            {% for img in block.carousel_images %}
+                                {% set carousel_src = img.url %}
+                                {% if carousel_src and not carousel_src.startswith('http') %}
+                                    {% set carousel_src = url_for('main.uploaded_file', filename=carousel_src) %}
+                                {% endif %}
+                                <div class="carousel-item {% if loop.first %}active{% endif %} news-carousel-item">
+                                    <img src="{{ carousel_src }}" class="d-block w-100 news-carousel-image" alt="{{ img.alt or '' }}" loading="lazy" decoding="async" width="1280" height="1600">
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button class="carousel-control-prev" type="button" data-bs-target="#carousel-{{ block.id }}" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Previous</span>
+                        </button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#carousel-{{ block.id }}" data-bs-slide="next">
+                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden">Next</span>
+                        </button>
+                    </div>
+                {% endif %}
+            {% elif block.block_type in ['side_image', 'image'] %}
+                {% if block.block_type == 'side_image' %}
+                    <div class="news-block-side align-{{ block.align or 'left' }} mb-4">
+                        {% if block.align == 'right' %}
+                            <div>
+                                <div>{{ render_markdown(block.body_text) }}</div>
+                            </div>
+                        {% endif %}
+                        <div>
+                            {% if block.image_url %}
+                                {% if block.image_url.startswith('http') %}
+                                    {% set block_src = block.image_url %}
+                                {% else %}
+                                    {% set block_src = url_for('main.uploaded_file', filename=block.image_url) %}
+                                {% endif %}
+                                <img src="{{ block_src }}" class="news-block-image news-block-image--side" alt="{{ block.image_alt or '' }}" loading="lazy" decoding="async" width="600" height="800">
+                            {% endif %}
+                            {% if block.caption %}
+                                <div class="small text-muted mt-2">{{ block.caption }}</div>
+                            {% endif %}
+                        </div>
+                        {% if block.align != 'right' %}
+                            <div>
+                                <div>{{ render_markdown(block.body_text) }}</div>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    {% if block.image_url %}
+                        {% if block.image_url.startswith('http') %}
+                            {% set block_src = block.image_url %}
+                        {% else %}
+                            {% set block_src = url_for('main.uploaded_file', filename=block.image_url) %}
+                        {% endif %}
+                        <div class="mb-4">
+                            <img src="{{ block_src }}" class="news-block-image news-block-image--full" alt="{{ block.image_alt or '' }}" loading="lazy" decoding="async" width="1200" height="800">
+                            {% if block.caption %}
+                                <div class="small text-muted mt-2">{{ block.caption }}</div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+        {% endfor %}
+
+        <div class="d-flex flex-wrap align-items-center gap-2 my-3">
+            <span class="text-muted small">Share:</span>
+            <a class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener noreferrer"
+               href="https://twitter.com/intent/tweet?url={{ share_url|urlencode }}&text={{ share_title|urlencode }}">
+                X
+            </a>
+            <a class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener noreferrer"
+               href="https://www.facebook.com/sharer/sharer.php?u={{ share_url|urlencode }}">
+                Facebook
+            </a>
+            <a class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener noreferrer"
+               href="https://www.linkedin.com/sharing/share-offsite/?url={{ share_url|urlencode }}">
+                LinkedIn
+            </a>
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-copy-link="{{ share_url }}">
+                Copy Link
+            </button>
+        </div>
+
+        {% if article.author_name or article.author_bio or article.author_image_url %}
+            <div class="border rounded p-3 mt-4 d-flex gap-3 align-items-start">
+                {% if article.author_image_url %}
+                    {% if article.author_image_url.startswith('http') %}
+                        {% set author_src = article.author_image_url %}
+                    {% else %}
+                        {% set author_src = url_for('main.uploaded_file', filename=article.author_image_url) %}
+                    {% endif %}
+                    <img src="{{ author_src }}" class="rounded-circle" width="64" height="64" alt="{{ article.author_image_alt or article.author_name or 'Author' }}" loading="lazy" decoding="async">
+                {% endif %}
+                <div>
+                    {% if article.author_name %}
+                        <div class="fw-semibold">{{ article.author_name }}</div>
+                    {% endif %}
+                    {% if article.author_title %}
+                        <div class="text-muted small">{{ article.author_title }}</div>
+                    {% endif %}
+                    {% if article.author_bio %}
+                        <div class="small text-muted mt-2">{{ render_markdown(article.author_bio) }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if related_articles %}
+            <section class="mt-4">
+                <h5 class="mb-3">Related Articles</h5>
+                <div class="row g-3">
+                    {% for related in related_articles %}
+                        <div class="col-12 col-md-6">
+                            <div class="card h-100 shadow-sm news-card news-card--row">
+                                {% set rel = namespace(hero_src=None) %}
+                                {% if related.hero_image_url %}
+                                    {% set rel.hero_src = related.hero_image_url %}
+                                {% else %}
+                                    {% for block in related.blocks %}
+                                        {% if not rel.hero_src and block.image_url %}
+                                            {% set rel.hero_src = block.image_url %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                                {% if rel.hero_src %}
+                                    {% if rel.hero_src.startswith('http') %}
+                                        {% set rel_img = rel.hero_src %}
+                                    {% else %}
+                                        {% set rel_img = url_for('main.uploaded_file', filename=rel.hero_src) %}
+                                    {% endif %}
+                                {% else %}
+                                    {% set rel_img = url_for('static', filename='images/placeholder.png') %}
+                                {% endif %}
+                                <a href="{{ url_for('news.news_detail', slug=related.slug) }}" class="news-card__image">
+                                    <img src="{{ rel_img }}" alt="{{ related.title }}" loading="lazy" decoding="async" width="480" height="320">
+                                </a>
+                                <div class="card-body d-flex flex-column">
+                                    <h6 class="card-title mb-2">
+                                        <a href="{{ url_for('news.news_detail', slug=related.slug) }}" class="text-decoration-none text-reset">
+                                            {{ related.title }}
+                                        </a>
+                                    </h6>
+                                    {% if related.excerpt %}
+                                        <div class="text-muted news-card__excerpt">{{ render_markdown(related.excerpt) }}</div>
+                                    {% endif %}
+                                    <div class="mt-auto small text-muted">
+                                        {% if related.brand %}{{ related.brand }} · {% endif %}
+                                        {{ related.published_at.strftime('%b %d, %Y') if related.published_at else 'Draft' }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
+        {% if is_admin %}
+            <div class="d-flex gap-2 mt-4">
+                <a href="{{ url_for('news.news_edit', article_id=article.id) }}" class="btn btn-outline-primary btn-sm">Edit Article</a>
+                <form method="POST" action="{{ url_for('news.news_delete', article_id=article.id) }}">
+                    {{ form_for_modal.hidden_tag() if form_for_modal is defined else '' }}
+                    <button type="submit" class="btn btn-outline-danger btn-sm">Delete Article</button>
+                </form>
+            </div>
+        {% endif %}
+    </article>
+</div>
+{% endblock %}

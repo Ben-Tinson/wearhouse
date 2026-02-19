@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% set disable_chartjs = true %}
+
+{% block title %}News{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3 page-header-actions">
+        <h2 class="mb-0 text-start w-100">News</h2>
+        {% if is_admin %}
+            <a href="{{ url_for('news.news_create') }}" class="btn btn-outline-primary">Admin: Post Article</a>
+        {% endif %}
+    </div>
+    <p class="text-muted mb-3">Latest editorial updates and sneaker stories.</p>
+
+    <form method="GET" class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Brand</label>
+                    <select class="form-select" name="brand">
+                        <option value="">All Brands</option>
+                        {% for brand in brands %}
+                            <option value="{{ brand }}" {% if brand == selected_brand %}selected{% endif %}>{{ brand }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Topic</label>
+                    <select class="form-select" name="tag">
+                        <option value="">All Topics</option>
+                        {% for tag in tags %}
+                            <option value="{{ tag }}" {% if tag == selected_tag %}selected{% endif %}>{{ tag }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted">Sort</label>
+                    <select class="form-select" name="sort">
+                        <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>Newest</option>
+                        <option value="oldest" {% if selected_sort == 'oldest' %}selected{% endif %}>Oldest</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Search</label>
+                    <input type="text" class="form-control" name="q" value="{{ search_query }}" placeholder="Search titles...">
+                </div>
+                <div class="col-md-1 d-grid">
+                    <button class="btn btn-primary" type="submit">Filter</button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div class="row g-4">
+        {% for article in articles %}
+            <div class="col-12">
+                <div class="card shadow-sm news-card news-card--row">
+                    {% set ns = namespace(hero_src=None) %}
+                    {% if article.hero_image_url %}
+                        {% set ns.hero_src = article.hero_image_url %}
+                    {% else %}
+                        {% for block in article.blocks %}
+                            {% if not ns.hero_src and block.image_url %}
+                                {% set ns.hero_src = block.image_url %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                    {% if ns.hero_src %}
+                        {% if ns.hero_src.startswith('http') %}
+                            {% set hero_src = ns.hero_src %}
+                        {% else %}
+                            {% set hero_src = url_for('main.uploaded_file', filename=ns.hero_src) %}
+                        {% endif %}
+                    {% else %}
+                        {% set hero_src = url_for('static', filename='images/placeholder.png') %}
+                    {% endif %}
+                    <a href="{{ url_for('news.news_detail', slug=article.slug) }}" class="news-card__image">
+                        <img src="{{ hero_src }}" alt="{{ article.title }}" loading="lazy" decoding="async">
+                    </a>
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">
+                            <a href="{{ url_for('news.news_detail', slug=article.slug) }}" class="text-decoration-none text-reset">
+                                {{ article.title }}
+                            </a>
+                        </h5>
+                        {% if article.excerpt %}
+                            <div class="card-text text-muted news-card__excerpt">{{ render_markdown(article.excerpt) }}</div>
+                        {% endif %}
+                        <div class="mt-auto">
+                            {% if article.tags %}
+                                <div class="news-tags mb-2">
+                                    {% for tag in article.tags.split(',') %}
+                                        {% if tag.strip() %}
+                                            <span class="news-tag">{{ tag.strip() }}</span>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="small text-muted">
+                                {% if article.brand %}{{ article.brand }} · {% endif %}
+                                {{ article.published_at.strftime('%b %d, %Y') if article.published_at else 'Draft' }}
+                            </div>
+                            <div class="mt-2 d-flex align-items-center gap-2">
+                                <a href="{{ url_for('news.news_detail', slug=article.slug) }}" class="btn btn-outline-primary btn-sm">Read</a>
+                                {% if is_admin %}
+                                    <a href="{{ url_for('news.news_edit', article_id=article.id) }}" class="btn btn-outline-secondary btn-sm">Edit</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="col">
+                <div class="card shadow-sm">
+                    <div class="card-body text-muted">No articles found.</div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    {% if total_pages > 1 %}
+        <div class="d-flex justify-content-center mt-4">
+            <nav>
+                <ul class="pagination">
+                    <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('news.news_index', page=page-1, brand=selected_brand, tag=selected_tag, sort=selected_sort, q=search_query) }}">Prev</a>
+                    </li>
+                    {% for p in range(1, total_pages + 1) %}
+                        <li class="page-item {% if p == page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('news.news_index', page=p, brand=selected_brand, tag=selected_tag, sort=selected_sort, q=search_query) }}">{{ p }}</a>
+                        </li>
+                    {% endfor %}
+                    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('news.news_index', page=page+1, brand=selected_brand, tag=selected_tag, sort=selected_sort, q=search_query) }}">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    {% endif %}
+{% endblock %}

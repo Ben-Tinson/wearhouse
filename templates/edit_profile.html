@@ -13,6 +13,17 @@
                     
                     {# First Name Field #}
                     <div class="mb-3">
+                        {{ form.username.label(class="form-label") }}
+                        {% if form.username.errors %}
+                            {{ form.username(class="form-control is-invalid") }}
+                            <div class="invalid-feedback">{% for error in form.username.errors %}<span>{{ error }}</span><br>{% endfor %}</div>
+                        {% else %}
+                            {{ form.username(class="form-control") }}
+                        {% endif %}
+                    </div>
+
+                    {# First Name Field #}
+                    <div class="mb-3">
                         {{ form.first_name.label(class="form-label") }}
                         {% if form.first_name.errors %}
                             {{ form.first_name(class="form-control is-invalid") }}
@@ -50,6 +61,17 @@
                         {{ form.marketing_opt_in.label(class="form-check-label") }}
                         {% if form.marketing_opt_in.errors %}
                             <div class="invalid-feedback d-block">{% for error in form.marketing_opt_in.errors %}<span>{{ error }}</span><br>{% endfor %}</div>
+                        {% endif %}
+                    </div>
+
+                    {# Preferred Currency #}
+                    <div class="mb-3">
+                        {{ form.preferred_currency.label(class="form-label") }}
+                        {% if form.preferred_currency.errors %}
+                            {{ form.preferred_currency(class="form-select is-invalid") }}
+                            <div class="invalid-feedback">{% for error in form.preferred_currency.errors %}<span>{{ error }}</span><br>{% endfor %}</div>
+                        {% else %}
+                            {{ form.preferred_currency(class="form-select") }}
                         {% endif %}
                     </div>
                     

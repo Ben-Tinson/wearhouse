@@ -42,16 +42,76 @@
                 </div>
             </div>
 
-            <h5 class="card-title d-none d-md-block">{{ sneaker.model }}</h5>
+            <h5 class="card-title d-none d-md-block mb-0">{{ sneaker.model }}</h5>
 
             <p class="card-text mb-1"><small class="text-muted">Size: {% if sneaker.size_type or sneaker.size %}{{ sneaker.size_type if sneaker.size_type else '' }} {{ sneaker.size if sneaker.size else '' }}{% else %}N/A{% endif %}</small></p>
-            <p class="card-text mb-1 d-none d-sm-block"><small class="text-muted">Condition: {{ sneaker.condition if sneaker.condition else 'N/A' }}</small></p>
             <p class="card-text mb-1 d-none d-sm-block"><small class="text-muted">Purchased: {% if sneaker.purchase_date %}{{ sneaker.purchase_date.strftime('%b %d, %Y') }}{% else %}N/A{% endif %}</small></p>
-            <p class="card-text mb-2 d-none d-sm-block"><small class="text-muted">Price: {% if sneaker.purchase_price is not none %}{{ sneaker.purchase_currency if sneaker.purchase_currency else '' }} {{ "%.2f"|format(sneaker.purchase_price) }}{% else %}N/A{% endif %}</small></p>
+            {% set preferred_currency = current_user.preferred_currency if current_user.is_authenticated else 'GBP' %}
+            {% set price_currency = sneaker.price_paid_currency or sneaker.purchase_currency %}
+            {% set price_display = sneaker.purchase_price|money_display(price_currency, preferred_currency) %}
+            <p class="card-text mb-2 d-none d-sm-block"><small class="text-muted">
+                Purchase Price:
+                {% if price_display.display %}
+                    {% if price_display.is_converted %}
+                        {{ price_display.label }} {{ price_display.display }}
+                        <span class="text-muted">({{ price_display.original }})</span>
+                    {% else %}
+                        {{ price_display.display }}
+                    {% endif %}
+                {% else %}
+                    N/A
+                {% endif %}
+            </small></p>
+            {% if avg_resale_map is defined %}
+                {% set avg_resale = avg_resale_map.get(sneaker.id) if avg_resale_map else None %}
+                <p class="card-text mb-2 d-none d-sm-block"><small class="text-muted">
+                    Avg Resale:
+                    {% if avg_resale %}
+                        {% if avg_resale is mapping %}
+                            {% set avg_amount = avg_resale.get('amount') %}
+                            {% set avg_currency = avg_resale.get('currency') %}
+                            {% set avg_estimate = avg_resale.get('is_estimate') %}
+                        {% else %}
+                            {% set avg_amount = avg_resale[0] %}
+                            {% set avg_currency = avg_resale[1] %}
+                            {% set avg_estimate = false %}
+                        {% endif %}
+                        {% if avg_amount %}
+                            {% set avg_display = avg_amount|money_display(avg_currency, preferred_currency) %}
+                            {% if avg_display.display %}
+                                {% if avg_estimate %}Est. {% endif %}{{ avg_display.display }}
+                                {% if avg_estimate and avg_display.is_converted %}
+                                    <span class="text-muted">({{ avg_display.original }})</span>
+                                {% endif %}
+                            {% endif %}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </small></p>
+            {% endif %}
+            {% if status_map is defined and status_map.get(sneaker.id) %}
+                <p class="card-text mb-2 d-none d-sm-block"><small class="text-muted">
+                    Health Status:
+                    <span class="badge bg-light text-dark border ms-1" title="A simple interpretation of the score.">
+                        {{ status_map.get(sneaker.id) }}
+                    </span>
+                </small></p>
+            {% endif %}
 
             <p class="card-text mb-2" id="last-worn-display-{{ sneaker.id }}"><small class="text-muted">Last Worn: {% if sneaker.last_worn_date %}{{ sneaker.last_worn_date.strftime('%b %d, %Y') }}{% else %}Not set{% endif %}</small></p>
-            <form method="POST" action="{{ url_for('sneakers.update_last_worn', sneaker_id=sneaker.id) }}" class="mb-2 update-last-worn-ajax-form">
+            <form method="POST" action="{{ url_for('sneakers.update_last_worn', sneaker_id=sneaker.id) }}" class="mb-2 update-last-worn-ajax-form" data-use-exposure-modal="true">
                 {{ form_for_modal.hidden_tag() }}
+                <input type="hidden" name="exposure_update" value="1">
+                <input type="hidden" name="got_wet" value="">
+                <input type="hidden" name="wet_severity" value="">
+                <input type="hidden" name="got_dirty" value="">
+                <input type="hidden" name="dirty_severity" value="">
+                <input type="hidden" name="stain_flag" value="">
+                <input type="hidden" name="stain_severity" value="">
+                <input type="hidden" name="note" value="">
                 <label for="last_worn_input_{{ sneaker.id }}" class="form-label visually-hidden">Update Last Worn Date</label>
                 <div class="input-group input-group-sm">
                     <input type="date" name="new_last_worn" id="last_worn_input_{{ sneaker.id }}"
@@ -64,11 +124,8 @@
             </form>
 
             <div class="mt-auto d-flex justify-content-between pt-2 align-items-center">
-                {# The "Edit Details" button is always visible on both pages #}
-                <button type="button" class="btn btn-outline-secondary btn-sm open-edit-sneaker-modal-btn" 
-                        data-sneaker-id="{{ sneaker.id }}"
-                        data-fetch-url="{{ url_for('sneakers.get_sneaker_data', sneaker_id=sneaker.id) }}"
-                        data-edit-action-url="{{ url_for('sneakers.edit_sneaker', sneaker_id=sneaker.id) }}">Edit Details</button>
+                <a href="{{ url_for('sneakers.my_sneaker_detail', sneaker_id=sneaker.id, slug=build_my_sneaker_slug(sneaker), source=('rotation' if on_rotation_page else None)) }}"
+                   class="btn btn-outline-secondary btn-sm">View Details</a>
 
                 {# --- Conditionally Render Remove or Delete Button --- #}
                 {% if on_rotation_page %}
@@ -82,7 +139,13 @@
                 {% else %}
                     {# On the "My Collection" page, show this button: #}
                     <form method="POST" action="{{ url_for('sneakers.delete_sneaker', sneaker_id=sneaker.id) }}" class="d-inline delete-sneaker-ajax-form">
-                        <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                        <button type="submit"
+                                class="btn btn-outline-danger btn-sm delete-sneaker-btn"
+                                data-sneaker-id="{{ sneaker.id }}"
+                                data-sneaker-size="{{ sneaker.size or '' }}"
+                                data-sneaker-size-type="{{ sneaker.size_type or '' }}">
+                            Remove
+                        </button>
                     </form>
                 {% endif %}
             </div>

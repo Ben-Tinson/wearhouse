@@ -1,0 +1,1280 @@
+{% extends "base.html" %}
+
+{% block title %}{{ sneaker.model }}{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="mb-1">{{ sneaker.model }}</h2>
+            {% if sneaker.sku %}
+                <span class="text-muted">SKU: {{ sneaker.sku }}</span>
+            {% endif %}
+        </div>
+        <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm">{{ back_label }}</a>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    {% if sneaker.image_url %}
+                        {% set image_src = sneaker.image_url if sneaker.image_url.startswith('http') else url_for('main.uploaded_file', filename=sneaker.image_url) %}
+                        <img src="{{ image_src }}" class="img-fluid rounded" alt="{{ sneaker.model }}" style="max-height: 320px; object-fit: contain;">
+                    {% else %}
+                        <img src="{{ url_for('static', filename='images/placeholder.png') }}" class="img-fluid rounded" alt="No image available" style="max-height: 320px; object-fit: contain;">
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Release Info</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="text-muted">Model</div>
+                            <div>{{ sneaker.model or 'N/A' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">Brand</div>
+                            <div>{{ sneaker.brand or 'N/A' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">Colorway</div>
+                            <div>{{ (release.colorway if release else sneaker.colorway) or 'N/A' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">Release Date</div>
+                            <div>{{ release.release_date.strftime('%b %d, %Y') if release and release.release_date else 'N/A' }}</div>
+                        </div>
+                        <div class="col-12">
+                            <div class="text-muted">Materials</div>
+                            <div class="d-flex flex-wrap gap-2 align-items-start">
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% if sneaker_materials %}
+                                        {% for material in sneaker_materials %}
+                                            <form method="POST"
+                                                  action="{{ url_for('sneakers.delete_sneaker_material', sneaker_id=sneaker.id, source=source) }}"
+                                                  class="d-flex align-items-center"
+                                                  onsubmit="return confirm('Remove this material?');">
+                                                {{ form_for_modal.hidden_tag() }}
+                                                <input type="hidden" name="material" value="{{ material }}">
+                                                <span class="badge rounded-pill bg-light text-dark border d-flex align-items-center gap-2">
+                                                    {{ material }}
+                                                    <button type="submit" class="btn btn-link p-0 text-danger" style="text-decoration: none;">&times;</button>
+                                                </span>
+                                            </form>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div>N/A</div>
+                                    {% endif %}
+                                </div>
+                                <form method="POST" action="{{ url_for('sneakers.add_sneaker_material', sneaker_id=sneaker.id, source=source) }}">
+                                    {{ form_for_modal.hidden_tag() }}
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" name="material" class="form-control" placeholder="Add material">
+                                        <button type="submit" class="btn btn-outline-secondary">Add</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <h5 class="card-title mb-0">Your Sneaker's Details</h5>
+                        <button type="button"
+                                class="btn btn-outline-secondary btn-sm open-edit-sneaker-modal-btn"
+                                data-edit-scope="details"
+                                data-sneaker-id="{{ sneaker.id }}"
+                                data-fetch-url="{{ url_for('sneakers.get_sneaker_data', sneaker_id=sneaker.id) }}"
+                                data-edit-action-url="{{ url_for('sneakers.edit_sneaker', sneaker_id=sneaker.id) }}">
+                            Edit Details
+                        </button>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="text-muted">Size</div>
+                            <div>
+                                {% if sneaker.size_type or sneaker.size %}
+                                    {{ sneaker.size_type or '' }} {{ sneaker.size or '' }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">Purchase Condition</div>
+                            <div>{{ sneaker.condition or 'N/A' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">Purchase Date</div>
+                            <div>{{ sneaker.purchase_date.strftime('%b %d, %Y') if sneaker.purchase_date else 'N/A' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">Last Worn</div>
+                            <div id="detail-last-worn-display">
+                                {{ sneaker.last_worn_date.strftime('%b %d, %Y') if sneaker.last_worn_date else 'Not set' }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">Update Last Worn</div>
+                            <form method="POST" action="{{ url_for('sneakers.update_last_worn', sneaker_id=sneaker.id) }}"
+                                  class="update-last-worn-ajax-form"
+                                  data-use-exposure-modal="true">
+                                {{ form_for_modal.hidden_tag() }}
+                                <input type="hidden" name="exposure_update" value="1">
+                                <input type="hidden" name="got_wet" value="">
+                                <input type="hidden" name="wet_severity" value="">
+                                <input type="hidden" name="got_dirty" value="">
+                                <input type="hidden" name="dirty_severity" value="">
+                                <input type="hidden" name="stain_flag" value="">
+                                <input type="hidden" name="stain_severity" value="">
+                                <input type="hidden" name="note" value="">
+                                <input type="hidden" name="care_tags" value="{{ care_tags|join(',') }}">
+                                <div class="input-group input-group-sm">
+                                    <input type="date" name="new_last_worn" class="form-control"
+                                           value="{{ sneaker.last_worn_date.strftime('%Y-%m-%d') if sneaker.last_worn_date else '' }}">
+                                    <button type="submit" class="btn btn-outline-info">Update</button>
+                                </div>
+                                <span class="form-text ajax-status-message" style="font-size: 0.85em;"></span>
+                            </form>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">Wear Count</div>
+                            <div id="detail-wear-count">{{ wear_count or 0 }}</div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-text" id="detail-wear-count-note">
+                                Wear count is based on your first logged wear{% if first_wear_date %} on {{ first_wear_date.strftime('%b %d, %Y') }}{% endif %}.
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="text-muted">Notes</div>
+                            <form method="POST" action="{{ url_for('sneakers.add_sneaker_note', sneaker_id=sneaker.id) }}"
+                                  class="note-create-form mt-2">
+                                {{ form_for_modal.hidden_tag() }}
+                                <textarea name="note" class="form-control form-control-sm mb-2" rows="3"
+                                          placeholder="Add a note..."></textarea>
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                    <button type="submit" class="btn btn-outline-primary btn-sm">Add Note</button>
+                                    <span class="form-text ajax-status-message" style="font-size: 0.85em;"></span>
+                                </div>
+                            </form>
+                            <div id="noteList" class="mt-3">
+                                {% if sneaker.note_entries %}
+                                    {% for note in sneaker.note_entries %}
+                                        <div class="d-flex justify-content-between align-items-start gap-3 border rounded p-2 mb-2 note-item" data-note-id="{{ note.id }}">
+                                            <div>
+                                                <div class="small text-muted">{{ note.created_at.strftime('%b %d, %Y') if note.created_at else '' }}</div>
+                                                <div>{{ note.body }}</div>
+                                            </div>
+                                            <button type="button"
+                                                    class="btn btn-outline-danger btn-sm note-delete-btn"
+                                                    data-delete-url="{{ url_for('sneakers.delete_sneaker_note', sneaker_id=sneaker.id, note_id=note.id) }}">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="text-muted mb-0 note-empty-state">No notes yet.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <h5 class="card-title mb-0">Your Sneaker's Finances</h5>
+                        <button type="button"
+                                class="btn btn-outline-secondary btn-sm open-edit-sneaker-modal-btn"
+                                data-edit-scope="finances"
+                                data-sneaker-id="{{ sneaker.id }}"
+                                data-fetch-url="{{ url_for('sneakers.get_sneaker_data', sneaker_id=sneaker.id) }}"
+                                data-edit-action-url="{{ url_for('sneakers.edit_sneaker', sneaker_id=sneaker.id) }}">
+                            Edit Finances
+                        </button>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="text-muted">Retail Price</div>
+                            {% if release and release.retail_price %}
+                                <div>{{ release.retail_price|money(release.retail_currency or 'USD') }}</div>
+                            {% else %}
+                                <div>N/A</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">Purchase Price</div>
+                            {% set price_currency = sneaker.price_paid_currency or sneaker.purchase_currency %}
+                            {% set purchase_display = sneaker.purchase_price|money_display(price_currency, preferred_currency) %}
+                            <div>
+                                {% if purchase_display.display %}
+                                    {% if purchase_display.is_converted %}
+                                        {{ purchase_display.label }} {{ purchase_display.display }}
+                                        <span class="text-muted">({{ purchase_display.original }})</span>
+                                    {% else %}
+                                        {{ purchase_display.display }}
+                                    {% endif %}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">Avg 3-Month Resale</div>
+                            <div>
+                                {% if avg_resale %}
+                                    {% set avg_amount = avg_resale.get('amount') %}
+                                    {% set avg_currency = avg_resale.get('currency') %}
+                                    {% set avg_estimate = avg_resale.get('is_estimate') %}
+                                    {% if avg_amount %}
+                                        {% set avg_display = avg_amount|money_display(avg_currency, preferred_currency) %}
+                                        {% if avg_display.display %}
+                                            {% if avg_estimate %}Est. {% endif %}{{ avg_display.display }}
+                                            {% if avg_estimate and avg_display.is_converted %}
+                                                <span class="text-muted">({{ avg_display.original }})</span>
+                                            {% endif %}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">ROI</div>
+                            <div>{{ finance_delta_display or 'N/A' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">Total Invested</div>
+                            <div>{{ total_invested_display or 'N/A' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">CPW</div>
+                            <div id="detail-cpw-display">{{ cpw_display or 'N/A' }}</div>
+                            <div class="form-text" id="detail-cpw-note">
+                                CPW is based on your first logged wear{% if first_wear_date %} on {{ first_wear_date.strftime('%b %d, %Y') }}{% endif %}.
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="text-muted">Last 30 Sale Prices</div>
+                            <div class="chart-wrapper">
+                                <canvas id="salesHistoryChart" height="140"></canvas>
+                            </div>
+                            {% if not sales_series %}
+                                <div class="text-muted small mt-2">No sales history available yet.</div>
+                            {% endif %}
+                            <div class="form-text">
+                                {% if sales_series_fetched_at %}
+                                    Last refreshed {{ sales_series_fetched_at.strftime('%b %d, %Y') }}. Data refreshes every 5 days.
+                                {% else %}
+                                    Data will appear after the first refresh.
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Your Sneaker's Health</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="text-muted">Estimated Steps (Last 7 Days)</div>
+                            <div>
+                                {% if steps_last_7 is not none %}
+                                    {{ "{:,}".format(steps_last_7) }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted">Estimated Steps (Last 30 Days)</div>
+                            <div>
+                                {% if steps_last_30 is not none %}
+                                    {{ "{:,}".format(steps_last_30) }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted">Estimated Steps (All Time)</div>
+                            <div>
+                                {% if steps_total is not none %}
+                                    {{ "{:,}".format(steps_total) }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted d-flex align-items-center gap-2">
+                                Health Score
+                                <button type="button" class="btn btn-link p-0 text-muted" data-bs-toggle="tooltip" data-bs-placement="top"
+                                        title="Score ranges 0–100. It starts from Purchase Condition and is reduced by steps wear, cosmetic exposure, structural/material damage, and cleanliness (wears since clean). Cleaning clears wet/dirty effects; repairs clear selected damage and restoration lifts the baseline to at least 90.">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16" aria-label="Health score info">
+                                        <path d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14Zm0 1A8 8 0 1 1 8 0a8 8 0 0 1 0 16Z"/>
+                                        <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533l.738-3.468c.194-.897-.105-1.319-.808-1.319-.545 0-1.178.252-1.465.598l-.088.416c.2-.176.492-.246.686-.246.275 0 .375.193.304.533Z"/>
+                                        <circle cx="8" cy="4.5" r="1"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="fw-semibold">{{ "%.1f"|format(health_score) }}</div>
+                            <div class="small text-muted">
+                                Status:
+                                <span class="badge bg-light text-dark border" title="A simple interpretation of the score.">
+                                    {{ status_label }}
+                                </span>
+                            </div>
+                            <div class="small text-muted mt-1">
+                                Confidence:
+                                <span class="badge bg-light text-dark border" title="Confidence reflects how complete your data is (steps sync, wear/exposure logs, cleaning history, and recent repairs). It does not change the score.">
+                                    {{ confidence_label }}
+                                </span>
+                            </div>
+                            {% if recommendation_label %}
+                                <div class="small text-muted mt-1">
+                                    Action:
+                                    <span class="badge bg-light text-dark border" {% if recommendation_reason %}data-bs-toggle="tooltip" data-bs-placement="top" title="{{ recommendation_reason }}"{% endif %}>
+                                        {{ recommendation_label }}
+                                    </span>
+                                </div>
+                            {% endif %}
+                            {% if persistent_structural_damage_points and persistent_structural_damage_points > 0 %}
+                                <div class="small text-muted mt-1">Active damage penalty: {{ "%.1f"|format(persistent_structural_damage_points) }} pts</div>
+                            {% endif %}
+                            <button class="btn btn-link btn-sm px-0" type="button" data-bs-toggle="collapse" data-bs-target="#health-breakdown"
+                                    title="See how Purchase Condition and each penalty type contribute to the current score.">
+                                Why this score?
+                            </button>
+                            <div class="collapse" id="health-breakdown">
+                                <div class="small text-muted">
+                                    <!-- <div class="mb-1">
+                                        <span class="fw-semibold">Baseline</span>
+                                        (Purchase Condition: {{ health_breakdown.purchase_condition_label }})
+                                        = {{ "%.1f"|format(health_breakdown.starting_health) }}
+                                    </div>
+                                    <div>
+                                        <span class="fw-semibold">Wear (steps)</span>:
+                                        -{{ "%.1f"|format(health_breakdown.wear_penalty or 0.0) }} pts
+                                        {% if health_breakdown.steps_total is not none %}
+                                            <span class="text-muted">({{ health_breakdown.steps_total }} steps)</span>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <span class="fw-semibold">Cosmetic</span>:
+                                        -{{ "%.1f"|format(health_breakdown.cosmetic_penalty or 0.0) }} pts
+                                        <span class="text-muted">
+                                            (wet {{ "%.1f"|format(wet_penalty) }},
+                                            dirty {{ "%.1f"|format(dirty_penalty) }},
+                                            stain {{ "%.1f"|format(persistent_stain_points) }})
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span class="fw-semibold">Structural</span>:
+                                        -{{ "%.1f"|format(health_breakdown.structural_penalty or 0.0) }} pts
+                                        <span class="text-muted">
+                                            (active damage {{ active_damage_count }},
+                                            material {{ "%.1f"|format(persistent_material_damage_points) }},
+                                            structural {{ "%.1f"|format(persistent_structural_damage_points) }})
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span class="fw-semibold">Hygiene</span>:
+                                        -{{ "%.1f"|format(health_breakdown.hygiene_penalty or 0.0) }} pts
+                                        <span class="text-muted">({{ wears_since_clean }} wears since clean)</span>
+                                    </div> -->
+                                    <div class="mt-2">
+                                        <div class="d-flex justify-content-between">
+                                            <span class="fw-semibold">Baseline (Purchase Condition)</span>
+                                            <span>{{ "%.1f"|format(health_breakdown.starting_health) }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span>Wear (steps)</span>
+                                            <span>-{{ "%.1f"|format(health_breakdown.wear_penalty or 0.0) }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span>Cosmetic (wet/dirty/stain)</span>
+                                            <span>-{{ "%.1f"|format(health_breakdown.cosmetic_penalty or 0.0) }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span>Structural (damage/material)</span>
+                                            <span>-{{ "%.1f"|format(health_breakdown.structural_penalty or 0.0) }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span>Cleanliness (wears since clean)</span>
+                                            <span>-{{ "%.1f"|format(health_breakdown.hygiene_penalty or 0.0) }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mt-1">
+                                            <span class="fw-semibold">Total score</span>
+                                            <span class="fw-semibold">{{ "%.1f"|format(health_breakdown.health_score) }}</span>
+                                        </div>
+                                        <div class="text-muted mt-1">Scores range from 0 to 100.</div>
+                                    </div>
+                                    <div class="mt-1">
+                                        {% if recommendation_label %}
+                                            <span class="fw-semibold">{{ recommendation_label }}</span>
+                                            {% if recommendation_reason %}
+                                                <span class="text-muted">({{ recommendation_reason }})</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">None</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted">Last Cleaned</div>
+                            <div>
+                                {% if last_cleaned_at %}
+                                    {{ last_cleaned_at.strftime('%b %d, %Y') }}
+                                {% else %}
+                                    Not set
+                                {% endif %}
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#cleanedNotesModal">
+                                Mark Cleaned
+                            </button>
+                        </div>
+                        <div class="col-12">
+                            <div class="row g-2">
+                                <div class="col-12 col-md-4">
+                                    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('sneakers.sneaker_health_history', sneaker_id=sneaker.id) }}">
+                                        Health History
+                                    </a>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#damageModal">
+                                        Report Damage
+                                    </button>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#repairModal">
+                                        Mark Repaired/Restored
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% if care_tags %}
+                            <div class="col-12">
+                                <div class="text-muted mb-1">Care sensitivity</div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% for tag in care_tags %}
+                                        <span class="badge bg-light text-dark border">{{ care_tag_labels.get(tag, tag) }}</span>
+                                    {% endfor %}
+                                </div>
+                                <div class="small text-muted mt-1">
+                                    {% if 'suede_or_nubuck' in care_tags %}
+                                        Avoid water and heavy rubbing; stains may persist.
+                                    {% elif 'knit_mesh' in care_tags %}
+                                        Avoid heavy abrasion; clean gently.
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
+                        <div class="col-12">
+                            <div class="text-muted mb-2">Exposure Notes</div>
+                            <div class="d-flex flex-column gap-2">
+                                {% if exposure_notes %}
+                                    {% for note in exposure_notes %}
+                                        <div class="border rounded p-2">
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <span class="small text-muted">
+                                                    {{ note.date_local.strftime('%b %d, %Y') }}
+                                                </span>
+                                            </div>
+                                            <div class="d-flex flex-wrap gap-2 align-items-start">
+                                                <form method="POST" action="{{ url_for('sneakers.update_exposure_note', sneaker_id=sneaker.id, event_id=note.id) }}" class="flex-grow-1">
+                                                    {{ form_for_modal.hidden_tag() }}
+                                                    <textarea class="form-control form-control-sm" name="note" rows="2" maxlength="140">{{ note.note }}</textarea>
+                                                    <button type="submit" class="btn btn-outline-primary btn-sm mt-2">Save</button>
+                                                </form>
+                                                <form method="POST" action="{{ url_for('sneakers.delete_exposure_note', sneaker_id=sneaker.id, event_id=note.id) }}" class="align-self-start">
+                                                    {{ form_for_modal.hidden_tag() }}
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm mt-2">Delete</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="small text-muted">No exposure notes yet.</div>
+                                {% endif %}
+                            </div>
+                            <form method="POST" action="{{ url_for('sneakers.add_exposure_note', sneaker_id=sneaker.id) }}" class="mt-3">
+                                {{ form_for_modal.hidden_tag() }}
+                                <div class="row g-2 align-items-start">
+                                    <div class="col-12">
+                                        <label class="form-label small text-muted mb-1" for="exposure-note-text">Add note</label>
+                                        <textarea class="form-control form-control-sm" id="exposure-note-text" name="note" rows="2" maxlength="140" placeholder="Optional note (max 140 characters)" required></textarea>
+                                    </div>
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm">Add Note</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="form-text mt-2">
+                        Steps are estimated from daily buckets and logged wear dates.
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-primary open-edit-sneaker-modal-btn"
+                        data-edit-scope="all"
+                        data-sneaker-id="{{ sneaker.id }}"
+                        data-fetch-url="{{ url_for('sneakers.get_sneaker_data', sneaker_id=sneaker.id) }}"
+                        data-edit-action-url="{{ url_for('sneakers.edit_sneaker', sneaker_id=sneaker.id) }}">
+                    Edit Details
+                </button>
+                {% if sneaker.in_rotation %}
+                    <form method="POST" action="{{ url_for('sneakers.remove_from_rotation', sneaker_id=sneaker.id) }}" class="d-inline">
+                        {{ form_for_modal.hidden_tag() }}
+                        <button type="submit" class="btn btn-outline-warning">Remove from Rotation</button>
+                    </form>
+                {% else %}
+                    <form method="POST" action="{{ url_for('sneakers.add_to_rotation', sneaker_id=sneaker.id) }}" class="d-inline">
+                        {{ form_for_modal.hidden_tag() }}
+                        <button type="submit" class="btn btn-outline-info">Add to Rotation</button>
+                    </form>
+                {% endif %}
+                <form method="POST" action="{{ url_for('sneakers.delete_sneaker', sneaker_id=sneaker.id) }}" class="d-inline delete-sneaker-detail-form">
+                    {{ form_for_modal.hidden_tag() }}
+                    <button type="submit" class="btn btn-outline-danger">Delete from Collection</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {% include '_sneaker_form_modal.html' %}
+    {% include '_sneaker_sale_modal.html' %}
+
+    <div class="modal fade" id="cleanedNotesModal" tabindex="-1" aria-labelledby="cleanedNotesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('sneakers.mark_sneaker_cleaned', sneaker_id=sneaker.id) }}">
+                    {{ form_for_modal.hidden_tag() }}
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="cleanedNotesModalLabel">Mark Cleaned</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small text-muted mb-3">
+                            Would you like to remove exposure notes linked to this sneaker?
+                        </p>
+                        {% if has_stains_since_clean %}
+                            <div class="border rounded p-2 mb-3">
+                                <div class="small text-muted mb-2">Stain check</div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="stain_removed" id="stain-removed-yes" value="yes" checked>
+                                    <label class="form-check-label" for="stain-removed-yes">Stain removed</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="stain_removed" id="stain-removed-no" value="no">
+                                    <label class="form-check-label" for="stain-removed-no">Stain still visible</label>
+                                </div>
+                            </div>
+                        {% endif %}
+                        {% if has_sensitive_materials %}
+                            <div class="border rounded p-2 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="lasting_material_impact" id="lasting-material-impact">
+                                    <label class="form-check-label" for="lasting-material-impact">
+                                        Did wet/dirt leave a lasting impact on suede/nubuck?
+                                    </label>
+                                </div>
+                            </div>
+                        {% endif %}
+                        <div class="d-flex flex-column gap-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="notes_action" id="notes-keep" value="keep" checked>
+                                <label class="form-check-label" for="notes-keep">Keep all notes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="notes_action" id="notes-delete-all" value="delete_all">
+                                <label class="form-check-label" for="notes-delete-all">Remove all notes for this sneaker</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="notes_action" id="notes-delete-selected" value="delete_selected">
+                                <label class="form-check-label" for="notes-delete-selected">Remove selected notes</label>
+                            </div>
+                        </div>
+                        {% if exposure_notes %}
+                            <div class="mt-3 border rounded p-2">
+                                <div class="small text-muted mb-2">Select notes to remove</div>
+                                <div class="d-flex flex-column gap-2">
+                                    {% for note in exposure_notes %}
+                                        <label class="d-flex align-items-start gap-2">
+                                            <input class="form-check-input mt-1" type="checkbox" name="note_ids" value="{{ note.id }}">
+                                            <span>
+                                                <span class="small text-muted">{{ note.date_local.strftime('%b %d, %Y') }}</span><br>
+                                                <span>{{ note.note }}</span>
+                                            </span>
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="small text-muted mt-3">No notes to remove.</div>
+                        {% endif %}
+                        <div class="mt-3">
+                            <label for="clean-notes" class="form-label small text-muted mb-1">Clean notes (optional)</label>
+                            <textarea class="form-control form-control-sm" id="clean-notes" name="clean_notes" rows="2" maxlength="280"
+                                      placeholder="Optional note about cleaning or stains"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Confirm</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="damageModal" tabindex="-1" aria-labelledby="damageModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('sneakers.report_sneaker_damage', sneaker_id=sneaker.id) }}">
+                    {{ damage_form.hidden_tag() }}
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="damageModalLabel">Report Damage</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            {{ damage_form.damage_type.label(class="form-label") }}
+                            {{ damage_form.damage_type(class="form-select") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ damage_form.severity.label(class="form-label") }}
+                            {{ damage_form.severity(class="form-select") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ damage_form.notes.label(class="form-label") }}
+                            {{ damage_form.notes(class="form-control", rows="2") }}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger">Report damage</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="repairModal" tabindex="-1" aria-labelledby="repairModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('sneakers.repair_sneaker', sneaker_id=sneaker.id) }}">
+                    {{ repair_form.hidden_tag() }}
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="repairModalLabel">Repair / Restoration</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            {{ repair_form.repair_kind.label(class="form-label") }}
+                            {{ repair_form.repair_kind(class="form-select") }}
+                        </div>
+                        <div class="mb-3" id="repair-type-wrapper">
+                            {{ repair_form.repair_type.label(class="form-label") }}
+                            {{ repair_form.repair_type(class="form-select", id="repair-type-select") }}
+                        </div>
+                        <div class="mb-3 d-none" id="repair-type-other-wrapper">
+                            {{ repair_form.repair_type_other.label(class="form-label") }}
+                            {{ repair_form.repair_type_other(class="form-control") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ repair_form.provider.label(class="form-label") }}
+                            {{ repair_form.provider(class="form-select", id="repair-provider-select") }}
+                        </div>
+                        <div class="mb-3 d-none" id="repair-provider-other-wrapper">
+                            {{ repair_form.provider_other.label(class="form-label") }}
+                            {{ repair_form.provider_other(class="form-control") }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Cost (optional)</label>
+                            <div class="d-flex gap-2">
+                                {{ repair_form.cost_currency(class="form-select", style="max-width: 100px;") }}
+                                {{ repair_form.cost_amount(class="form-control", placeholder="Amount", step="0.01") }}
+                            </div>
+                        </div>
+                        <div class="mb-3 d-none" id="repair-area-wrapper">
+                            {{ repair_form.repair_area.label(class="form-label") }}
+                            {{ repair_form.repair_area(class="form-select", id="repair-area-select") }}
+                            <div class="form-text">If you repaired something not previously recorded as damage, choose the area to reflect improved condition.</div>
+                        </div>
+                        <div class="mb-3">
+                            {{ repair_form.notes.label(class="form-label") }}
+                            {{ repair_form.notes(class="form-control", rows="2") }}
+                        </div>
+                        <div class="form-check">
+                            {{ repair_form.resolved_all_active_damage(class="form-check-input", value="1") }}
+                            {{ repair_form.resolved_all_active_damage.label(class="form-check-label") }}
+                        </div>
+                        <div class="mt-3 d-none" id="partial-damage-list">
+                            <div class="small text-muted mb-2">Select damage items resolved</div>
+                            {% if active_damage_events %}
+                                <div class="d-flex flex-column gap-2">
+                                    {% for event in active_damage_events %}
+                                        <label class="d-flex align-items-start gap-2">
+                                            <input class="form-check-input mt-1" type="checkbox" name="resolved_damage_ids" value="{{ event.id }}" disabled>
+                                            <span>
+                                                <span class="fw-semibold">{{ damage_type_labels.get(event.damage_type, event.damage_type.replace('_', ' ')|title) }}</span>
+                                                <span class="text-muted">({{ event.severity }})</span><br>
+                                                <span class="small text-muted">{{ event.reported_at.strftime('%b %d, %Y') }}</span>
+                                                <span class="small text-muted">• {{ "%.1f"|format(event.health_penalty_points) }} pts</span>
+                                            </span>
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="small text-muted">No active damage items.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const salesHistoryCanvas = document.getElementById('salesHistoryChart');
+            const salesHistoryData = {{ (sales_series or []) | tojson }};
+            const salesHistoryCurrency = {{ (sales_series_currency or '') | tojson }};
+            if (salesHistoryCanvas && salesHistoryData.length) {
+                const labels = salesHistoryData.map(item => item.label);
+                const values = salesHistoryData.map(item => item.value);
+                const currencySymbols = { GBP: '£', USD: '$', EUR: '€' };
+                const currencySymbol = currencySymbols[salesHistoryCurrency] || '';
+                const chartTitle = salesHistoryCurrency ? `Sale Price (${salesHistoryCurrency})` : 'Sale Price';
+                const avgValue = Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 100) / 100;
+                const salesHistoryChart = new Chart(salesHistoryCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: chartTitle,
+                            data: values,
+                            borderColor: '#0ea5e9',
+                            pointBackgroundColor: '#0ea5e9',
+                            pointBorderColor: '#0ea5e9',
+                            backgroundColor: 'rgba(14, 165, 233, 0.2)',
+                            tension: 0.25,
+                            fill: true
+                        }, {
+                            label: 'Average (Last 30)',
+                            data: values.map(() => avgValue),
+                            borderColor: '#f97316',
+                            pointBackgroundColor: '#f97316',
+                            pointBorderColor: '#f97316',
+                            borderDash: [6, 6],
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        interaction: {
+                            mode: 'nearest',
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'bottom',
+                                labels: { usePointStyle: true }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: context => {
+                                        const label = context.dataset.label || '';
+                                        const value = context.parsed.y;
+                                        if (value === null || value === undefined) {
+                                            return label;
+                                        }
+                                        const formattedValue = Number(value).toFixed(2);
+                                        const formatted = salesHistoryCurrency
+                                            ? `${currencySymbol}${formattedValue}`
+                                            : formattedValue;
+                                        return label ? `${label}: ${formatted}` : formatted;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: value => {
+                                        const formattedValue = Number(value).toFixed(2);
+                                        return salesHistoryCurrency
+                                            ? `${currencySymbol}${formattedValue}`
+                                            : formattedValue;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                window.addEventListener('resize', () => {
+                    salesHistoryChart.resize();
+                });
+            }
+            const modalEl = document.getElementById('sneakerFormModal');
+            const modal = modalEl ? new bootstrap.Modal(modalEl) : null;
+            const modalForm = document.getElementById('sneakerModalForm');
+            const modalTitle = document.getElementById('sneakerFormModalLabel');
+            const modalSaveBtn = document.getElementById('saveSneakerModalButton');
+            const currentImagePreviewContainer = document.getElementById('currentImagePreviewContainer');
+            const currentImagePreviewImg = document.getElementById('currentImagePreviewInModal');
+            const newImagePreviewArea = document.getElementById('newImagePreviewArea');
+            const urlWrapper = document.getElementById('modal_image_url_wrapper');
+            const fileWrapper = document.getElementById('modal_image_file_wrapper');
+            const saleModalEl = document.getElementById('sneakerSaleModal');
+            const saleModal = saleModalEl ? new bootstrap.Modal(saleModalEl) : null;
+            const soldToggle = document.getElementById('soldSneakerToggle');
+            const soldFields = document.getElementById('soldDetailsFields');
+            const soldPriceInput = document.getElementById('soldPriceInput');
+            const soldCurrencySelect = document.getElementById('soldCurrencySelect');
+            const soldDateInput = document.getElementById('soldDateInput');
+            const soldErrorMessage = document.getElementById('soldErrorMessage');
+            const confirmDeleteBtn = document.getElementById('confirmSneakerDelete');
+            const deleteForm = document.querySelector('.delete-sneaker-detail-form');
+
+            function toggleModalImageInputs() {
+                const urlRadio = modalForm?.querySelector('[name="image_option"][value="url"]');
+                if (urlRadio && urlWrapper && fileWrapper) {
+                    urlWrapper.style.display = urlRadio.checked ? 'block' : 'none';
+                    fileWrapper.style.display = urlRadio.checked ? 'none' : 'block';
+                }
+            }
+
+            const editButtons = document.querySelectorAll('.open-edit-sneaker-modal-btn');
+
+            function applyEditScope(scope) {
+                const sections = document.querySelectorAll('.sneaker-form-section');
+                sections.forEach(section => {
+                    const sectionName = section.dataset.section;
+                    const shouldShow = scope === 'all' ? true : sectionName === scope;
+                    section.style.display = shouldShow ? 'block' : 'none';
+                });
+            }
+
+            editButtons.forEach(button => {
+                button.addEventListener('click', event => {
+                    const target = event.currentTarget;
+                    const fetchUrl = target.dataset.fetchUrl;
+                    const editActionUrl = target.dataset.editActionUrl;
+                    const scope = target.dataset.editScope || 'all';
+                    fetch(fetchUrl)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.status === 'success' && data.sneaker) {
+                                modalForm.reset();
+                                if (scope === 'details') {
+                                    modalTitle.textContent = 'Edit Your Sneaker Details';
+                                } else if (scope === 'finances') {
+                                    modalTitle.textContent = 'Edit Your Sneaker Finances';
+                                } else {
+                                    modalTitle.textContent = `Edit: ${data.sneaker.brand} ${data.sneaker.model}`;
+                                }
+                                modalSaveBtn.textContent = 'Save Changes';
+                                modalForm.setAttribute('action', editActionUrl);
+                                for (const key in data.sneaker) {
+                                    const input = modalForm.querySelector(`[name="${key}"]`);
+                                    if (input) input.value = data.sneaker[key];
+                                }
+                                if (data.sneaker.current_image_display_url) {
+                                    currentImagePreviewImg.src = data.sneaker.current_image_display_url;
+                                    currentImagePreviewContainer.style.display = 'block';
+                                } else {
+                                    currentImagePreviewContainer.style.display = 'none';
+                                }
+                                if (newImagePreviewArea) newImagePreviewArea.style.display = 'none';
+                                const urlRadio = modalForm.querySelector('[name="image_option"][value="url"]');
+                                if (urlRadio) urlRadio.checked = true;
+                                toggleModalImageInputs();
+                                applyEditScope(scope);
+                                modal.show();
+                            }
+                        });
+                });
+            });
+
+            function resetSaleModal() {
+                if (soldToggle) soldToggle.checked = false;
+                if (soldFields) soldFields.style.display = 'none';
+                if (soldPriceInput) soldPriceInput.value = '';
+                if (soldDateInput) soldDateInput.value = '';
+                if (soldErrorMessage) {
+                    soldErrorMessage.style.display = 'none';
+                    soldErrorMessage.textContent = '';
+                }
+            }
+
+            function openSneakerSaleModal() {
+                if (!saleModal || !deleteForm) return;
+                resetSaleModal();
+                if (soldCurrencySelect) {
+                    soldCurrencySelect.value = {{ preferred_currency|tojson }};
+                }
+                if (soldDateInput) {
+                    soldDateInput.value = new Date().toISOString().slice(0, 10);
+                }
+                saleModal.show();
+            }
+
+            if (soldToggle && soldFields) {
+                soldToggle.addEventListener('change', () => {
+                    soldFields.style.display = soldToggle.checked ? 'block' : 'none';
+                });
+            }
+
+            if (deleteForm) {
+                deleteForm.addEventListener('submit', event => {
+                    event.preventDefault();
+                    openSneakerSaleModal();
+                });
+            }
+
+            if (confirmDeleteBtn && deleteForm) {
+                confirmDeleteBtn.addEventListener('click', () => {
+                    if (soldToggle && soldToggle.checked) {
+                        if (!soldPriceInput || !soldPriceInput.value) {
+                            if (soldErrorMessage) {
+                                soldErrorMessage.textContent = 'Please enter a sale price.';
+                                soldErrorMessage.style.display = 'block';
+                            }
+                            return;
+                        }
+                        const soldField = document.createElement('input');
+                        soldField.type = 'hidden';
+                        soldField.name = 'sold';
+                        soldField.value = '1';
+                        deleteForm.appendChild(soldField);
+
+                        const priceField = document.createElement('input');
+                        priceField.type = 'hidden';
+                        priceField.name = 'sold_price';
+                        priceField.value = soldPriceInput.value;
+                        deleteForm.appendChild(priceField);
+
+                        if (soldCurrencySelect) {
+                            const currencyField = document.createElement('input');
+                            currencyField.type = 'hidden';
+                            currencyField.name = 'sold_currency';
+                            currencyField.value = soldCurrencySelect.value;
+                            deleteForm.appendChild(currencyField);
+                        }
+
+                        if (soldDateInput && soldDateInput.value) {
+                            const dateField = document.createElement('input');
+                            dateField.type = 'hidden';
+                            dateField.name = 'sold_date';
+                            dateField.value = soldDateInput.value;
+                            deleteForm.appendChild(dateField);
+                        }
+                    }
+                    deleteForm.submit();
+                });
+            }
+
+            const resolveAllToggle = document.getElementById('resolved_all_active_damage');
+            const partialDamageList = document.getElementById('partial-damage-list');
+            if (resolveAllToggle && partialDamageList) {
+                const togglePartialList = () => {
+                    const show = !resolveAllToggle.checked;
+                    partialDamageList.classList.toggle('d-none', !show);
+                    partialDamageList.querySelectorAll('input[type="checkbox"]').forEach(input => {
+                        input.disabled = !show;
+                        if (!show) input.checked = false;
+                    });
+                };
+                resolveAllToggle.addEventListener('change', togglePartialList);
+                togglePartialList();
+            }
+
+            const repairKindSelect = document.querySelector('#repairModal select[name="repair_kind"]');
+            const repairTypeSelect = document.getElementById('repair-type-select');
+            const repairTypeWrapper = document.getElementById('repair-type-wrapper');
+            const repairTypeOtherWrapper = document.getElementById('repair-type-other-wrapper');
+            const repairProviderSelect = document.getElementById('repair-provider-select');
+            const repairProviderOtherWrapper = document.getElementById('repair-provider-other-wrapper');
+            const repairAreaWrapper = document.getElementById('repair-area-wrapper');
+            const repairAreaSelect = document.getElementById('repair-area-select');
+
+            const toggleRepairOtherFields = () => {
+                const isRestoration = repairKindSelect && repairKindSelect.value === 'restoration';
+                if (repairTypeWrapper) {
+                    repairTypeWrapper.classList.toggle('d-none', isRestoration);
+                }
+                if (isRestoration && repairTypeSelect) {
+                    repairTypeSelect.value = 'full_restoration';
+                }
+                if (repairTypeSelect && repairTypeOtherWrapper) {
+                    repairTypeOtherWrapper.classList.toggle('d-none', isRestoration || repairTypeSelect.value !== 'other');
+                }
+                if (repairProviderSelect && repairProviderOtherWrapper) {
+                    repairProviderOtherWrapper.classList.toggle('d-none', repairProviderSelect.value !== 'other');
+                }
+                if (repairAreaWrapper) {
+                    const showArea = repairKindSelect && repairKindSelect.value === 'repair';
+                    repairAreaWrapper.classList.toggle('d-none', !showArea);
+                    if (!showArea && repairAreaSelect) {
+                        repairAreaSelect.value = '';
+                    }
+                }
+            };
+
+            if (repairTypeSelect || repairProviderSelect) {
+                repairKindSelect?.addEventListener('change', toggleRepairOtherFields);
+                repairTypeSelect?.addEventListener('change', toggleRepairOtherFields);
+                repairProviderSelect?.addEventListener('change', toggleRepairOtherFields);
+                toggleRepairOtherFields();
+            }
+
+            modalForm?.addEventListener('change', event => {
+                if (event.target && event.target.name === 'image_option') {
+                    toggleModalImageInputs();
+                }
+            });
+
+            modalForm?.addEventListener('submit', event => {
+                event.preventDefault();
+                if (!modalForm.action) return;
+
+                const formData = new FormData(modalForm);
+                fetch(modalForm.action, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData
+                })
+                    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+                    .then(({ ok, data }) => {
+                        if (!ok || data.status !== 'success') {
+                            alert(data.message || 'Unable to save changes.');
+                            return;
+                        }
+                        if (modal) modal.hide();
+                        window.location.reload();
+                    })
+                    .catch(() => {
+                        alert('Unable to save changes.');
+                    });
+            });
+
+            document.querySelector('.update-last-worn-ajax-form')?.addEventListener('submit', event => {
+                event.preventDefault();
+                const form = event.currentTarget;
+                if (form.dataset.useExposureModal === 'true' && !form.dataset.exposureConfirmed) {
+                    if (window.openExposureModal && window.openExposureModal(form)) {
+                        return;
+                    }
+                }
+                const formData = new FormData(form);
+                const statusElement = form.querySelector('.ajax-status-message');
+                const displayElement = document.getElementById('detail-last-worn-display');
+                const wearCountElement = document.getElementById('detail-wear-count');
+                const wearNoteElement = document.getElementById('detail-wear-count-note');
+                const cpwElement = document.getElementById('detail-cpw-display');
+                const cpwNoteElement = document.getElementById('detail-cpw-note');
+                const submitButton = form.querySelector('button[type="submit"]');
+
+                if (submitButton) submitButton.disabled = true;
+                if (statusElement) {
+                    statusElement.textContent = '';
+                    statusElement.classList.remove('visible');
+                }
+
+                fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            if (displayElement) {
+                                displayElement.textContent = data.new_date_display || 'Updated';
+                            }
+                            if (wearCountElement && data.wear_count !== undefined) {
+                                wearCountElement.textContent = data.wear_count;
+                            }
+                            if (cpwElement) {
+                                cpwElement.textContent = data.cpw_display || 'N/A';
+                            }
+                            if (wearNoteElement || cpwNoteElement) {
+                                const wearDateNote = data.first_wear_date_display
+                                    ? ` on ${data.first_wear_date_display}`
+                                    : '';
+                                if (wearNoteElement) {
+                                    wearNoteElement.textContent = `Wear count is based on your first logged wear${wearDateNote}.`;
+                                }
+                                if (cpwNoteElement) {
+                                    cpwNoteElement.textContent = `CPW is based on your first logged wear${wearDateNote}.`;
+                                }
+                            }
+                            if (statusElement) {
+                                statusElement.textContent = 'Updated!';
+                                statusElement.classList.add('visible');
+                            }
+                        } else if (statusElement) {
+                            statusElement.textContent = data.message || 'Unable to update.';
+                            statusElement.classList.add('visible');
+                        }
+                    })
+                    .catch(() => {
+                        if (statusElement) {
+                            statusElement.textContent = 'Unable to update.';
+                            statusElement.classList.add('visible');
+                        }
+                    })
+                    .finally(() => {
+                        if (submitButton) submitButton.disabled = false;
+                        if (statusElement && statusElement.textContent) {
+                            setTimeout(() => {
+                                statusElement.classList.remove('visible');
+                                statusElement.textContent = '';
+                            }, 2000);
+                        }
+                        form.dataset.exposureConfirmed = '';
+                    });
+            });
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const noteForm = document.querySelector('.note-create-form');
+            const noteList = document.getElementById('noteList');
+
+            noteForm?.addEventListener('submit', event => {
+                event.preventDefault();
+                const formData = new FormData(noteForm);
+                const statusElement = noteForm.querySelector('.ajax-status-message');
+                const submitButton = noteForm.querySelector('button[type="submit"]');
+                const textarea = noteForm.querySelector('textarea[name="note"]');
+
+                if (submitButton) submitButton.disabled = true;
+                if (statusElement) {
+                    statusElement.textContent = '';
+                    statusElement.classList.remove('visible');
+                }
+
+                fetch(noteForm.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (!noteList || !statusElement) return;
+                        if (data.status !== 'success' || !data.note) {
+                            statusElement.textContent = data.message || 'Unable to add note.';
+                            statusElement.classList.add('visible');
+                            return;
+                        }
+
+                        const emptyState = noteList.querySelector('.note-empty-state');
+                        if (emptyState) emptyState.remove();
+
+                        const noteItem = document.createElement('div');
+                        noteItem.className = 'd-flex justify-content-between align-items-start gap-3 border rounded p-2 mb-2 note-item';
+                        noteItem.dataset.noteId = data.note.id;
+
+                        const noteContent = document.createElement('div');
+                        const noteMeta = document.createElement('div');
+                        noteMeta.className = 'small text-muted';
+                        noteMeta.textContent = data.note.created_at || '';
+                        const noteBody = document.createElement('div');
+                        noteBody.textContent = data.note.body || '';
+                        noteContent.appendChild(noteMeta);
+                        noteContent.appendChild(noteBody);
+
+                        const deleteButton = document.createElement('button');
+                        deleteButton.type = 'button';
+                        deleteButton.className = 'btn btn-outline-danger btn-sm note-delete-btn';
+                        deleteButton.dataset.deleteUrl = data.note.delete_url || '';
+                        deleteButton.textContent = 'Delete';
+
+                        noteItem.appendChild(noteContent);
+                        noteItem.appendChild(deleteButton);
+                        noteList.prepend(noteItem);
+
+                        if (textarea) textarea.value = '';
+                        statusElement.textContent = 'Updated!';
+                        statusElement.classList.add('visible');
+                    })
+                    .catch(() => {
+                        if (statusElement) {
+                            statusElement.textContent = 'Unable to add note.';
+                            statusElement.classList.add('visible');
+                        }
+                    })
+                    .finally(() => {
+                        if (submitButton) submitButton.disabled = false;
+                        if (statusElement && statusElement.textContent) {
+                            setTimeout(() => {
+                                statusElement.classList.remove('visible');
+                                statusElement.textContent = '';
+                            }, 2000);
+                        }
+                    });
+            });
+
+            noteList?.addEventListener('click', event => {
+                const button = event.target.closest('.note-delete-btn');
+                if (!button) return;
+                const deleteUrl = button.dataset.deleteUrl;
+                const noteItem = button.closest('.note-item');
+                if (!deleteUrl || !noteItem) return;
+
+                fetch(deleteUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            noteItem.remove();
+                            if (noteList && !noteList.querySelector('.note-item')) {
+                                const empty = document.createElement('p');
+                                empty.className = 'text-muted mb-0 note-empty-state';
+                                empty.textContent = 'No notes yet.';
+                                noteList.appendChild(empty);
+                            }
+                        }
+                    });
+            });
+
+        });
+    </script>
+{% endblock %}

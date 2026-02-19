@@ -3,48 +3,202 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">{{ title }}</h2>
-        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+    <div class="d-flex justify-content-between align-items-center mb-3 page-header-actions">
+        <h2 class="mb-0 text-start w-100">{{ title }}</h2>
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end wishlist-header-actions">
             <a href="{{ url_for('main.release_calendar') }}" class="btn btn-outline-secondary">Discover More Releases</a>
             <a href="{{ url_for('main.select_for_wishlist') }}" class="btn btn-primary">Add from Calendar</a>
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#wishlistSkuModal">
+                Add from Search
+            </button>
         </div>
     </div>
     <p class="text-muted">These are the upcoming releases you're keeping an eye on.</p>
     
-    {% with target_endpoint='main.wishlist' %}
+    {% with target_endpoint='main.wishlist', controls_context='wishlist' %}
         {% include '_controls_bar.html' %}
     {% endwith %}
     
     <hr>
 
-    {% if releases %}
+    {% if releases_by_month %}
+        <div id="wishlist-container">
+        {% for month_year, releases_in_month in releases_by_month.items() %}
+        {% if not loop.first %}
+            <hr>
+        {% endif %}
+            <h3 class="mb-3">{{ month_year }}</h3>
+            <hr>
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+                {% for release in releases_in_month %}
+                    <div class="col" id="wishlist-card-{{ release.id }}">
+
+                        <div class="card h-100 shadow-sm release-card">
+                            <a href="#" data-bs-toggle="modal" data-bs-target="#sneakerImageModal"
+                               data-image-src="{{ release.image_url | release_image }}"
+                               data-image-alt="{{ release.name }}"
+                               class="d-none d-md-block image-modal-trigger">
+                                <img src="{{ release.image_url | release_image }}" class="card-img-top" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
+                                <span class="expand-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
+                                </span>
+                            </a>
+                            <div class="card-body p-3 pb-2 d-flex flex-column">
+                                <div class="row g-2 mb-2 d-md-none align-items-center">
+                                    <div class="col-8">
+                                        <h5 class="card-title fs-6 mb-0">{{ release.name }}</h5>
+                                    </div>
+                                    <div class="col-4 text-center">
+                                        <a href="#" data-bs-toggle="modal" data-bs-target="#sneakerImageModal"
+                                           data-image-src="{{ release.image_url | release_image }}"
+                                           data-image-alt="{{ release.name }}"
+                                           class="image-modal-trigger">
+                                            <img src="{{ release.image_url | release_image }}" class="img-fluid rounded" alt="{{ release.name }} mobile" style="max-height: 75px; object-fit: contain; background-color: #f8f9fa;">
+                                            <span class="expand-icon expand-icon-mobile">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
+                                            </span>
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <h5 class="card-title fs-6 mb-1 d-none d-md-block">{{ release.name }}</h5>
+                                {% if release.brand %}
+                                    <p class="card-text mb-0"><small class="text-muted">Brand: {{ release.brand }}</small></p>
+                                {% endif %}
+                                {% if release.sku %}
+                                    <p class="card-text mb-0"><small class="text-muted">SKU: {{ release.sku }}</small></p>
+                                {% endif %}
+                                {% set preferred_currency = current_user.preferred_currency if current_user.is_authenticated else 'GBP' %}
+                                {% set regional_price = (release.prices | selectattr('currency', 'equalto', preferred_currency) | list | first) %}
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        Release: {{ release.release_date.strftime('%b %d, %Y') if release.release_date else 'N/A' }}<br>
+                                        Retail:
+                                        {% if regional_price %}
+                                            {{ regional_price.price | money(preferred_currency) }}
+                                            {% if release.retail_price is not none %}
+                                                <span class="text-muted">(MSRP: {{ release.retail_price | money(release.retail_currency) }})</span>
+                                            {% endif %}
+                                        {% elif release.retail_price is not none %}
+                                            {{ release.retail_price | money(release.retail_currency) }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                        {% set avg_resale = avg_resale_map.get(release.id) if avg_resale_map else None %}
+                                        <br>Avg Resale:
+                                        {% if avg_resale and avg_resale[0] %}
+                                            {% set avg_display = avg_resale[0]|money_display(avg_resale[1], preferred_currency) %}
+                                            {% if avg_display.display %}
+                                                {{ avg_display.display }}
+                                            {% endif %}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </small>
+                                </p>
+                            </div>
+                            <div class="card-footer bg-transparent border-top-0 px-3 pb-3">
+                                <div class="d-grid gap-2">
+                                    <a href="{{ url_for('main.product_detail', product_key=build_product_key(release), slug=build_product_slug(release), source='wishlist') }}" class="btn btn-outline-secondary btn-sm">View Details</a>
+                                    <button 
+                                        type="button" 
+                                        class="btn btn-success btn-sm add-to-collection-btn"
+                                        data-release-id="{{ release.id }}"
+                                        data-release-name="{{ release.name }}"
+                                        data-release-brand="{{ release.brand or '' }}"
+                                        data-release-image="{{ release.image_url or '' }}"
+                                        data-add-url="{{ url_for('sneakers.add_sneaker') }}"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill me-1" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/></svg>
+                                        Add to Collection
+                                    </button>
+                                    <form method="POST" action="{{ url_for('main.remove_from_wishlist', release_id=release.id) }}" class="d-grid remove-wishlist-form" onsubmit="return confirm('Are you sure you want to remove this from your wishlist?');">
+                                        {{ form.hidden_tag() if form }}
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill me-1" viewBox="0 0 16 16"><path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5zM4.5 5.024l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06zm3 0l-.5 8.5a.5.5 0 1 0 .998-.06l.5-8.5a.5.5 0 1 0-.998-.06zm3 .53l-.5 8.5a.5.5 0 1 0 .998-.06l.5-8.5a.5.5 0 1 0-.998-.06z"/></svg>
+                                            Remove from Wishlist
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+        </div>
+    {% elif releases %}
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4" id="wishlist-container">
-            {# Loop through the releases from the user's wishlist #}
             {% for release in releases %}
                 <div class="col" id="wishlist-card-{{ release.id }}">
-                    <div class="card h-100 shadow-sm">
-                        <a href="#" class="image-modal-trigger" data-bs-toggle="modal" data-bs-target="#sneakerImageModal"
-                           data-image-src="{{ release.image_url or url_for('static', filename='images/placeholder.png') }}"
-                           data-image-alt="{{ release.name }}">
-                            
-                            <img src="{{ release.image_url or url_for('static', filename='images/placeholder.png') }}" class="card-img-top p-3" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
-                            
+
+                    <div class="card h-100 shadow-sm release-card">
+                        <a href="#" data-bs-toggle="modal" data-bs-target="#sneakerImageModal"
+                           data-image-src="{{ release.image_url | release_image }}"
+                           data-image-alt="{{ release.name }}"
+                           class="d-none d-md-block image-modal-trigger">
+                            <img src="{{ release.image_url | release_image }}" class="card-img-top" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
                             <span class="expand-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 1 0 .707z"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
                             </span>
                         </a>
-                        <div class="card-body p-3 pb-2">
-                            <h5 class="card-title fs-6">{{ release.name }}</h5>
+                        <div class="card-body p-3 pb-2 d-flex flex-column">
+                            <div class="row g-2 mb-2 d-md-none align-items-center">
+                                <div class="col-8">
+                                    <h5 class="card-title fs-6 mb-0">{{ release.name }}</h5>
+                                </div>
+                                <div class="col-4 text-center">
+                                    <a href="#" data-bs-toggle="modal" data-bs-target="#sneakerImageModal"
+                                       data-image-src="{{ release.image_url | release_image }}"
+                                       data-image-alt="{{ release.name }}"
+                                       class="image-modal-trigger">
+                                        <img src="{{ release.image_url | release_image }}" class="img-fluid rounded" alt="{{ release.name }} mobile" style="max-height: 75px; object-fit: contain; background-color: #f8f9fa;">
+                                        <span class="expand-icon expand-icon-mobile">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
+                                        </span>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <h5 class="card-title fs-6 mb-1 d-none d-md-block">{{ release.name }}</h5>
+                            {% if release.brand %}
+                                <p class="card-text mb-0"><small class="text-muted">Brand: {{ release.brand }}</small></p>
+                            {% endif %}
+                            {% if release.sku %}
+                                <p class="card-text mb-0"><small class="text-muted">SKU: {{ release.sku }}</small></p>
+                            {% endif %}
+                            {% set preferred_currency = current_user.preferred_currency if current_user.is_authenticated else 'GBP' %}
+                            {% set regional_price = (release.prices | selectattr('currency', 'equalto', preferred_currency) | list | first) %}
                             <p class="card-text">
                                 <small class="text-muted">
                                     Release: {{ release.release_date.strftime('%b %d, %Y') if release.release_date else 'N/A' }}<br>
-                                    Retail: {{ release.retail_price if release.retail_price else 'N/A' }}
+                                    Retail:
+                                    {% if regional_price %}
+                                        {{ regional_price.price | money(preferred_currency) }}
+                                        {% if release.retail_price is not none %}
+                                            <span class="text-muted">(MSRP: {{ release.retail_price | money(release.retail_currency) }})</span>
+                                        {% endif %}
+                                    {% elif release.retail_price is not none %}
+                                        {{ release.retail_price | money(release.retail_currency) }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                    {% set avg_resale = avg_resale_map.get(release.id) if avg_resale_map else None %}
+                                    <br>Avg Resale:
+                                    {% if avg_resale and avg_resale[0] %}
+                                        {% set avg_display = avg_resale[0]|money_display(avg_resale[1], preferred_currency) %}
+                                        {% if avg_display.display %}
+                                            {{ avg_display.display }}
+                                        {% endif %}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
                                 </small>
                             </p>
                         </div>
                         <div class="card-footer bg-transparent border-top-0 px-3 pb-3">
                             <div class="d-grid gap-2">
+                                <a href="{{ url_for('main.product_detail', product_key=build_product_key(release), slug=build_product_slug(release), source='wishlist') }}" class="btn btn-outline-secondary btn-sm">View Details</a>
                                 <button 
                                     type="button" 
                                     class="btn btn-success btn-sm add-to-collection-btn"
@@ -57,11 +211,10 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill me-1" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/></svg>
                                     Add to Collection
                                 </button>
-                                {# This form contains our specific "Remove" button #}
                                 <form method="POST" action="{{ url_for('main.remove_from_wishlist', release_id=release.id) }}" class="d-grid remove-wishlist-form" onsubmit="return confirm('Are you sure you want to remove this from your wishlist?');">
-                                    {{ form.hidden_tag() if form }} {# CSRF Token #}
+                                    {{ form.hidden_tag() if form }}
                                     <button type="submit" class="btn btn-outline-danger btn-sm">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill me-1" viewBox="0 0 16 16"><path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5zM4.5 5.024l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06zm3 0l-.5 8.5a.5.5 0 1 0 .998.06l.5-8.5a.5.5 0 1 0-.998-.06zm3 .53l-.5 8.5a.5.5 0 1 0 .998.06l.5-8.5a.5.5 0 1 0-.998-.06z"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill me-1" viewBox="0 0 16 16"><path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5zM4.5 5.024l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06zm3 0l-.5 8.5a.5.5 0 1 0 .998-.06l.5-8.5a.5.5 0 1 0-.998-.06zm3 .53l-.5 8.5a.5.5 0 1 0 .998-.06l.5-8.5a.5.5 0 1 0-.998-.06z"/></svg>
                                         Remove from Wishlist
                                     </button>
                                 </form>
@@ -77,7 +230,63 @@
             <p class="lead">You can add sneakers to your wishlist from the "Discover" page.</p>
         </div>
     {% endif %}
+    {% if total_pages and total_pages > 1 %}
+        <div class="d-flex flex-wrap justify-content-center align-items-center gap-3 mt-4">
+            <a class="btn btn-outline-secondary btn-sm {% if page <= 1 %}disabled{% endif %}"
+               href="{{ url_for('main.wishlist', page=page-1, **pagination_params) }}">
+                Previous
+            </a>
+            <form method="GET" action="{{ url_for('main.wishlist') }}" class="d-flex align-items-center gap-2 mb-0">
+                {% for key, value in pagination_params.items() %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endfor %}
+                <span class="text-muted">Page</span>
+                <input
+                    type="number"
+                    id="page_input"
+                    name="page"
+                    class="form-control form-control-sm text-center"
+                    min="1"
+                    max="{{ total_pages }}"
+                    value="{{ page }}"
+                    style="width: 70px;"
+                >
+                <span class="text-muted">of {{ total_pages }}</span>
+                <button type="submit" class="btn btn-outline-secondary btn-sm">Go</button>
+            </form>
+            <a class="btn btn-outline-secondary btn-sm {% if page >= total_pages %}disabled{% endif %}"
+               href="{{ url_for('main.wishlist', page=page+1, **pagination_params) }}">
+                Next
+            </a>
+        </div>
+    {% endif %}
     {% include '_sneaker_image_modal.html' %}
+    <div class="modal fade" id="wishlistSkuModal" tabindex="-1" aria-labelledby="wishlistSkuModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="wishlistSkuModalLabel">Add to Wishlist</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{{ url_for('main.add_to_wishlist_by_sku') }}">
+                    <div class="modal-body">
+                        {{ form.hidden_tag() if form }}
+                        <label for="wishlistSkuSearchInput" class="form-label">Search by name or SKU</label>
+                        <div class="input-group mb-2">
+                            <input type="text" id="wishlistSkuSearchInput" name="sku" class="form-control" placeholder="e.g., Jordan 4 SB or DR5415-100" required>
+                            <button class="btn btn-outline-secondary" type="button" id="wishlistSkuSearchBtn">Search</button>
+                        </div>
+                        <div id="wishlistSkuStatus" class="form-text mb-2"></div>
+                        <div id="wishlistSkuResults" class="list-group"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add to Wishlist</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     {% with form_for_modal=form_for_modal %}{% include '_sneaker_form_modal.html' %}{% endwith %}
     {{ super() }}
 
@@ -102,6 +311,11 @@
     document.addEventListener('DOMContentLoaded', function() {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         const wishlistContainer = document.getElementById('wishlist-container');
+        const wishlistSkuModal = document.getElementById('wishlistSkuModal');
+        const wishlistSkuSearchInput = document.getElementById('wishlistSkuSearchInput');
+        const wishlistSkuSearchBtn = document.getElementById('wishlistSkuSearchBtn');
+        const wishlistSkuResults = document.getElementById('wishlistSkuResults');
+        const wishlistSkuStatus = document.getElementById('wishlistSkuStatus');
         const sneakerFormModalElement = document.getElementById('sneakerFormModal');
         const addToCollectionButtons = document.querySelectorAll('.add-to-collection-btn');
         const sneakerModalInstance = sneakerFormModalElement ? new bootstrap.Modal(sneakerFormModalElement) : null;
@@ -207,6 +421,80 @@
         }
 
         // Wire up "Add to Collection" buttons
+        if (wishlistSkuModal) {
+            wishlistSkuModal.addEventListener('shown.bs.modal', function () {
+                const input = wishlistSkuModal.querySelector('#wishlistSkuSearchInput');
+                if (input) input.focus();
+            });
+        }
+
+        let wishlistLookupController = null;
+        function clearWishlistResults() {
+            if (wishlistSkuResults) wishlistSkuResults.innerHTML = '';
+            if (wishlistSkuStatus) wishlistSkuStatus.textContent = '';
+        }
+
+        async function runWishlistLookup() {
+            if (!wishlistSkuSearchInput || !wishlistSkuResults || !wishlistSkuStatus) return;
+            const query = wishlistSkuSearchInput.value.trim();
+            clearWishlistResults();
+            if (query.length < 2) {
+                wishlistSkuStatus.textContent = 'Enter at least 2 characters to search.';
+                return;
+            }
+
+            if (wishlistLookupController) {
+                wishlistLookupController.abort();
+            }
+            wishlistLookupController = new AbortController();
+            wishlistSkuStatus.textContent = 'Searching...';
+
+            try {
+                const response = await fetch(`/api/sneaker-lookup?q=${encodeURIComponent(query)}&limit=5`, {
+                    signal: wishlistLookupController.signal
+                });
+                const data = await response.json();
+                wishlistSkuStatus.textContent = '';
+                if (!response.ok) {
+                    wishlistSkuStatus.textContent = data.message || 'Search failed.';
+                    return;
+                }
+
+                if (data.mode === 'single' && data.sneaker) {
+                    const item = data.sneaker;
+                    const skuInput = document.getElementById('wishlistSkuSearchInput');
+                    if (skuInput && item.sku) skuInput.value = item.sku;
+                    wishlistSkuStatus.textContent = item.model_name ? `Found: ${item.model_name}` : 'Found a match.';
+                    return;
+                }
+
+                if (data.mode === 'pick' && data.candidates && data.candidates.length) {
+                    data.candidates.forEach(candidate => {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'list-group-item list-group-item-action';
+                        button.textContent = `${candidate.model_name || 'Sneaker'} (${candidate.sku || 'No SKU'})`;
+                        button.addEventListener('click', () => {
+                            const skuInput = document.getElementById('wishlistSkuSearchInput');
+                            if (skuInput && candidate.sku) skuInput.value = candidate.sku;
+                            clearWishlistResults();
+                        });
+                        wishlistSkuResults.appendChild(button);
+                    });
+                    return;
+                }
+
+                wishlistSkuStatus.textContent = 'No results found.';
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+                wishlistSkuStatus.textContent = 'Search failed.';
+            }
+        }
+
+        if (wishlistSkuSearchBtn) {
+            wishlistSkuSearchBtn.addEventListener('click', runWishlistLookup);
+        }
+
         if (addToCollectionButtons.length && sneakerModalInstance && sneakerModalForm) {
             addToCollectionButtons.forEach(btn => {
                 btn.addEventListener('click', () => {

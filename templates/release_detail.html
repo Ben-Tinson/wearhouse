@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+    {% set preferred_currency = current_user.preferred_currency if current_user.is_authenticated else 'GBP' %}
+    {% set display_name = release.model_name or release.name %}
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="mb-1">{{ display_name }}</h2>
+            {% if release.sku %}
+                <span class="text-muted">SKU: {{ release.sku }}</span>
+            {% endif %}
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            {% if current_user.is_authenticated %}
+                <button
+                    type="button"
+                    class="btn btn-success btn-sm add-to-collection-btn"
+                    data-release-id="{{ release.id }}"
+                    data-release-name="{{ display_name }}"
+                    data-release-brand="{{ release.brand or '' }}"
+                    data-release-sku="{{ release.sku or '' }}"
+                    data-release-colorway="{{ release.colorway or '' }}"
+                    data-release-image="{{ release.image_url or '' }}"
+                    data-add-url="{{ url_for('sneakers.add_sneaker') }}"
+                >
+                    Add to Collection
+                </button>
+                <div class="flex-grow-1">
+                    {% include '_wishlist_button.html' %}
+                </div>
+            {% else %}
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-sm">Log in to add to wishlist</a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary btn-sm">Log in to add to collection</a>
+            {% endif %}
+            {% if request.args.get('source') == 'wishlist' %}
+                <a href="{{ url_for('main.wishlist') }}" class="btn btn-outline-secondary btn-sm">Back to Wishlist</a>
+            {% else %}
+                <a href="{{ url_for('main.release_calendar') }}" class="btn btn-outline-secondary btn-sm">Back to Calendar</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <img src="{{ release.image_url | release_image }}"
+                         class="img-fluid rounded"
+                         alt="{{ display_name }}"
+                         style="max-height: 320px; object-fit: contain;">
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Release Info</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="text-muted">Model</div>
+                            <div>{{ display_name or 'N/A' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">Brand</div>
+                            <div>{{ release.brand or 'N/A' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">Colorway</div>
+                            <div>{{ release.colorway or 'N/A' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">Release Date</div>
+                            <div>{{ release.release_date.strftime('%b %d, %Y') if release.release_date else 'N/A' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Sneaker Finances</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="text-muted">Retail Price</div>
+                            {% if release.retail_price is not none %}
+                                <div>{{ release.retail_price | money(release.retail_currency or 'USD') }}</div>
+                            {% else %}
+                                <div>N/A</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted">{{ avg_resale_label }}</div>
+                            <div id="avgResaleValue">
+                                {% if avg_resale_price is not none %}
+                                    {% set avg_display = avg_resale_price|money_display(avg_resale_currency, preferred_currency) %}
+                                    {% if avg_display.display %}
+                                        {{ avg_display.display }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div class="text-muted">
+                                    Lowest Ask by Size (StockX)
+                                    <span id="sizeTypeLabel" class="ms-2 small text-muted"></span>
+                                </div>
+                                {% if size_type_options %}
+                                    <div class="d-flex align-items-center gap-2">
+                                        <label for="sizeTypeSelect" class="text-muted small mb-0">Size Type</label>
+                                        <select id="sizeTypeSelect" class="form-select form-select-sm" style="width: auto;">
+                                            {% for size_type in size_type_options %}
+                                                <option value="{{ size_type }}" {% if size_type == size_type_default %}selected{% endif %}>{{ size_type }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="sizeAskChart" height="140"></canvas>
+                            </div>
+                            {% if not size_bid_series %}
+                                <div class="text-muted small mt-2">No size pricing available yet.</div>
+                            {% endif %}
+                            <div class="form-text">
+                                {% if size_bids_fetched_at %}
+                                    Last refreshed {{ size_bids_fetched_at.strftime('%b %d, %Y') }}. Data refreshes every 5 days.
+                                {% else %}
+                                    Data will appear after the first refresh.
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% set sections = [
+                ("Retailers", offer_groups.retailer),
+                ("Aftermarket", offer_groups.aftermarket),
+                ("Raffles", offer_groups.raffle)
+            ] %}
+
+            {% for label, offers in sections %}
+                <div class="mb-4">
+                    <h4 class="mb-3">{{ label }}</h4>
+                    {% if offers %}
+                        <div class="list-group">
+                            {% for offer in offers %}
+                                <div class="list-group-item d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+                                    <div>
+                                        <div class="fw-semibold">{{ offer.retailer|title }}</div>
+                                        <div class="text-muted">
+                                            {% if offer.region %}{{ offer.region }}{% endif %}
+                                            {% if offer.status %}
+                                                {% if offer.region %} • {% endif %}{{ offer.status }}
+                                            {% endif %}
+                                        {% if offer.price is not none %}
+                                            {% if offer.region or offer.status %} • {% endif %}
+                                        {% endif %}
+                                        </div>
+                                    </div>
+                                    <a href="{{ url_for('main.outbound_offer', offer_id=offer.id) }}"
+                                       class="btn btn-outline-primary btn-sm"
+                                       target="_blank"
+                                       rel="noopener noreferrer">
+                                        Go to Offer
+                                    </a>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-muted">No {{ label|lower }} yet.</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if needs_resale_refresh %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const resaleTarget = document.getElementById('avgResaleValue');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (!csrfToken) return;
+            fetch("{{ url_for('main.refresh_release_resale', release_id=release.id) }}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (!resaleTarget || !data || !data.avg_resale_display) return;
+                    resaleTarget.textContent = data.avg_resale_display;
+                })
+                .catch(() => {});
+        });
+    </script>
+    {% endif %}
+
+    {% with form_for_modal=form_for_modal %}
+        {% include '_sneaker_form_modal.html' %}
+    {% endwith %}
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sizeAskCanvas = document.getElementById('sizeAskChart');
+        const sizeAskData = {{ (size_bid_series or []) | tojson }};
+        const sizeTypeSelect = document.getElementById('sizeTypeSelect');
+        const sizeTypeLabel = document.getElementById('sizeTypeLabel');
+        if (sizeAskCanvas && sizeAskData.length) {
+            const defaultSizeType = {{ (size_type_default or '') | tojson }};
+            function parseSizeLabel(label) {
+                const parsed = parseFloat(label);
+                return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+            }
+
+            function buildSizeSeries(selectedType) {
+                const filtered = selectedType
+                    ? sizeAskData.filter(item => item.size_type === selectedType)
+                    : sizeAskData;
+                filtered.sort((a, b) => {
+                    const aNum = parseSizeLabel(a.label);
+                    const bNum = parseSizeLabel(b.label);
+                    if (aNum === bNum) return String(a.label).localeCompare(String(b.label));
+                    return aNum - bNum;
+                });
+                return filtered;
+            }
+
+            const initialSeries = buildSizeSeries(defaultSizeType);
+            const initialCurrency = initialSeries[0]?.currency || '';
+            const currencySymbols = { GBP: '£', USD: '$', EUR: '€' };
+            const initialSymbol = currencySymbols[initialCurrency] || '';
+            if (sizeTypeLabel) {
+                sizeTypeLabel.textContent = defaultSizeType ? `(Sizes: ${defaultSizeType})` : '';
+            }
+            const sizeAskChart = new Chart(sizeAskCanvas, {
+                type: 'bar',
+                data: {
+                    labels: initialSeries.map(item => item.label),
+                    datasets: [{
+                        label: initialCurrency ? `Lowest Ask (${initialCurrency})` : 'Lowest Ask',
+                        data: initialSeries.map(item => item.value),
+                        backgroundColor: 'rgba(249, 115, 22, 0.45)',
+                        borderColor: '#f97316',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'nearest',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: { usePointStyle: true }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: context => {
+                                    const label = context.dataset.label || '';
+                                    const value = context.parsed.y;
+                                    if (value === null || value === undefined) {
+                                        return label;
+                                    }
+                                    const formattedValue = Number(value).toFixed(2);
+                                    const formatted = initialCurrency
+                                        ? `${initialSymbol}${formattedValue}`
+                                        : formattedValue;
+                                    return label ? `${label}: ${formatted}` : formatted;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: value => {
+                                    const formattedValue = Number(value).toFixed(2);
+                                    return initialCurrency
+                                        ? `${initialSymbol}${formattedValue}`
+                                        : formattedValue;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            if (sizeTypeSelect) {
+                sizeTypeSelect.addEventListener('change', () => {
+                    const selectedType = sizeTypeSelect.value;
+                    const nextSeries = buildSizeSeries(selectedType);
+                    const nextCurrency = nextSeries[0]?.currency || '';
+                    sizeAskChart.data.labels = nextSeries.map(item => item.label);
+                    sizeAskChart.data.datasets[0].data = nextSeries.map(item => item.value);
+                    const nextSymbol = currencySymbols[nextCurrency] || '';
+                    sizeAskChart.data.datasets[0].label = nextCurrency ? `Lowest Ask (${nextCurrency})` : 'Lowest Ask';
+                    sizeAskChart.options.scales.y.ticks.callback = value => {
+                        const formattedValue = Number(value).toFixed(2);
+                        return nextCurrency ? `${nextSymbol}${formattedValue}` : formattedValue;
+                    };
+                    sizeAskChart.options.plugins.tooltip.callbacks.label = context => {
+                        const label = context.dataset.label || '';
+                        const value = context.parsed.y;
+                        if (value === null || value === undefined) {
+                            return label;
+                        }
+                        const formattedValue = Number(value).toFixed(2);
+                        const formatted = nextCurrency
+                            ? `${nextSymbol}${formattedValue}`
+                            : formattedValue;
+                        return label ? `${label}: ${formatted}` : formatted;
+                    };
+                    if (sizeTypeLabel) {
+                        sizeTypeLabel.textContent = selectedType ? `(Sizes: ${selectedType})` : '';
+                    }
+                    sizeAskChart.update();
+                });
+            }
+        }
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        const addToCollectionButton = document.querySelector('.add-to-collection-btn');
+        const sneakerFormModalElement = document.getElementById('sneakerFormModal');
+        const sneakerModalInstance = sneakerFormModalElement ? new bootstrap.Modal(sneakerFormModalElement) : null;
+        const sneakerModalForm = document.getElementById('sneakerModalForm');
+
+        if (addToCollectionButton && sneakerModalInstance && sneakerModalForm) {
+            addToCollectionButton.addEventListener('click', function() {
+                sneakerModalForm.setAttribute('action', this.dataset.addUrl);
+                const brandInput = sneakerModalForm.querySelector('input[name="brand"]');
+                const modelInput = sneakerModalForm.querySelector('input[name="model"]');
+                const imageUrlInput = document.getElementById('modal_sneaker_image_url');
+                const skuInput = sneakerModalForm.querySelector('input[name="sku"]');
+                const colorwayInput = sneakerModalForm.querySelector('input[name="colorway"]');
+                const imageOptionUrl = sneakerModalForm.querySelector('input[name="image_option"][value="url"]');
+
+                if (brandInput) brandInput.value = this.dataset.releaseBrand || '';
+                if (modelInput) modelInput.value = this.dataset.releaseName || '';
+                if (skuInput) skuInput.value = this.dataset.releaseSku || '';
+                if (colorwayInput) colorwayInput.value = this.dataset.releaseColorway || '';
+                if (imageUrlInput) imageUrlInput.value = this.dataset.releaseImage || '';
+                if (imageOptionUrl) imageOptionUrl.checked = true;
+                sneakerModalInstance.show();
+            });
+        }
+
+        if (csrfToken) {
+            document.addEventListener('click', function(event) {
+                const wishlistButton = event.target.closest('.toggle-wishlist-btn');
+                if (!wishlistButton) {
+                    return;
+                }
+                event.preventDefault();
+                wishlistButton.disabled = true;
+
+                fetch(wishlistButton.dataset.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(res => res.ok ? res.json() : res.json().then(err => Promise.reject(err)))
+                .then(data => {
+                    if (data.new_button_html) {
+                        wishlistButton.outerHTML = data.new_button_html;
+                    }
+                })
+                .catch(() => {
+                    wishlistButton.disabled = false;
+                });
+            });
+        }
+    });
+    </script>
+{% endblock %}

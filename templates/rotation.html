@@ -4,8 +4,8 @@
 
 {% block content %}
     {# Header: Page Title and Add Sneaker Button #}
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">My Rotation</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3 page-header-actions">
+        <h2 class="mb-0 text-start w-100">My Rotation</h2>
         {# --- NEW "ADD TO ROTATION" BUTTON --- #}
         <a href="{{ url_for('sneakers.select_for_rotation') }}" class="btn btn-primary">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill me-1" viewBox="0 0 16 16">
@@ -87,6 +87,35 @@
                 {% include '_single_sneaker_card.html' %} {# USE INCLUDE HERE #}
             {% endfor %}
         </div>
+        {% if total_pages and total_pages > 1 %}
+            <div class="d-flex flex-wrap justify-content-center align-items-center gap-3 mt-4">
+                <a class="btn btn-outline-secondary btn-sm {% if page <= 1 %}disabled{% endif %}"
+                   href="{{ url_for('sneakers.rotation', page=page-1, **pagination_params) }}">
+                    Previous
+                </a>
+                <form method="GET" action="{{ url_for('sneakers.rotation') }}" class="d-flex align-items-center gap-2 mb-0">
+                    {% for key, value in pagination_params.items() %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                    <span class="text-muted">Page</span>
+                    <input
+                        type="number"
+                        name="page"
+                        class="form-control form-control-sm text-center"
+                        min="1"
+                        max="{{ total_pages }}"
+                        value="{{ page }}"
+                        style="width: 70px;"
+                    >
+                    <span class="text-muted">of {{ total_pages }}</span>
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">Go</button>
+                </form>
+                <a class="btn btn-outline-secondary btn-sm {% if page >= total_pages %}disabled{% endif %}"
+                   href="{{ url_for('sneakers.rotation', page=page+1, **pagination_params) }}">
+                    Next
+                </a>
+            </div>
+        {% endif %}
     {% else %}
         <div class="text-center mt-5 p-5 border rounded bg-light shadow-sm" id="emptyCollectionMessage"> {# ADDED ID HERE #}
             <h4>Your Rotation is Empty!</h4>
@@ -552,13 +581,19 @@
                 if (updateLastWornForm) {
                     updateLastWornForm.addEventListener('submit', function(event) {
                         event.preventDefault();
+                        if (updateLastWornForm.dataset.useExposureModal === 'true' && !updateLastWornForm.dataset.exposureConfirmed) {
+                            if (window.openExposureModal) {
+                                window.openExposureModal(updateLastWornForm);
+                                return;
+                            }
+                        }
                         const formActionUrl = updateLastWornForm.getAttribute('action');
                         const sneakerId = cardElement.id.replace('sneaker-card-', '');
-                        const dateInput = updateLastWornForm.querySelector('input[name="new_last_worn"]');
-                        const formData = new FormData();
-                        formData.append('new_last_worn', dateInput.value);
+                        const formData = new FormData(updateLastWornForm);
                         const statusElement = cardElement.querySelector(`#update-status-${sneakerId}`);
                         const displayElement = cardElement.querySelector(`#last-worn-display-${sneakerId}`);
+
+                        updateLastWornForm.dataset.exposureConfirmed = '';
         
                         fetch(formActionUrl, {
                             method: 'POST',
