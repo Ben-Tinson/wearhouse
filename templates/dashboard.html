@@ -19,7 +19,7 @@
             <h6 class="card-subtitle mb-2 text-muted">Total Sneakers</h6><p class="card-text fs-2 fw-bold" id="stat-total-sneakers">{{ overall_total_count }}</p>
         </div></div></div>
         <div class="col-lg-3 col-md-6 mb-3 mb-lg-0"><div class="card h-100 shadow-sm"><div class="card-body text-center">
-            <h6 class="card-subtitle mb-2 text-muted">Total Collection Value</h6><p class="card-text fs-2 fw-bold" id="stat-total-value">£{{ "%.2f"|format(total_value) }}</p>
+            <h6 class="card-subtitle mb-2 text-muted">Total Purchase Value</h6><p class="card-text fs-2 fw-bold" id="stat-total-value">£{{ "%.2f"|format(total_value) }}</p>
         </div></div></div>
         <div class="col-lg-3 col-md-6 mb-3 mb-md-0"><div class="card h-100 shadow-sm"><div class="card-body text-center">
             <h6 class="card-subtitle mb-2 text-muted">Most Owned Brand</h6><p class="card-text fs-2 fw-bold" id="stat-most-owned">{{ most_owned_brand }}</p>
@@ -174,10 +174,9 @@
                 modalSaveBtn.textContent = 'Add Sneaker';
                 modalForm.setAttribute('action', "{{ url_for('sneakers.add_sneaker') }}");
                 clearValidationErrors();
-                if (currentImagePreviewContainer) currentImagePreviewContainer.style.display = 'none';
-                if (newImagePreviewArea) newImagePreviewArea.style.display = 'none';
-                const urlRadio = document.getElementById('image_option-0');
-                if(urlRadio) urlRadio.checked = true;
+                currentImagePreviewContainer.style.display = 'none';
+                newImagePreviewArea.style.display = 'none';
+                document.getElementById('image_option-0').checked = true;
                 toggleModalImageInputs();
             });
 
@@ -255,6 +254,7 @@
                             }).catch(console.error);
                         }
                     }
+                    
                     if (form.matches('.update-last-worn-ajax-form')) {
                         event.preventDefault();
                         const formData = new FormData(form);

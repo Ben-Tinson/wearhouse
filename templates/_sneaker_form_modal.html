@@ -6,14 +6,14 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="border rounded p-3 mb-4 bg-light">
+                <div class="border rounded p-3 mb-4 bg-light sneaker-lookup" data-target-form="#sneakerModalForm">
                     <label for="sneaker-search-input" class="form-label fw-bold">1. Sneaker Lookup (Optional)</label>
                     <div class="input-group">
-                        <input type="text" id="sneaker-search-input" class="form-control" placeholder="e.g., Jordan 1 Lost and Found">
-                        <button class="btn btn-outline-primary" type="button" id="sneaker-search-btn">Search</button>
+                        <input type="text" id="sneaker-search-input" class="form-control sneaker-lookup-input" placeholder="e.g., Jordan 1 Lost and Found">
+                        <button class="btn btn-outline-primary sneaker-lookup-btn" type="button" id="sneaker-search-btn">Search</button>
                     </div>
                     <div class="form-text mb-2">Search our database to auto-fill details below.</div>
-                    <div id="sneaker-search-results" style="max-height: 200px; overflow-y: auto;"></div>
+                    <div id="sneaker-search-results" class="sneaker-lookup-results" style="max-height: 200px; overflow-y: auto;"></div>
                 </div>
                 <hr>
                 <h5 class="mb-3">2. Your Sneaker Details</h5>

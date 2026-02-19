@@ -44,14 +44,28 @@
                             </p>
                         </div>
                         <div class="card-footer bg-transparent border-top-0 px-3 pb-3">
-                            {# This form contains our new, specific "Remove" button #}
-                            <form method="POST" action="{{ url_for('main.remove_from_wishlist', release_id=release.id) }}" class="d-grid remove-wishlist-form" onsubmit="return confirm('Are you sure you want to remove this from your wishlist?');">
-                                {{ form.hidden_tag() if form }} {# CSRF Token #}
-                                <button type="submit" class="btn btn-outline-danger btn-sm">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill me-1" viewBox="0 0 16 16"><path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5zM4.5 5.024l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06zm3 0l-.5 8.5a.5.5 0 1 0 .998.06l.5-8.5a.5.5 0 1 0-.998-.06zm3 .53l-.5 8.5a.5.5 0 1 0 .998.06l.5-8.5a.5.5 0 1 0-.998-.06z"/></svg>
-                                    Remove from Wishlist
+                            <div class="d-grid gap-2">
+                                <button 
+                                    type="button" 
+                                    class="btn btn-success btn-sm add-to-collection-btn"
+                                    data-release-id="{{ release.id }}"
+                                    data-release-name="{{ release.name }}"
+                                    data-release-brand="{{ release.brand or '' }}"
+                                    data-release-image="{{ release.image_url or '' }}"
+                                    data-add-url="{{ url_for('sneakers.add_sneaker') }}"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill me-1" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/></svg>
+                                    Add to Collection
                                 </button>
-                            </form>
+                                {# This form contains our specific "Remove" button #}
+                                <form method="POST" action="{{ url_for('main.remove_from_wishlist', release_id=release.id) }}" class="d-grid remove-wishlist-form" onsubmit="return confirm('Are you sure you want to remove this from your wishlist?');">
+                                    {{ form.hidden_tag() if form }} {# CSRF Token #}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill me-1" viewBox="0 0 16 16"><path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5zM4.5 5.024l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06zm3 0l-.5 8.5a.5.5 0 1 0 .998.06l.5-8.5a.5.5 0 1 0-.998-.06zm3 .53l-.5 8.5a.5.5 0 1 0 .998.06l.5-8.5a.5.5 0 1 0-.998-.06z"/></svg>
+                                        Remove from Wishlist
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -64,6 +78,7 @@
         </div>
     {% endif %}
     {% include '_sneaker_image_modal.html' %}
+    {% with form_for_modal=form_for_modal %}{% include '_sneaker_form_modal.html' %}{% endwith %}
     {{ super() }}
 
 <script>
@@ -87,6 +102,16 @@
     document.addEventListener('DOMContentLoaded', function() {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         const wishlistContainer = document.getElementById('wishlist-container');
+        const sneakerFormModalElement = document.getElementById('sneakerFormModal');
+        const addToCollectionButtons = document.querySelectorAll('.add-to-collection-btn');
+        const sneakerModalInstance = sneakerFormModalElement ? new bootstrap.Modal(sneakerFormModalElement) : null;
+        const sneakerModalForm = document.getElementById('sneakerModalForm');
+        const modalTitle = document.getElementById('sneakerFormModalLabel');
+        const modalSaveBtn = document.getElementById('saveSneakerModalButton');
+        const modalUrlInput = document.getElementById('modal_sneaker_image_url');
+        const modalFileInput = document.getElementById('modal_sneaker_image_file');
+        const newImagePreviewArea = document.getElementById('newImagePreviewArea');
+        const newSneakerImagePreview = document.getElementById('newSneakerImagePreview');
 
         if (wishlistContainer && csrfToken) {
             // Use event delegation to listen for form submissions inside the container
@@ -136,6 +161,154 @@
                         if (submitButton) submitButton.disabled = false; // Re-enable on error
                     });
                 }
+            });
+        }
+
+        // Helpers for modal
+        function toggleModalImageInputs() {
+            const urlWrapper = document.getElementById('modal_image_url_wrapper');
+            const fileWrapper = document.getElementById('modal_image_file_wrapper');
+            const urlRadio = sneakerModalForm?.querySelector('[name="image_option"][value="url"]');
+            if (urlRadio && urlWrapper && fileWrapper) {
+                urlWrapper.style.display = urlRadio.checked ? 'block' : 'none';
+                fileWrapper.style.display = urlRadio.checked ? 'none' : 'block';
+            }
+        }
+
+        function resetSneakerModalForm() {
+            if (!sneakerModalForm) return;
+            sneakerModalForm.reset();
+            sneakerModalForm.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            sneakerModalForm.querySelectorAll('.invalid-feedback').forEach(el => el.innerHTML = '');
+            const urlRadio = sneakerModalForm.querySelector('[name="image_option"][value="url"]');
+            if (urlRadio) urlRadio.checked = true;
+            toggleModalImageInputs();
+            if (newImagePreviewArea) newImagePreviewArea.style.display = 'none';
+        }
+
+        function removeWishlistCard(releaseId) {
+            const card = document.getElementById(`wishlist-card-${releaseId}`);
+            if (!card) return;
+            card.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.98)';
+            setTimeout(() => card.remove(), 400);
+        }
+
+        function removeFromWishlist(releaseId) {
+            return fetch(`/wishlist/remove/${releaseId}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            }).then(res => res.json());
+        }
+
+        // Wire up "Add to Collection" buttons
+        if (addToCollectionButtons.length && sneakerModalInstance && sneakerModalForm) {
+            addToCollectionButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const releaseId = btn.dataset.releaseId;
+                    const releaseName = btn.dataset.releaseName || '';
+                    const releaseBrand = btn.dataset.releaseBrand || '';
+                    const releaseImage = btn.dataset.releaseImage || '';
+                    const addUrl = btn.dataset.addUrl;
+
+                    resetSneakerModalForm();
+                    sneakerModalForm.setAttribute('action', addUrl);
+                    sneakerModalForm.dataset.wishlistReleaseId = releaseId;
+                    modalTitle.textContent = `Add to Collection`;
+                    if (modalSaveBtn) modalSaveBtn.textContent = 'Save Sneaker';
+
+                    const brandInput = sneakerModalForm.querySelector('[name="brand"]');
+                    const modelInput = sneakerModalForm.querySelector('[name="model"]');
+                    if (brandInput) brandInput.value = releaseBrand;
+                    if (modelInput) modelInput.value = releaseName;
+                    if (modalUrlInput) {
+                        modalUrlInput.value = releaseImage;
+                        modalUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    toggleModalImageInputs();
+                    sneakerModalInstance.show();
+                });
+            });
+        }
+
+        // Image preview handlers for modal
+        if (modalUrlInput) {
+            modalUrlInput.addEventListener('input', () => {
+                const url = modalUrlInput.value.trim();
+                if (newImagePreviewArea) newImagePreviewArea.style.display = url ? 'block' : 'none';
+                if (newSneakerImagePreview) newSneakerImagePreview.src = url || '#';
+            });
+        }
+        if (modalFileInput) {
+            modalFileInput.addEventListener('change', event => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        if (newSneakerImagePreview) newSneakerImagePreview.src = e.target.result;
+                        if (newImagePreviewArea) newImagePreviewArea.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                } else if (newImagePreviewArea) {
+                    newImagePreviewArea.style.display = 'none';
+                }
+            });
+        }
+
+        // Handle modal submission for adding to collection from wishlist
+        if (sneakerModalForm && modalSaveBtn) {
+            sneakerModalForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const actionUrl = sneakerModalForm.getAttribute('action');
+                const releaseId = sneakerModalForm.dataset.wishlistReleaseId;
+                const formData = new FormData(sneakerModalForm);
+
+                modalSaveBtn.disabled = true;
+                const originalBtnText = modalSaveBtn.innerHTML;
+                modalSaveBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Saving...`;
+
+                fetch(actionUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => Promise.reject(data));
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'success' && releaseId) {
+                        removeFromWishlist(releaseId)
+                            .then(() => removeWishlistCard(releaseId))
+                            .catch(err => console.error('Remove from wishlist failed:', err));
+                    }
+                    sneakerModalInstance.hide();
+                })
+                .catch(errorData => {
+                    if (errorData?.errors) {
+                        // Simple surface of field errors
+                        Object.keys(errorData.errors).forEach(field => {
+                            const input = sneakerModalForm.querySelector(`[name="${field}"]`);
+                            const container = input?.closest('.mb-3');
+                            const feedback = container?.querySelector('.invalid-feedback');
+                            if (input) input.classList.add('is-invalid');
+                            if (feedback) feedback.innerHTML = errorData.errors[field].join('<br>');
+                        });
+                    } else {
+                        console.error('Add to collection error:', errorData);
+                    }
+                })
+                .finally(() => {
+                    modalSaveBtn.disabled = false;
+                    modalSaveBtn.innerHTML = originalBtnText;
+                });
             });
         }
     });

@@ -1,3 +1,4 @@
+from datetime import datetime
 from extensions import db # Import db from our new extensions.py
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -106,6 +107,7 @@ class Sneaker(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     brand = db.Column(db.String(100), nullable=False)
     model = db.Column(db.String(100), nullable=False)
+    sku = db.Column(db.String(50), nullable=True, index=True)
     colorway = db.Column(db.String(100), nullable=True)
     size = db.Column(db.String(20), nullable=True)
     size_type = db.Column(db.String(15), nullable=True) # E.g., "UK", "US Men's", "EU" 
@@ -140,14 +142,23 @@ class SneakerDB(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     brand = db.Column(db.String(150), index=True)
     name = db.Column(db.String(255), index=True)
+    model_name = db.Column(db.String(255), index=True)
     colorway = db.Column(db.String(255))
     gender = db.Column(db.String(20))
     release_date = db.Column(db.Date, nullable=True)
     retail_price = db.Column(db.Numeric(10, 2), nullable=True)
-    sku = db.Column(db.String(50), index=True)
+    retail_currency = db.Column(db.String(10), nullable=True)
+    sku = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    stockx_id = db.Column(db.String(100))
+    stockx_slug = db.Column(db.String(255))
+    goat_id = db.Column(db.String(100))
+    goat_slug = db.Column(db.String(255))
+    current_lowest_ask_stockx = db.Column(db.Numeric(10, 2), nullable=True)
+    current_lowest_ask_goat = db.Column(db.Numeric(10, 2), nullable=True)
+    last_synced_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow, onupdate=datetime.utcnow)
     image_url = db.Column(db.String(1024))
 
     def __repr__(self):
         return f'<SneakerDB {self.name}>'
-
-

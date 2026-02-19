@@ -11,6 +11,8 @@ from utils import allowed_file
 from extensions import db
 from models import User, Sneaker, SneakerDB
 from forms import SneakerForm, EmptyForm
+from services.kicks_client import KicksClient
+from services.sneaker_lookup_service import lookup_or_fetch_sneaker
 
 sneakers_bp = Blueprint('sneakers', __name__)
 
@@ -285,6 +287,8 @@ def add_sneaker():
         new_sneaker = Sneaker(
             brand=form.brand.data,
             model=form.model.data,
+            sku=form.sku.data.strip() if form.sku.data else None,
+            colorway=form.colorway.data.strip() if form.colorway.data else None,
             size_type=form.size_type.data,
             size=form.size.data,
             purchase_date=form.purchase_date.data,
@@ -297,11 +301,11 @@ def add_sneaker():
         )
         db.session.add(new_sneaker)
         db.session.commit()
-        
+
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'status': 'success', 'message': 'Sneaker added successfully!'})
         
-        flash('Sneaker added!', 'success')
+        flash('Sneaker added successfully!', 'success')
         return redirect(url_for('sneakers.dashboard'))
 
     # Handle validation errors
@@ -328,6 +332,8 @@ def edit_sneaker(sneaker_id):
         # Update text-based fields
         sneaker_to_edit.brand = form.brand.data
         sneaker_to_edit.model = form.model.data
+        sneaker_to_edit.sku = form.sku.data.strip() if form.sku.data else None
+        sneaker_to_edit.colorway = form.colorway.data.strip() if form.colorway.data else None
         sneaker_to_edit.size_type = form.size_type.data
         sneaker_to_edit.size = form.size.data
         sneaker_to_edit.purchase_date = form.purchase_date.data
@@ -353,7 +359,7 @@ def edit_sneaker(sneaker_id):
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'status': 'success', 'message': 'Sneaker updated successfully!'})
             
-        flash('Your changes have been saved.', 'success')
+        flash('Sneaker updated successfully!', 'success')
         return redirect(url_for('sneakers.dashboard'))
 
     # Handle validation errors
@@ -690,6 +696,7 @@ def search_sneakers():
     # Query our local SneakerDB table, searching across multiple fields
     sneakers_found = SneakerDB.query.filter(
         or_(
+            SneakerDB.model_name.ilike(search_pattern),
             SneakerDB.name.ilike(search_pattern),
             SneakerDB.brand.ilike(search_pattern),
             SneakerDB.sku.ilike(search_pattern)
@@ -700,7 +707,7 @@ def search_sneakers():
     results = []
     for sneaker in sneakers_found:
         results.append({
-            'name': sneaker.name,
+            'name': sneaker.model_name or sneaker.name,
             'brand': sneaker.brand,
             'sku': sneaker.sku,
             'releaseDate': sneaker.release_date.strftime('%Y-%m-%d') if sneaker.release_date else None,
@@ -713,5 +720,90 @@ def search_sneakers():
     return jsonify({'results': results})
 
 
+@sneakers_bp.route('/sneakers/db/search')
+@login_required
+def search_sneaker_db():
+    query = request.args.get('q', '').strip()
+    mode = request.args.get('mode', '').strip().lower()
+    force_best = request.args.get('force_best', 'false').strip().lower() in ('1', 'true', 'yes')
+
+    if not query:
+        return jsonify({'status': 'error', 'message': 'Query is required.'}), 400
+
+    api_key = current_app.config.get('KICKS_API_KEY')
+    if not api_key:
+        return jsonify({'status': 'error', 'message': 'KICKS_API_KEY is not configured.'}), 500
+
+    client = KicksClient(
+        api_key=api_key,
+        base_url=current_app.config.get('KICKS_API_BASE_URL', 'https://api.kicks.dev'),
+        logger=current_app.logger,
+    )
+
+    try:
+        result = lookup_or_fetch_sneaker(
+            query=query,
+            db_session=db.session,
+            client=client,
+            max_age_hours=24,
+            force_best=force_best,
+            return_candidates=(mode == 'pick'),
+        )
+    except Exception as e:
+        current_app.logger.error("KicksDB lookup failed for query '%s': %s", query, e)
+        return jsonify({'status': 'error', 'message': 'External lookup failed.'}), 502
+
+    status = result.get('status')
+    if status in ('ok', 'pick'):
+        return jsonify(result)
+    if status == 'not_found':
+        return jsonify(result), 404
+    return jsonify(result), 400
 
 
+@sneakers_bp.route('/api/sneaker-lookup')
+@login_required
+def sneaker_lookup():
+    query = request.args.get('q', '').strip()
+    limit = request.args.get('limit', '5').strip()
+    force_best = request.args.get('force_best', 'false').strip().lower() in ('1', 'true', 'yes')
+
+    if not query:
+        return jsonify({'message': 'Query is required.'}), 400
+
+    try:
+        limit_value = max(1, min(int(limit), 10))
+    except ValueError:
+        limit_value = 5
+
+    api_key = current_app.config.get('KICKS_API_KEY')
+    if not api_key:
+        return jsonify({'message': 'KICKS_API_KEY is not configured.'}), 500
+
+    client = KicksClient(
+        api_key=api_key,
+        base_url=current_app.config.get('KICKS_API_BASE_URL', 'https://api.kicks.dev'),
+        logger=current_app.logger,
+    )
+
+    try:
+        result = lookup_or_fetch_sneaker(
+            query=query,
+            db_session=db.session,
+            client=client,
+            max_age_hours=24,
+            force_best=force_best,
+            return_candidates=True,
+        )
+    except Exception as e:
+        current_app.logger.error("Sneaker lookup failed for '%s': %s", query, e)
+        return jsonify({'message': 'External lookup failed.'}), 502
+
+    if result.get('status') == 'ok':
+        return jsonify({'mode': 'single', 'sneaker': result.get('sneaker'), 'source': result.get('source')})
+    if result.get('status') == 'pick':
+        candidates = result.get('candidates') or []
+        return jsonify({'mode': 'pick', 'candidates': candidates[:limit_value], 'source': result.get('source')})
+    if result.get('status') == 'not_found':
+        return jsonify({'mode': 'none', 'message': result.get('message', 'No results found.')}), 404
+    return jsonify({'mode': 'error', 'message': result.get('message', 'Lookup failed.')}), 400

@@ -12,6 +12,16 @@
     {{ form.model(class="form-control" + (" is-invalid" if form.model.errors else "")) }}
     <div class="invalid-feedback">{% for error in form.model.errors %}{{ error }}{% endfor %}</div>
 </div>
+<div class="mb-3">
+    {{ form.sku.label(class="form-label") }} <small class="text-muted">(optional)</small>
+    {{ form.sku(class="form-control" + (" is-invalid" if form.sku.errors else "")) }}
+    <div class="invalid-feedback">{% for error in form.sku.errors %}{{ error }}{% endfor %}</div>
+</div>
+<div class="mb-3">
+    {{ form.colorway.label(class="form-label") }} <small class="text-muted">(optional)</small>
+    {{ form.colorway(class="form-control" + (" is-invalid" if form.colorway.errors else "")) }}
+    <div class="invalid-feedback">{% for error in form.colorway.errors %}{{ error }}{% endfor %}</div>
+</div>
 
 <hr class="my-4">
 <h5 class="mb-3">Your Purchase Details</h5>

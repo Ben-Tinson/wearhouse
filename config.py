@@ -29,6 +29,8 @@ class Config:
     # External API Keys
     RETAILED_API_KEY = os.environ.get('RETAILED_API_KEY')
     RAPIDAPI_KEY = os.environ.get('RAPIDAPI_KEY')
+    KICKS_API_KEY = os.environ.get('KICKS_API_KEY')
+    KICKS_API_BASE_URL = os.environ.get('KICKS_API_BASE_URL', 'https://api.kicks.dev')
 
 
 class TestConfig(Config):
@@ -38,5 +40,4 @@ class TestConfig(Config):
     # Disable CSRF protection in tests to simplify form submissions
     WTF_CSRF_ENABLED = False
     SERVER_NAME = 'localhost.localdomain'
-
 

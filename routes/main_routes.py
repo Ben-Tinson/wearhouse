@@ -8,7 +8,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, Sneaker, Release, wishlist_items
-from forms import EditProfileForm, ReleaseForm, EmptyForm
+from forms import EditProfileForm, ReleaseForm, EmptyForm, SneakerForm
 from werkzeug.utils import secure_filename
 from decorators import admin_required
 from sqlalchemy import or_, asc, desc, extract, func
@@ -48,12 +48,15 @@ def home():
         if brand_dist:
             stats["most_owned_brand"] = brand_dist[0]
 
+    form = EmptyForm()
+
     return render_template('home.html', 
-                           recent_sneakers=recent_sneakers,
-                           upcoming_wishlist=upcoming_wishlist,
-                           rotation_sneakers=rotation_sneakers,
-                           general_releases=general_releases, # This is now available to everyone
-                           stats=stats)
+                        recent_sneakers=recent_sneakers,
+                        upcoming_wishlist=upcoming_wishlist,
+                        rotation_sneakers=rotation_sneakers,
+                        general_releases=general_releases,
+                        stats=stats,
+                        form_for_modal=form)
 
 # Profile Route
 
@@ -346,6 +349,7 @@ def remove_from_wishlist(release_id):
 def wishlist():
     """Displays the current user's wishlist, with filtering and searching."""
     form = EmptyForm()
+    sneaker_form = SneakerForm()
 
     # Get filter/search parameters from the URL
     filter_brand_param = request.args.get('filter_brand')
@@ -390,6 +394,7 @@ def wishlist():
                            title='My Wishlist', 
                            releases=wishlist_items_list,
                            form=form,
+                           form_for_modal=sneaker_form,
                            brands_for_filter=brands_for_filter,
                            months_for_filter=months_for_filter,
                            current_filter_brand=current_filter_brand,
@@ -475,6 +480,5 @@ def select_for_wishlist():
                            current_filter_month=current_filter_month,
                            current_search_term=current_search_term,
                            show_sort_controls=False) # No sorting on this page
-
 
 

@@ -76,7 +76,7 @@
                 <h6 class="card-subtitle mb-2 text-muted">Total Sneakers</h6><p class="card-text fs-2 fw-bold" id="stat-total-sneakers">{{ stats.overall_total_count }}</p>
             </div></div></div>
             <div class="col-lg-3 col-md-6 mb-4"><div class="card h-100 shadow-sm"><div class="card-body text-center">
-                <h6 class="card-subtitle mb-2 text-muted">Total Value</h6><p class="card-text fs-2 fw-bold" id="stat-total-value">£{{ "%.2f"|format(stats.total_value) }}</p>
+                <h6 class="card-subtitle mb-2 text-muted">Total Purchase Value</h6><p class="card-text fs-2 fw-bold" id="stat-total-value">£{{ "%.2f"|format(stats.total_value) }}</p>
             </div></div></div>
             <div class="col-lg-3 col-md-6 mb-4"><div class="card h-100 shadow-sm"><div class="card-body text-center">
                 <h6 class="card-subtitle mb-2 text-muted">Most Owned Brand</h6><p class="card-text fs-2 fw-bold" id="stat-most-owned">{{ stats.most_owned_brand }}</p>
@@ -131,16 +131,15 @@
             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
                 {% for release in upcoming_wishlist %}
                 <div class="col">
-                    {# Here we use the simpler card from the release calendar #}
-                    <div class="card h-100 shadow-sm">
-                        <img src="{{ release.image_url or 'https://via.placeholder.com/300x250.png?text=No+Image' }}" class="card-img-top p-3" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #f8f9fa;">
+                     <div class="card h-100 shadow-sm">
+                        <img src="{{ release.image_url or url_for('static', filename='images/placeholder.png') }}" class="card-img-top p-3" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
                         <div class="card-body">
                             <h5 class="card-title fs-6">{{ release.name }}</h5>
                             <p class="card-text"><small class="text-muted">Releases: {{ release.release_date.strftime('%b %d, %Y') }}</small></p>
                         </div>
                     </div>
                 </div>
-            {% endfor %}
+                {% endfor %}
             </div>
         </div>
     {% endif %}
@@ -149,22 +148,22 @@
     {% if general_releases %}
         <div class="container px-4 py-5" id="release-calendar-preview">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2 class="mb-0">Upcoming Releases</h2>
-                <a href="{{ url_for('main.wishlist') }}" class="btn btn-outline-secondary btn-sm">View Wishlist</a>
+                <h2 class="mb-0">Hot Upcoming Releases</h2>
+                <a href="{{ url_for('main.release_calendar') }}" class="btn btn-outline-secondary btn-sm">View Full Calendar</a>
             </div>
             <hr class="mb-4">
             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
                 {% for release in general_releases %}
                 <div class="col">
                      <div class="card h-100 shadow-sm">
-                        <img src="{{ release.image_url or 'https://via.placeholder.com/300x250.png?text=No+Image' }}" class="card-img-top p-3" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #f8f9fa;">
+                        <img src="{{ release.image_url or url_for('static', filename='images/placeholder.png') }}" class="card-img-top p-3" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
                         <div class="card-body">
                             <h5 class="card-title fs-6">{{ release.name }}</h5>
                             <p class="card-text"><small class="text-muted">Releases: {{ release.release_date.strftime('%b %d, %Y') }}</small></p>
                         </div>
                     </div>
                 </div>
-            {% endfor %}
+                {% endfor %}
             </div>
         </div>
     {% endif %}
@@ -235,7 +234,7 @@
             {% for release in general_releases %}
                 <div class="col">
                     <div class="card h-100 shadow-sm">
-                        <img src="{{ release.image_url or 'https://via.placeholder.com/300x250.png?text=No+Image' }}" class="card-img-top p-3" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #f8f9fa;">
+                        <img src="{{ release.image_url or url_for('static', filename='images/placeholder.png') }}" class="card-img-top p-3" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
                         <div class="card-body">
                             <h5 class="card-title fs-6">{{ release.name }}</h5>
                             <p class="card-text"><small class="text-muted">Releases: {{ release.release_date.strftime('%b %d, %Y') }}</small></p>

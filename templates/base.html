@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}WearHouse{% endblock %}</title>
+    <link rel="icon" type="image/png" sizes="96x96" href="{{ url_for('static', filename='brand/wearhouse-favicon.png') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -142,6 +143,22 @@
         }
         .navbar-brand:hover {
             opacity: 0.75;
+        }
+        .navbar-brand-logo {
+            display: block;
+            height: auto;
+            width: auto;
+            max-height: clamp(32px, 6vw, 52px);
+        }
+        @media (max-width: 1200px) {
+            .navbar-brand-logo {
+                max-height: clamp(28px, 6vw, 44px);
+            }
+        }
+        @media (max-width: 992px) {
+            .navbar-brand-logo {
+                max-height: clamp(24px, 7vw, 40px);
+            }
         }
     
         .navbar-light .navbar-nav .nav-link {
@@ -509,7 +526,9 @@
         <div class="container"> {# This standard Bootstrap container centers and sets responsive max-width #}
             <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-lg rounded"> {# Actual visible navbar #}
                 <div class="container-fluid"> {# For navbar's internal padding & content flow #}
-                    <a class="navbar-brand" href="{{ url_for('main.home') }}">WearHouse</a>
+                    <a class="navbar-brand d-flex align-items-center" href="{{ url_for('main.home') }}">
+                        <img src="{{ url_for('static', filename='brand/wearhouse-logo.svg') }}" alt="WearHouse" class="navbar-brand-logo">
+                    </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>

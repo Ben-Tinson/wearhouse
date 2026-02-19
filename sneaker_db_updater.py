@@ -46,6 +46,7 @@ def populate_sneaker_db():
                         
                         new_sneaker = SneakerDB(
                             name=sneaker_data.get('name'),
+                            model_name=sneaker_data.get('name'),
                             brand=sneaker_data.get('brand'),
                             colorway=sneaker_data.get('colorway'),
                             gender=sneaker_data.get('gender'),

@@ -9,7 +9,16 @@
         <div class="card shadow-sm">
             <div class="card-body">
                 {# When using FileField, form needs enctype. Flask-WTF's form object provides this. #}
-                <form method="POST" action="{{ url_for('sneakers.add_sneaker') }}" enctype="multipart/form-data">
+                <div class="border rounded p-3 mb-4 bg-light sneaker-lookup" data-target-form="#addSneakerForm">
+                    <label for="sneaker-lookup-input" class="form-label fw-bold">1. Sneaker Lookup (Optional)</label>
+                    <div class="input-group">
+                        <input type="text" id="sneaker-lookup-input" class="form-control sneaker-lookup-input" placeholder="e.g., Jordan 4 SB or DR5415-100">
+                        <button class="btn btn-outline-primary sneaker-lookup-btn" type="button">Search</button>
+                    </div>
+                    <div class="form-text mb-2">Search our database (KicksDB fallback) to auto-fill details below.</div>
+                    <div class="sneaker-lookup-results" id="sneaker-lookup-results" style="max-height: 240px; overflow-y: auto;"></div>
+                </div>
+                <form id="addSneakerForm" method="POST" action="{{ url_for('sneakers.add_sneaker') }}" enctype="multipart/form-data">
                     {{ form.hidden_tag() }} {# CSRF token and other hidden fields #}
 
                     {# Brand #}
@@ -35,6 +44,19 @@
                             </div>
                         {% else %}
                             {{ form.model(class="form-control") }}
+                        {% endif %}
+                    </div>
+
+                    {# SKU #}
+                    <div class="mb-3">
+                        {{ form.sku.label(class="form-label") }} <small class="text-muted">(optional)</small>
+                        {% if form.sku.errors %}
+                            {{ form.sku(class="form-control is-invalid") }}
+                            <div class="invalid-feedback">
+                                {% for error in form.sku.errors %}<span>{{ error }}</span><br>{% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.sku(class="form-control") }}
                         {% endif %}
                     </div>
 

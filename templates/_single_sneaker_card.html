@@ -42,9 +42,8 @@
                 </div>
             </div>
 
-            <h5 class="card-title d-none d-md-block">{{ sneaker.brand }} - {{ sneaker.model }}</h5>
+            <h5 class="card-title d-none d-md-block">{{ sneaker.model }}</h5>
 
-            <p class="card-text mb-1"><small class="text-muted">Colorway: {{ sneaker.colorway if sneaker.colorway else 'N/A' }}</small></p>
             <p class="card-text mb-1"><small class="text-muted">Size: {% if sneaker.size_type or sneaker.size %}{{ sneaker.size_type if sneaker.size_type else '' }} {{ sneaker.size if sneaker.size else '' }}{% else %}N/A{% endif %}</small></p>
             <p class="card-text mb-1 d-none d-sm-block"><small class="text-muted">Condition: {{ sneaker.condition if sneaker.condition else 'N/A' }}</small></p>
             <p class="card-text mb-1 d-none d-sm-block"><small class="text-muted">Purchased: {% if sneaker.purchase_date %}{{ sneaker.purchase_date.strftime('%b %d, %Y') }}{% else %}N/A{% endif %}</small></p>

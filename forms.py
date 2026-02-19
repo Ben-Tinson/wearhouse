@@ -20,12 +20,14 @@ def validate_sneaker_size(form, field):
 class SneakerForm(FlaskForm):
     brand = StringField('Brand', validators=[DataRequired(), Length(max=150)])
     model = StringField('Model', validators=[DataRequired(), Length(max=150)])
-    size_type = SelectField('Size Type', choices=[('UK', 'UK'), ('US M', "US Men's"), ('US W', "US Women's"), ('EU', 'EU')], validators=[Optional()])
+    sku = StringField('SKU', validators=[Optional(), Length(max=50)])
+    colorway = StringField('Colorway', validators=[Optional(), Length(max=150)])
+    size_type = SelectField('Size Type', choices=[('UK', 'UK'), ('US M', "US Men's"), ('US W', "US Women's"), ('EU', 'EU'), ('CM', 'CM'), ('KR', 'KR')], validators=[Optional()])
     size = StringField('Size', validators=[Optional(), Length(max=20)])
     purchase_date = DateField('Purchase Date', format='%Y-%m-%d', validators=[Optional()])
     purchase_price = DecimalField('Purchase Price', places=2, validators=[Optional()])
-    purchase_currency = SelectField('Currency', choices=[('GBP', '£ GBP'), ('USD', '$ USD'), ('EUR', '€ EUR')], validators=[Optional()])
-    condition = SelectField('Condition', choices=[("", "Select..."), ('Deadstock', 'Deadstock'), ('Near New', 'Near New'), ('Used - Good', 'Used - Good'), ('Used - Fair', 'Used - Fair'), ('Beater', 'Beater')], validators=[Optional()])
+    purchase_currency = SelectField('Currency', choices=[('GBP', '£ GBP'), ('USD', '$ USD'), ('EUR', '€ EUR'), ('JPY', '¥ JPY'), ('CAD', 'C$ CAD'), ('AUD', 'A$ AUD'), ('KRW', '₩ KRW')], validators=[Optional()])
+    condition = SelectField('Condition', choices=[("", "Select..."), ('Deadstock', 'Deadstock'), ('Near New', 'Near New'), ('Lightly Worn', 'Lightly Worn'), ('Heavily Worn', 'Heavily Worn'), ('Beater', 'Beater')], validators=[Optional()])
     last_worn_date = DateField('Last Worn Date', format='%Y-%m-%d', validators=[Optional()])
     image_option = RadioField('Image Source', choices=[('url', 'Link to URL'), ('upload', 'Upload File')], default='url')
     sneaker_image_url = StringField('Image URL', validators=[Optional(), Length(max=1024)], render_kw={"id": "modal_sneaker_image_url"})
@@ -135,7 +137,6 @@ class ReleaseForm(FlaskForm):
     # --- END OF NEW & MODIFIED FIELDS ---
 
     submit = SubmitField('Add Release')
-
 
 
 
