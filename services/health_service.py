@@ -225,6 +225,7 @@ def compute_health_components(
     user_id: int,
     materials: Iterable[str],
     steps_total: Optional[int] = None,
+    include_confidence: bool = True,
 ) -> Dict[str, float]:
     if steps_total is None:
         steps_total = (
@@ -386,7 +387,9 @@ def compute_health_components(
         else:
             status_label = "Needs attention"
 
-    confidence = _compute_confidence_score(user_id, sneaker.id, sneaker.last_cleaned_at)
+    confidence = {"score": None, "label": None}
+    if include_confidence:
+        confidence = _compute_confidence_score(user_id, sneaker.id, sneaker.last_cleaned_at)
 
     logger.info(
         "health_score sneaker_id=%s starting_health=%.1f steps_total=%s wear=%.2f cosmetic=%.2f structural=%.2f hygiene=%.2f "
@@ -405,7 +408,7 @@ def compute_health_components(
         persistent_material_damage_points,
         persistent_structural_damage_points,
         health_score,
-        confidence["score"],
+        confidence["score"] if confidence["score"] is not None else -1,
     )
 
     return {

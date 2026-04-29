@@ -15,6 +15,7 @@ from routes.main_routes import main_bp
 from routes.news_routes import news_bp
 from routes.sneakers_routes import sneakers_bp
 from utils.slugs import build_my_sneaker_slug, build_product_key, build_product_slug
+from services.heat_service import heat_label_for_score, heat_tooltip
 from services.steps_seed_service import seed_fake_steps, seed_fake_wear, verify_steps_attribution
 
 
@@ -64,6 +65,8 @@ def create_app(config_class=Config): # Existing default
         app.jinja_env.globals["build_my_sneaker_slug"] = build_my_sneaker_slug
         app.jinja_env.globals["build_product_key"] = build_product_key
         app.jinja_env.globals["build_product_slug"] = build_product_slug
+        app.jinja_env.globals["heat_label_for_score"] = heat_label_for_score
+        app.jinja_env.globals["heat_tooltip"] = heat_tooltip
 
     def money_display_filter(amount, currency, preferred_currency=None):
         return display_money(db.session, amount, currency, preferred_currency)

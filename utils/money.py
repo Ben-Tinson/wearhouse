@@ -6,6 +6,13 @@ from models import ExchangeRate
 CURRENCY_SYMBOLS = {"GBP": "£", "USD": "$", "EUR": "€"}
 
 
+def _rate_cache(db_session) -> Dict[tuple, Optional[ExchangeRate]]:
+    info = getattr(db_session, "info", None)
+    if info is None:
+        return {}
+    return info.setdefault("money_rate_cache", {})
+
+
 def format_money(amount: Optional[Any], currency: Optional[str]) -> Optional[str]:
     if amount is None or not currency:
         return None
@@ -22,11 +29,17 @@ def get_rate(db_session, from_currency: str, to_currency: str) -> Optional[Excha
         return None
     if from_currency == to_currency:
         return None
-    return (
+    cache = _rate_cache(db_session)
+    cache_key = (from_currency.upper(), to_currency.upper())
+    if cache_key in cache:
+        return cache[cache_key]
+    rate = (
         db_session.query(ExchangeRate)
         .filter_by(base_currency=from_currency, quote_currency=to_currency)
         .first()
     )
+    cache[cache_key] = rate
+    return rate
 
 
 def _resolve_rate(db_session, from_currency: str, to_currency: str) -> Optional[Dict[str, Any]]:
@@ -84,8 +97,8 @@ def display_money(
             "rate_as_of": None,
         }
 
-    converted = convert_money(db_session, amount, currency, preferred_currency)
-    if converted is None:
+    value = _to_decimal(amount)
+    if value is None:
         return {
             "display": original_display,
             "is_converted": False,
@@ -93,6 +106,7 @@ def display_money(
             "label": None,
             "rate_as_of": None,
         }
+    converted = (value * rate_info["rate"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     return {
         "display": format_money(converted, preferred_currency),

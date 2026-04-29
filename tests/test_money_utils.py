@@ -52,8 +52,20 @@ def test_display_money_converts_when_rate_exists(test_app):
         assert display["original"] == "$100.00"
 
 
-def test_release_calendar_shows_regional_msrp_when_available(test_app, test_client):
+def test_release_calendar_shows_regional_retail_when_available(test_app, test_client, auth):
     with test_app.app_context():
+        user = User(
+            username="calendarcurrency",
+            email="calendarcurrency@example.com",
+            first_name="Calendar",
+            last_name="Currency",
+            is_email_confirmed=True,
+            preferred_region="UK",
+            preferred_currency="GBP",
+        )
+        user.set_password("password123")
+        db.session.add(user)
+
         release = Release(
             name="Currency Release",
             brand="Nike",
@@ -69,11 +81,14 @@ def test_release_calendar_shows_regional_msrp_when_available(test_app, test_clie
 
         regional = ReleasePrice(
             release_id=release.id,
+            region="UK",
             currency="GBP",
             price=Decimal("130.00"),
         )
         db.session.add(regional)
         db.session.commit()
 
+        auth.login(username="calendarcurrency", password="password123")
         response_with_regional = test_client.get("/release-calendar")
-        assert b"MSRP:" in response_with_regional.data
+        assert b"Retails for" in response_with_regional.data
+        assert b"\xc2\xa3130.00" in response_with_regional.data

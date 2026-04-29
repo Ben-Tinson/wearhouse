@@ -74,7 +74,7 @@ def _publisher_from_schema(raw: Optional[str]) -> Optional[Dict[str, Any]]:
         data = {}
     if not isinstance(data, dict):
         data = {}
-    name = data.get("name") or "WearHouse"
+    name = data.get("name") or "Soletrak"
     logo = data.get("logo")
     url = data.get("url")
     publisher = {"@type": "Organization", "name": name}
@@ -85,7 +85,7 @@ def _publisher_from_schema(raw: Optional[str]) -> Optional[Dict[str, Any]]:
     else:
         publisher["logo"] = {
             "@type": "ImageObject",
-            "url": url_for("static", filename="brand/wearhouse-logo.svg", _external=True),
+            "url": url_for("static", filename="brand/soletrak-logo.svg", _external=True),
         }
     if url:
         publisher["url"] = url
@@ -97,7 +97,7 @@ def _build_article_schema(article: Article, publisher: Optional[Dict[str, Any]] 
     image_url = article.hero_image_url
     if image_url and not image_url.startswith("http"):
         image_url = url_for("main.uploaded_file", filename=image_url, _external=True)
-    author_name = article.author_name or "WearHouse"
+    author_name = article.author_name or "Soletrak"
     schema = {
         "@context": "https://schema.org",
         "@type": "Article",
@@ -105,7 +105,7 @@ def _build_article_schema(article: Article, publisher: Optional[Dict[str, Any]] 
         "datePublished": article.published_at.isoformat() if article.published_at else None,
         "dateModified": article.updated_at.isoformat() if article.updated_at else None,
         "author": {"@type": "Person", "name": author_name},
-        "publisher": publisher or {"@type": "Organization", "name": "WearHouse"},
+        "publisher": publisher or {"@type": "Organization", "name": "Soletrak"},
         "image": [image_url] if image_url else None,
         "mainEntityOfPage": {
             "@type": "WebPage",
@@ -358,7 +358,7 @@ def news_detail(slug):
     author_schema = {
         "@context": "https://schema.org",
         "@type": "Person",
-        "name": article.author_name or "WearHouse",
+        "name": article.author_name or "Soletrak",
     }
     if article.author_bio:
         author_schema["description"] = article.author_bio

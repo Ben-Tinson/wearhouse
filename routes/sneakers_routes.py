@@ -61,6 +61,8 @@ from services.health_service import (
     normalize_damage_type,
 )
 from services.steps_seed_service import seed_fake_steps
+from services.release_display_service import resolve_release_display
+from services.release_detail_service import build_release_detail_extras
 
 try:
     from zoneinfo import ZoneInfo
@@ -468,14 +470,14 @@ def _extract_stockx_size_prices(payload):
     if not data or not isinstance(data, list):
         return []
     entry = data[0] if isinstance(data[0], dict) else {}
-    variants = entry.get("variants") or []
+    variants = entry.get("variants") or entry.get("sizes") or []
     prices = []
     for variant in variants:
         if not isinstance(variant, dict):
             continue
         size_label = variant.get("size") or variant.get("size_title") or variant.get("sizeTitle")
         size_type = variant.get("size_type") or variant.get("sizeType") or "US"
-        price_value = variant.get("price") or variant.get("asks")
+        price_value = variant.get("price") or variant.get("asks") or variant.get("lowest_ask")
         if not size_label or price_value is None:
             continue
         try:
@@ -486,7 +488,116 @@ def _extract_stockx_size_prices(payload):
     return prices
 
 
-def _get_release_size_bids(release):
+def _extract_stockx_size_asks_from_product(detail):
+    if not isinstance(detail, dict):
+        return []
+    data = detail.get("data") if isinstance(detail.get("data"), dict) else detail
+    variants = data.get("variants") if isinstance(data, dict) else None
+    if not variants:
+        variants = (
+            data.get("productVariants")
+            or data.get("product_variants")
+            or data.get("variantsList")
+            or data.get("sizeVariants")
+            or data.get("sizes")
+            or []
+        ) if isinstance(data, dict) else []
+    if isinstance(variants, dict):
+        variants = (
+            variants.get("results")
+            or variants.get("items")
+            or variants.get("data")
+            or variants.get("variants")
+            or variants.get("sizes")
+            or []
+        )
+    asks = []
+    for variant in variants:
+        if not isinstance(variant, dict):
+            continue
+        size_label = (
+            variant.get("size")
+            or variant.get("size_us")
+            or variant.get("size_us_men")
+            or variant.get("size_us_women")
+            or variant.get("size_uk")
+            or variant.get("size_eu")
+            or variant.get("sizeEU")
+            or variant.get("sizeUS")
+            or variant.get("size_title")
+            or variant.get("sizeTitle")
+            or variant.get("displaySize")
+            or variant.get("variant")
+            or variant.get("variantValue")
+        )
+        size_type = (
+            variant.get("size_type")
+            or variant.get("sizeType")
+            or variant.get("sizes")
+            or "US"
+        )
+        if not size_label:
+            continue
+        price_value = variant.get("lowest_ask")
+        if price_value is None:
+            prices = variant.get("prices") if isinstance(variant.get("prices"), dict) else {}
+            price_value = prices.get("ask") or prices.get("lowest_ask")
+        if price_value is None:
+            continue
+        try:
+            price_decimal = Decimal(str(price_value))
+        except (ValueError, TypeError):
+            continue
+        asks.append((str(size_label), str(size_type) if size_type else "US", price_decimal, "ask"))
+    return asks
+
+
+def _extract_goat_size_asks(detail):
+    if not isinstance(detail, dict):
+        return []
+    data = detail.get("data") if isinstance(detail.get("data"), dict) else detail
+    variants = []
+    if isinstance(data, dict):
+        variants = data.get("variants") or data.get("sizes") or []
+    if isinstance(variants, dict):
+        variants = (
+            variants.get("results")
+            or variants.get("items")
+            or variants.get("data")
+            or variants.get("variants")
+            or variants.get("sizes")
+            or []
+        )
+    asks = []
+    for variant in variants:
+        if not isinstance(variant, dict):
+            continue
+        size_label = (
+            variant.get("size")
+            or variant.get("size_title")
+            or variant.get("sizeTitle")
+            or variant.get("displaySize")
+            or variant.get("variant")
+            or variant.get("variantValue")
+        )
+        size_type = variant.get("size_type") or variant.get("sizeType") or "US"
+        if not size_label:
+            continue
+        price_value = variant.get("lowest_ask") or variant.get("lowestAsk")
+        if price_value is None:
+            prices = variant.get("prices") if isinstance(variant.get("prices"), dict) else {}
+            price_value = prices.get("ask") or prices.get("lowest_ask") or prices.get("lowestAsk")
+        if price_value is None:
+            continue
+        try:
+            price_decimal = Decimal(str(price_value))
+        except (ValueError, TypeError):
+            continue
+        asks.append((str(size_label), str(size_type) if size_type else "US", price_decimal, "ask"))
+    return asks
+
+
+def _get_release_size_bids(release, allow_live_refresh: bool = True):
     if not release:
         return [], None
     now = datetime.utcnow()
@@ -497,10 +608,20 @@ def _get_release_size_bids(release):
             .order_by(ReleaseSizeBid.size_label.asc())
             .all()
         )
-        return bids, release.size_bids_last_fetched_at
+        if bids:
+            return bids, release.size_bids_last_fetched_at
 
     source_id = release.source_product_id or release.source_slug
-    if not source_id:
+    if not source_id and not release.sku:
+        bids = (
+            db.session.query(ReleaseSizeBid)
+            .filter(ReleaseSizeBid.release_id == release.id)
+            .order_by(ReleaseSizeBid.size_label.asc())
+            .all()
+        )
+        return bids, release.size_bids_last_fetched_at
+
+    if not allow_live_refresh:
         bids = (
             db.session.query(ReleaseSizeBid)
             .filter(ReleaseSizeBid.release_id == release.id)
@@ -525,7 +646,7 @@ def _get_release_size_bids(release):
         logger=current_app.logger,
     )
     parsed_bids = []
-    use_price_endpoint = current_app.config.get("KICKS_STOCKX_PRICES_ENABLED", False)
+    use_price_endpoint = release.source != "kicksdb_goat"
     if use_price_endpoint:
         try:
             price_payload = client.stockx_prices(
@@ -538,14 +659,20 @@ def _get_release_size_bids(release):
             current_app.logger.warning("Size price fetch failed for release %s: %s", release.id, exc)
     if not parsed_bids:
         try:
-            detail = client.get_stockx_product(
-                source_id,
-                include_variants=True,
-                include_traits=False,
-                include_market=True,
-                include_statistics=False,
-            )
-            parsed_bids = _extract_stockx_size_bids(detail)
+            if release.source == "kicksdb_goat":
+                detail = client.get_goat_product(source_id)
+                parsed_bids = _extract_goat_size_asks(detail)
+            else:
+                detail = client.get_stockx_product(
+                    source_id,
+                    include_variants=True,
+                    include_traits=False,
+                    include_market=True,
+                    include_statistics=False,
+                )
+                parsed_bids = _extract_stockx_size_asks_from_product(detail)
+                if not parsed_bids:
+                    parsed_bids = _extract_stockx_size_bids(detail)
         except KicksAPIError as exc:
             current_app.logger.warning("Size bid fetch failed for release %s: %s", release.id, exc)
             bids = (
@@ -556,15 +683,15 @@ def _get_release_size_bids(release):
             )
             return bids, release.size_bids_last_fetched_at
 
-    db.session.query(ReleaseSizeBid).filter(ReleaseSizeBid.release_id == release.id).delete()
     if parsed_bids:
+        db.session.query(ReleaseSizeBid).filter(ReleaseSizeBid.release_id == release.id).delete()
         deduped = {}
         for size_label, size_type, bid_value, price_type in parsed_bids:
-            key = (str(size_label), str(size_type) if size_type else None)
+            key = (str(size_label), str(size_type) if size_type else None, str(price_type) if price_type else "bid")
             existing = deduped.get(key)
             if not existing or bid_value > existing[0]:
                 deduped[key] = (bid_value, price_type)
-        for (size_label, size_type), (bid_value, price_type) in deduped.items():
+        for (size_label, size_type, _), (bid_value, price_type) in deduped.items():
             db.session.add(
                 ReleaseSizeBid(
                     release_id=release.id,
@@ -576,6 +703,15 @@ def _get_release_size_bids(release):
                     fetched_at=now,
                 )
             )
+        release.size_bids_last_fetched_at = now
+        db.session.commit()
+        bids = (
+            db.session.query(ReleaseSizeBid)
+            .filter(ReleaseSizeBid.release_id == release.id)
+            .order_by(ReleaseSizeBid.size_label.asc())
+            .all()
+        )
+        return bids, release.size_bids_last_fetched_at
     else:
         detail_data = detail.get("data") if isinstance(detail.get("data"), dict) else {}
         data_keys = list(detail_data.keys()) if isinstance(detail_data, dict) else []
@@ -599,16 +735,13 @@ def _get_release_size_bids(release):
             release.id,
             source_id,
         )
-    release.size_bids_last_fetched_at = now
-    db.session.commit()
-
-    bids = (
-        db.session.query(ReleaseSizeBid)
-        .filter(ReleaseSizeBid.release_id == release.id)
-        .order_by(ReleaseSizeBid.size_label.asc())
-        .all()
-    )
-    return bids, release.size_bids_last_fetched_at
+        bids = (
+            db.session.query(ReleaseSizeBid)
+            .filter(ReleaseSizeBid.release_id == release.id)
+            .order_by(ReleaseSizeBid.size_label.asc())
+            .all()
+        )
+        return bids, release.size_bids_last_fetched_at
 
 
 def _parse_stockx_sale_timestamp(value: str):
@@ -674,7 +807,7 @@ def _get_release_sales_series(release, max_points: int = 15):
         return rows, release.sales_last_fetched_at
 
     sales = payload.get("data") if isinstance(payload, dict) else []
-    points = []
+    points_by_timestamp = {}
     for sale in sales or []:
         if not isinstance(sale, dict):
             continue
@@ -686,7 +819,9 @@ def _get_release_sales_series(release, max_points: int = 15):
             amount_decimal = Decimal(str(amount))
         except (ValueError, TypeError):
             continue
-        points.append((created_at, amount_decimal))
+        points_by_timestamp[created_at] = amount_decimal
+
+    points = sorted(points_by_timestamp.items(), key=lambda item: item[0])
 
     if points:
         db.session.query(ReleaseSalePoint).filter(ReleaseSalePoint.release_id == release.id).delete()
@@ -818,15 +953,6 @@ def dashboard():
             return (1, Decimal("0")) if value is None else (0, value)
         user_sneakers_list.sort(key=resale_key, reverse=(effective_order == 'desc'))
 
-    status_map = {}
-    for sneaker in user_sneakers_list:
-        health_components = compute_health_components(
-            sneaker=sneaker,
-            user_id=current_user.id,
-            materials=[],
-        )
-        status_map[sneaker.id] = health_components["status_label"]
-
     total_count = len(user_sneakers_list)
     total_pages = max(1, math.ceil(total_count / per_page)) if total_count else 1
     page = max(1, min(page, total_pages))
@@ -877,6 +1003,17 @@ def dashboard():
         steps_map = {
             row.sneaker_id: int(row.steps_total or 0) for row in step_rows
         }
+
+    status_map = {}
+    for sneaker in user_sneakers_list:
+        health_components = compute_health_components(
+            sneaker=sneaker,
+            user_id=current_user.id,
+            materials=[],
+            steps_total=steps_map.get(sneaker.id),
+            include_confidence=False,
+        )
+        status_map[sneaker.id] = health_components["status_label"]
 
     # --- 4. Calculate All Stats & Dropdown Data ---
     base_query = Sneaker.query.filter_by(user_id=current_user.id)
@@ -1144,14 +1281,82 @@ def rotation():
     modal_form = SneakerForm()
     modal_form.purchase_currency.data = current_user.preferred_currency or "GBP"
 
+    sneaker_ids = [sneaker.id for sneaker in user_sneakers]
+    steps_map = {}
+    if sneaker_ids:
+        step_rows = (
+            db.session.query(
+                StepAttribution.sneaker_id,
+                func.sum(StepAttribution.steps_attributed).label("steps_total"),
+            )
+            .filter(
+                StepAttribution.user_id == current_user.id,
+                StepAttribution.sneaker_id.in_(sneaker_ids),
+                StepAttribution.bucket_granularity == "day",
+                StepAttribution.algorithm_version == ALGORITHM_V1,
+            )
+            .group_by(StepAttribution.sneaker_id)
+            .all()
+        )
+        steps_map = {row.sneaker_id: int(row.steps_total or 0) for row in step_rows}
+
     status_map = {}
     for sneaker in user_sneakers:
         health_components = compute_health_components(
             sneaker=sneaker,
             user_id=current_user.id,
             materials=[],
+            steps_total=steps_map.get(sneaker.id),
+            include_confidence=False,
         )
         status_map[sneaker.id] = health_components["status_label"]
+
+    exposure_notes_map = {}
+    has_stains_since_clean_map = {}
+    has_sensitive_materials_map = {}
+    sneaker_records_by_sku = {}
+    current_page_skus = [_normalize_sku_value(sneaker.sku) for sneaker in user_sneakers if sneaker.sku]
+    if current_page_skus:
+        sku_rows = (
+            SneakerDB.query
+            .filter(func.upper(SneakerDB.sku).in_(_sku_query_values(current_page_skus)))
+            .all()
+        )
+        sneaker_records_by_sku = {
+            _normalize_sku_value(record.sku): record for record in sku_rows if record.sku
+        }
+
+    if sneaker_ids:
+        exposure_rows = (
+            db.session.query(ExposureEvent, SneakerWear.sneaker_id)
+            .join(
+                SneakerWear,
+                (SneakerWear.worn_at == ExposureEvent.date_local)
+                & (SneakerWear.sneaker_id.in_(sneaker_ids)),
+            )
+            .filter(
+                ExposureEvent.user_id == current_user.id,
+                ExposureEvent.note.isnot(None),
+            )
+            .order_by(ExposureEvent.date_local.desc())
+            .all()
+        )
+        for exposure_event, exposure_sneaker_id in exposure_rows:
+            exposure_notes_map.setdefault(exposure_sneaker_id, []).append(exposure_event)
+
+    for sneaker in user_sneakers:
+        exposure_notes_map.setdefault(sneaker.id, [])
+
+        since_cleaned_date = exposure_since_date(sneaker.last_cleaned_at)
+        stain_stats = _stain_stats_since_clean(sneaker.id, current_user.id, since_cleaned_date)
+        has_stains_since_clean_map[sneaker.id] = stain_stats["count"] > 0
+
+        sneaker_materials = []
+        if sneaker.sku:
+            sneaker_record = sneaker_records_by_sku.get(_normalize_sku_value(sneaker.sku))
+            if sneaker_record:
+                sneaker_materials = _load_materials_list(sneaker_record)
+        has_sensitive_materials_map[sneaker.id] = has_sensitive_suede_materials(sneaker_materials)
 
     return render_template('rotation.html', 
                            show_sort_controls=True,
@@ -1180,6 +1385,9 @@ def rotation():
                            form_for_modal=modal_form, # Pass modal form as form_for_modal
                            avg_resale_map=avg_resale_map,
                            status_map=status_map,
+                           exposure_notes_map=exposure_notes_map,
+                           has_stains_since_clean_map=has_stains_since_clean_map,
+                           has_sensitive_materials_map=has_sensitive_materials_map,
                            page=page,
                            total_pages=total_pages,
                            pagination_params={k: v for k, v in request.args.to_dict(flat=True).items() if k != 'page'}
@@ -1219,13 +1427,38 @@ def my_sneaker_detail(sneaker_id, slug):
     preferred_currency = current_user.preferred_currency or "GBP"
     release = None
     if sneaker.sku:
-        sku_values = _sku_query_values([sneaker.sku])
+        sku_filters = [Release.sku.ilike(value) for value in sku_variants(sneaker.sku)]
+        if not sku_filters:
+            sku_filters = [Release.sku.ilike(sneaker.sku)]
         release = (
             db.session.query(Release)
-            .options(joinedload(Release.offers), joinedload(Release.size_bids))
-            .filter(func.upper(Release.sku).in_(sku_values))
+            .options(
+                joinedload(Release.offers),
+                joinedload(Release.size_bids),
+                joinedload(Release.prices),
+                joinedload(Release.regions),
+                joinedload(Release.market_stats),
+            )
+            .filter(or_(*sku_filters))
             .first()
         )
+        if not release or not release.release_date or not release.retail_price:
+            from routes.main_routes import _ensure_release_for_sku_with_resale
+
+            ensured_release = _ensure_release_for_sku_with_resale(sneaker.sku)
+            if ensured_release:
+                release = (
+                    db.session.query(Release)
+                    .options(
+                        joinedload(Release.offers),
+                        joinedload(Release.size_bids),
+                        joinedload(Release.prices),
+                        joinedload(Release.regions),
+                        joinedload(Release.market_stats),
+                    )
+                    .filter_by(id=ensured_release.id)
+                    .first()
+                )
     sneaker_materials = []
     if sneaker.sku:
         sku_filters = [SneakerDB.sku.ilike(value) for value in sku_variants(sneaker.sku)]
@@ -1235,6 +1468,25 @@ def my_sneaker_detail(sneaker_id, slug):
     care_tags = derive_care_tags(sneaker_materials)
 
     avg_resale = _avg_resale_entry_for_sneaker(sneaker, release, preferred_currency)
+    release_display = None
+    release_description = None
+    market_metrics = None
+    average_resale_summary = None
+    if release:
+        release_market_stats = release.market_stats
+        release_display = resolve_release_display(release, db.session, user=current_user)
+        extras = build_release_detail_extras(
+            release,
+            db.session,
+            preferred_currency,
+            display_data=release_display,
+            avg_resale_price=avg_resale.get("amount") if isinstance(avg_resale, dict) else None,
+            avg_resale_currency=avg_resale.get("currency") if isinstance(avg_resale, dict) else None,
+            market_stats=release_market_stats,
+        )
+        release_description = extras.get("release_description")
+        market_metrics = extras.get("market_metrics")
+        average_resale_summary = extras.get("average_resale_summary")
     modal_form = SneakerForm()
     damage_form = DamageReportForm()
     repair_form = RepairEventForm()
@@ -1361,6 +1613,7 @@ def my_sneaker_detail(sneaker_id, slug):
         sneaker=sneaker,
         user_id=current_user.id,
         materials=sneaker_materials,
+        steps_total=steps_total,
     )
     wet_points_sum = health_components["wet_points_sum"]
     dirty_points_sum = health_components["dirty_points_sum"]
@@ -1455,6 +1708,10 @@ def my_sneaker_detail(sneaker_id, slug):
         'sneaker_detail.html',
         sneaker=sneaker,
         release=release,
+        release_display=release_display,
+        release_description=release_description,
+        market_metrics=market_metrics,
+        average_resale_summary=average_resale_summary,
         avg_resale=avg_resale,
         preferred_currency=preferred_currency,
         form_for_modal=modal_form,
@@ -2418,6 +2675,7 @@ def mark_sneaker_cleaned(sneaker_id):
     sneaker = db.session.get(Sneaker, sneaker_id)
     if not sneaker or sneaker.owner != current_user:
         abort(404)
+    source = request.form.get("source")
 
     notes_action = request.form.get("notes_action", "keep")
     selected_ids = request.form.getlist("note_ids")
@@ -2515,6 +2773,8 @@ def mark_sneaker_cleaned(sneaker_id):
 
     db.session.commit()
     flash("Sneaker marked as cleaned.", "success")
+    if source == "rotation":
+        return redirect(url_for('sneakers.rotation'))
     return redirect(url_for('sneakers.sneaker_detail', sneaker_id=sneaker.id))
 
 

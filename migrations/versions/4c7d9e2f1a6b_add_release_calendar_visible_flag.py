@@ -17,8 +17,16 @@ depends_on = None
 
 
 def upgrade():
+    calendar_visible_default = sa.true() if op.get_bind().dialect.name == 'postgresql' else sa.text('1')
     with op.batch_alter_table('release') as batch_op:
-        batch_op.add_column(sa.Column('is_calendar_visible', sa.Boolean(), nullable=False, server_default=sa.text('1')))
+        batch_op.add_column(
+            sa.Column(
+                'is_calendar_visible',
+                sa.Boolean(),
+                nullable=False,
+                server_default=calendar_visible_default,
+            )
+        )
 
 
 def downgrade():

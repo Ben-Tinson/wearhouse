@@ -16,6 +16,22 @@ depends_on = None
 
 
 def upgrade():
+    user_table = sa.table(
+        "user",
+        sa.column("preferred_currency", sa.String(length=3)),
+    )
+    sneaker_table = sa.table(
+        "sneaker",
+        sa.column("purchase_currency", sa.String(length=3)),
+        sa.column("price_paid_currency", sa.String(length=3)),
+    )
+    release_table = sa.table(
+        "release",
+        sa.column("retail_currency", sa.String(length=10)),
+        sa.column("retail_price", sa.Numeric(10, 2)),
+        sa.column("source", sa.String(length=50)),
+    )
+
     op.add_column(
         "user",
         sa.Column("preferred_currency", sa.String(length=3), nullable=False, server_default="GBP"),
@@ -25,16 +41,36 @@ def upgrade():
         sa.Column("price_paid_currency", sa.String(length=3), nullable=True, server_default="GBP"),
     )
 
-    op.execute("UPDATE user SET preferred_currency = 'GBP' WHERE preferred_currency IS NULL")
-    op.execute("UPDATE sneaker SET purchase_currency = 'GBP' WHERE purchase_currency IS NULL")
     op.execute(
-        "UPDATE sneaker SET price_paid_currency = COALESCE(purchase_currency, 'GBP') "
-        "WHERE price_paid_currency IS NULL"
+        user_table.update()
+        .where(user_table.c.preferred_currency.is_(None))
+        .values(preferred_currency="GBP")
     )
-    op.execute("UPDATE release SET retail_currency = 'GBP' WHERE retail_currency IS NULL")
     op.execute(
-        "UPDATE release SET retail_currency = 'USD' "
-        "WHERE retail_currency = 'GBP' AND retail_price IS NOT NULL AND source = 'kicksdb_stockx'"
+        sneaker_table.update()
+        .where(sneaker_table.c.purchase_currency.is_(None))
+        .values(purchase_currency="GBP")
+    )
+    op.execute(
+        sneaker_table.update()
+        .where(sneaker_table.c.price_paid_currency.is_(None))
+        .values(price_paid_currency=sa.func.coalesce(sneaker_table.c.purchase_currency, "GBP"))
+    )
+    op.execute(
+        release_table.update()
+        .where(release_table.c.retail_currency.is_(None))
+        .values(retail_currency="GBP")
+    )
+    op.execute(
+        release_table.update()
+        .where(
+            sa.and_(
+                release_table.c.retail_currency == "GBP",
+                release_table.c.retail_price.is_not(None),
+                release_table.c.source == "kicksdb_stockx",
+            )
+        )
+        .values(retail_currency="USD")
     )
 
     op.create_table(

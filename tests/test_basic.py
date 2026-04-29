@@ -3,7 +3,7 @@
 def test_home_page_logged_out(test_client):
     response = test_client.get('/')
     assert response.status_code == 200
-    assert b"Welcome to WearHouse!" in response.data
+    assert b"Welcome to Soletrak!" in response.data
 
 def test_dashboard_page_logged_in(test_client, auth, init_database):
     # The 'init_database' fixture creates the user and sneaker.

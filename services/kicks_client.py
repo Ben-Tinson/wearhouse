@@ -77,8 +77,24 @@ class KicksClient:
         params = {"query": query}
         return self._request("GET", "/v3/goat/products", params=params)
 
-    def get_goat_product(self, id_or_slug: str) -> Dict[str, Any]:
-        return self._request("GET", f"/v3/goat/products/{id_or_slug}")
+    def get_goat_product(
+        self,
+        id_or_slug: str,
+        include_variants: bool = True,
+        include_traits: bool = True,
+        include_statistics: bool = False,
+        include_market: bool = False,
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {}
+        if include_variants:
+            params["display[variants]"] = "true"
+        if include_traits:
+            params["display[traits]"] = "true"
+        if include_statistics:
+            params["display[statistics]"] = "true"
+        if include_market:
+            params["display[market]"] = "true"
+        return self._request("GET", f"/v3/goat/products/{id_or_slug}", params=params or None)
 
     def stockx_prices(
         self,
@@ -90,6 +106,7 @@ class KicksClient:
             "market": market,
             "skus": skus or None,
             "product_ids": product_ids or None,
+            "show_sizes": True,
         }
         return self._request("POST", "/v3/stockx/prices", json_body=payload)
 

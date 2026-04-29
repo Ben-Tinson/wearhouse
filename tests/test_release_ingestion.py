@@ -164,6 +164,8 @@ def test_ingestion_skips_out_of_window(test_app):
 
 def test_ingestion_stops_after_end_date(test_app):
     with test_app.app_context():
+        start_date = date(2026, 1, 1)
+        end_date = date(2026, 3, 1)
         pages = {
             1: {
                 "results": [
@@ -196,7 +198,14 @@ def test_ingestion_stops_after_end_date(test_app):
             },
         }
         client = FakeKicksClient(pages)
-        stats = ingest_kicksdb_releases(db.session, client, mode="lite", backfill_threshold=999)
+        stats = ingest_kicksdb_releases(
+            db.session,
+            client,
+            mode="lite",
+            backfill_threshold=999,
+            start_date=start_date,
+            end_date=end_date,
+        )
 
         assert stats["stop_reason"] == "end_date_reached"
         assert stats["pages_fetched"] == 1
@@ -205,6 +214,8 @@ def test_ingestion_stops_after_end_date(test_app):
 
 def test_goat_backfill_runs_when_below_threshold(test_app):
     with test_app.app_context():
+        start_date = date(2026, 1, 1)
+        end_date = date(2026, 3, 1)
         stockx_pages = {
             1: {
                 "results": [
@@ -239,6 +250,8 @@ def test_goat_backfill_runs_when_below_threshold(test_app):
             mode="lite",
             backfill_threshold=5,
             max_total_requests=6,
+            start_date=start_date,
+            end_date=end_date,
         )
 
         assert stats["goat_created"] == 1
@@ -247,6 +260,8 @@ def test_goat_backfill_runs_when_below_threshold(test_app):
 
 def test_goat_backfill_skipped_when_threshold_met(test_app):
     with test_app.app_context():
+        start_date = date(2026, 1, 1)
+        end_date = date(2026, 3, 1)
         stockx_pages = {
             1: {
                 "results": [
@@ -267,6 +282,8 @@ def test_goat_backfill_skipped_when_threshold_met(test_app):
             mode="lite",
             backfill_threshold=1,
             max_total_requests=6,
+            start_date=start_date,
+            end_date=end_date,
         )
 
         assert stats["goat_requests_used"] == 0
@@ -274,6 +291,8 @@ def test_goat_backfill_skipped_when_threshold_met(test_app):
 
 def test_goat_dedupe_by_sku(test_app):
     with test_app.app_context():
+        start_date = date(2026, 1, 1)
+        end_date = date(2026, 3, 1)
         stockx_pages = {
             1: {
                 "results": [
@@ -309,6 +328,8 @@ def test_goat_dedupe_by_sku(test_app):
             mode="lite",
             backfill_threshold=5,
             max_total_requests=6,
+            start_date=start_date,
+            end_date=end_date,
         )
 
         assert stats["goat_deduped"] >= 0
@@ -341,6 +362,8 @@ def test_outbound_offer_redirect(test_client, test_app):
 
 def test_goat_iso_dates_inserted(test_app):
     with test_app.app_context():
+        start_date = date(2026, 1, 1)
+        end_date = date(2026, 3, 1)
         stockx_pages = {1: {"results": []}}
         goat_pages = {
             1: {
@@ -363,6 +386,8 @@ def test_goat_iso_dates_inserted(test_app):
             mode="lite",
             backfill_threshold=5,
             max_total_requests=6,
+            start_date=start_date,
+            end_date=end_date,
         )
 
         assert stats["goat_created"] == 1

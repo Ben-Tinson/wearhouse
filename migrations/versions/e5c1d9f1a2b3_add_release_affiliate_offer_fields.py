@@ -17,6 +17,9 @@ depends_on = None
 
 
 def upgrade():
+    dialect_name = op.get_bind().dialect.name
+    active_default = sa.true() if dialect_name == "postgresql" else sa.text('1')
+
     with op.batch_alter_table('release', schema=None) as batch_op:
         batch_op.add_column(sa.Column('sku', sa.String(length=50), nullable=True))
         batch_op.add_column(sa.Column('model_name', sa.String(length=200), nullable=True))
@@ -40,7 +43,7 @@ def upgrade():
         sa.Column('region', sa.String(length=10), nullable=True),
         sa.Column('base_url', sa.String(length=1024), nullable=False),
         sa.Column('affiliate_url', sa.String(length=1024), nullable=True),
-        sa.Column('is_active', sa.Boolean(), nullable=False, server_default=sa.text('1')),
+        sa.Column('is_active', sa.Boolean(), nullable=False, server_default=active_default),
         sa.Column('last_checked_at', sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['release_id'], ['release.id']),

@@ -22,7 +22,8 @@ def test_update_profile_details(test_client, auth, init_database):
         'first_name': new_first_name,
         'last_name': new_last_name,
         'email': user.email, # Keep the email the same for this test
-        'marketing_opt_in': user.marketing_opt_in
+        'marketing_opt_in': user.marketing_opt_in,
+        'preferred_region': 'US'
     }, follow_redirects=True)
 
     # 3. Assert the response is successful
@@ -33,6 +34,7 @@ def test_update_profile_details(test_client, auth, init_database):
     updated_user = db.session.get(User, user.id)
     assert updated_user.first_name == new_first_name
     assert updated_user.last_name == new_last_name
+    assert updated_user.preferred_region == 'US'
 
     # 5. Verify the new name appears on the profile page
     assert bytes(new_first_name, 'utf-8') in response.data
@@ -57,7 +59,8 @@ def test_profile_email_change_flow(test_client, auth, init_database):
         'first_name': user.first_name,
         'last_name': user.last_name,
         'email': new_email, # Provide the new email
-        'marketing_opt_in': user.marketing_opt_in
+        'marketing_opt_in': user.marketing_opt_in,
+        'preferred_region': 'UK'
     }, follow_redirects=True)
 
     # 3. Assert that the initial request was successful
@@ -107,7 +110,8 @@ def test_edit_profile_duplicate_email(test_client, auth, init_database, another_
         'first_name': user_1.first_name,
         'last_name': user_1.last_name,
         'email': email_of_user_2, # Attempting to use the duplicate email
-        'marketing_opt_in': user_1.marketing_opt_in
+        'marketing_opt_in': user_1.marketing_opt_in,
+        'preferred_region': 'EU'
     }, follow_redirects=True)
 
     # 3. Assert the response indicates a validation failure
@@ -122,6 +126,48 @@ def test_edit_profile_duplicate_email(test_client, auth, init_database, another_
     assert user1_in_db.email != email_of_user_2
 
 
+def test_invalid_region_rejected(test_client, auth, init_database):
+    user, _ = init_database
+    auth.login(username=user.username, password='password123')
+    response = test_client.post('/edit-profile', data={
+        'username': user.username,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'email': user.email,
+        'marketing_opt_in': user.marketing_opt_in,
+        'preferred_region': 'APAC'
+    }, follow_redirects=True)
+    assert response.status_code == 200
+    assert b"Not a valid choice" in response.data
+
+
+def test_user_cannot_edit_other_account(test_client, auth, init_database, another_user_in_db):
+    user_1, _ = init_database
+    user_2 = another_user_in_db
+
+    original_user_2 = db.session.get(User, user_2.id)
+    original_user_2_username = original_user_2.username
+    original_user_2_email = original_user_2.email
+
+    auth.login(username=user_1.username, password='password123')
+
+    response = test_client.post('/edit-profile', data={
+        'username': user_1.username,
+        'first_name': 'OnlyUser1',
+        'last_name': user_1.last_name,
+        'email': user_1.email,
+        'marketing_opt_in': user_1.marketing_opt_in,
+        'preferred_region': 'EU'
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+
+    user_1_updated = db.session.get(User, user_1.id)
+    user_2_updated = db.session.get(User, user_2.id)
+
+    assert user_1_updated.first_name == 'OnlyUser1'
+    assert user_2_updated.username == original_user_2_username
+    assert user_2_updated.email == original_user_2_email
 
 
 

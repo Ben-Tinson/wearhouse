@@ -4,6 +4,8 @@ from models import (
     User,
     Release,
     AffiliateOffer,
+    ReleaseSalePoint,
+    ReleaseMarketStats,
     SneakerNote,
     SneakerWear,
     SneakerCleanEvent,
@@ -21,6 +23,7 @@ from models import (
 from extensions import db
 from io import BytesIO
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 import os
 from services.steps_attribution_service import ALGORITHM_V1
 from services.health_service import compute_damage_penalty_points, compute_health_components, derive_care_tags
@@ -794,6 +797,103 @@ def test_sneaker_detail_health_score_calculation(test_client, auth, test_app):
     response = test_client.get(_my_sneaker_url(sneaker_id, sneaker_slug))
 
     assert response.status_code == 200
+
+
+def test_my_sneaker_detail_shows_release_metrics(test_client, auth, test_app):
+    with test_app.app_context():
+        user = User(
+            username="metricuser",
+            email="metric@example.com",
+            first_name="Metric",
+            last_name="User",
+            is_email_confirmed=True,
+        )
+        user.set_password("password123")
+        sneaker = Sneaker(
+            brand="Nike",
+            model="Metric Pair",
+            sku="MET-321",
+            owner=user,
+            condition="Lightly Worn",
+            starting_health=95.0,
+        )
+        release = Release(
+            sku="MET-321",
+            name="Metric Release",
+            brand="Nike",
+            release_date=date.today() + timedelta(days=1),
+            retail_price=Decimal("200.00"),
+            retail_currency="USD",
+        )
+        db.session.add_all([user, sneaker, release])
+        db.session.commit()
+
+        offer = AffiliateOffer(
+            release_id=release.id,
+            retailer="stockx",
+            base_url="https://example.com/stockx",
+            offer_type="aftermarket",
+            price=Decimal("220.00"),
+            currency="USD",
+            is_active=True,
+        )
+        db.session.add(offer)
+
+        sale = ReleaseSalePoint(
+            release_id=release.id,
+            sale_at=datetime.utcnow(),
+            price=Decimal("220.00"),
+            currency="USD",
+        )
+        db.session.add(sale)
+        stats = ReleaseMarketStats(
+            release_id=release.id,
+            currency="USD",
+            average_price_3m=Decimal("240.00"),
+            average_price_1y=Decimal("260.00"),
+            volatility=0.42,
+            sales_price_range_low=Decimal("150.00"),
+            sales_price_range_high=Decimal("350.00"),
+        )
+        db.session.add(stats)
+        db.session.commit()
+
+        sneaker_db = SneakerDB(
+            sku="MET-321",
+            name="Metric Release",
+            brand="Nike",
+            description="This is a test description.",
+        )
+        db.session.add(sneaker_db)
+        db.session.commit()
+
+        db.session.add(
+            StepAttribution(
+                user_id=user.id,
+                sneaker_id=sneaker.id,
+                bucket_granularity="day",
+                bucket_start=datetime.utcnow() - timedelta(days=1),
+                steps_attributed=1500,
+                algorithm_version=ALGORITHM_V1,
+            )
+        )
+        db.session.commit()
+
+        sneaker_slug = build_my_sneaker_slug(sneaker)
+
+    auth.login(username="metricuser", password="password123")
+    response = test_client.get(f"/my/sneakers/{sneaker.id}-{sneaker_slug}")
+    assert response.status_code == 200
+    assert b"About this release" in response.data
+    assert b"Avg 3-Month Resale" in response.data
+    assert b"$240.00" in response.data
+    assert b"Price premium (1Y)" in response.data
+    assert b"Sales volume (3M)" in response.data
+    assert b"Volatility (1Y)" in response.data
+    assert b"42.0%" in response.data
+    assert b"Sales price range (1Y)" in response.data
+    assert b"$150.00" in response.data
+    assert b"$350.00" in response.data
     assert b"91.9" in response.data
     assert b"Baseline" in response.data
     assert b"Purchase Condition" in response.data
@@ -805,8 +905,59 @@ def test_sneaker_detail_health_score_calculation(test_client, auth, test_app):
     assert b"Action:" not in response.data
 
 
+def test_my_sneaker_detail_backfills_release_data_when_missing(test_client, auth, test_app, monkeypatch):
+    with test_app.app_context():
+        user = User(
+            username="backfilluser",
+            email="backfill@example.com",
+            first_name="Backfill",
+            last_name="User",
+            is_email_confirmed=True,
+        )
+        user.set_password("password123")
+        sneaker = Sneaker(
+            brand="Jordan",
+            model="Backfill Pair",
+            sku="BACK-123",
+            owner=user,
+        )
+        db.session.add_all([user, sneaker])
+        db.session.commit()
+        sneaker_id = sneaker.id
+        sneaker_slug = build_my_sneaker_slug(sneaker)
+
+    def _fake_ensure_release_for_sku_with_resale(sku):
+        release = Release.query.filter_by(sku=sku).first()
+        if not release:
+            release = Release(
+                sku=sku,
+                name="Backfill Release",
+                brand="Jordan",
+                release_date=date(2026, 4, 12),
+                retail_price=Decimal("210.00"),
+                retail_currency="USD",
+                source="kicksdb_stockx",
+            )
+            db.session.add(release)
+            db.session.commit()
+        return release
+
+    monkeypatch.setattr(
+        "routes.main_routes._ensure_release_for_sku_with_resale",
+        _fake_ensure_release_for_sku_with_resale,
+    )
+
+    auth.login(username="backfilluser", password="password123")
+    response = test_client.get(_my_sneaker_url(sneaker_id, sneaker_slug))
+
+    assert response.status_code == 200
+    assert b"Apr 12, 2026" in response.data
+    assert b"$210.00" in response.data
+
+
 def test_health_score_rebounds_after_clean_without_persistent_penalty(test_client, auth, test_app):
     with test_app.app_context():
+        utc_today = datetime.utcnow().date()
         user = User(
             username="cleanrebound",
             email="cleanrebound@example.com",
@@ -821,13 +972,13 @@ def test_health_score_rebounds_after_clean_without_persistent_penalty(test_clien
         db.session.commit()
 
         db.session.add(
-            SneakerWear(sneaker_id=sneaker.id, worn_at=date.today())
+            SneakerWear(sneaker_id=sneaker.id, worn_at=utc_today)
         )
         db.session.add(
             SneakerExposureAttribution(
                 user_id=user.id,
                 sneaker_id=sneaker.id,
-                date_local=date.today(),
+                date_local=utc_today,
                 wet_points=2.0,
                 dirty_points=1.0,
             )
@@ -1406,6 +1557,31 @@ def test_status_thresholds_and_override(test_app):
         assert compute_health_components(watch_pair, user.id, materials=[])["status_label"] == "Monitor"
         assert compute_health_components(needs_pair, user.id, materials=[])["status_label"] == "Needs attention"
         assert compute_health_components(override_pair, user.id, materials=[])["status_label"] == "Needs attention"
+
+
+def test_compute_health_components_can_skip_confidence_scoring(test_app):
+    with test_app.app_context():
+        user = User(
+            username="noconfstatus",
+            email="noconfstatus@example.com",
+            first_name="No",
+            last_name="Confidence",
+            is_email_confirmed=True,
+        )
+        user.set_password("password123")
+        sneaker = Sneaker(brand="Nike", model="No Confidence Pair", owner=user, starting_health=90.0)
+        db.session.add_all([user, sneaker])
+        db.session.commit()
+
+        health = compute_health_components(
+            sneaker,
+            user.id,
+            materials=[],
+            include_confidence=False,
+        )
+        assert health["status_label"] in {"Healthy", "OK", "Monitor", "Needs attention"}
+        assert health["confidence_score"] is None
+        assert health["confidence_label"] is None
 
 
 def test_breakdown_sum_matches_health_score(test_app):

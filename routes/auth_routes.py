@@ -1,18 +1,26 @@
 # routes/auth_routes.py
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_user, logout_user, current_user, login_required
-from flask_mail import Message
+from urllib.parse import urljoin
 
-from extensions import db, mail
+from extensions import db
 from models import User
 from forms import LoginForm, RegistrationForm, RequestResetForm, ResetPasswordForm, EmptyForm
 from email_utils import send_email
 
 auth_bp = Blueprint('auth', __name__)
 
+
+def _build_external_url(endpoint: str, **values) -> str:
+    app_base_url = current_app.config.get("APP_BASE_URL")
+    if app_base_url:
+        relative_path = url_for(endpoint, _external=False, **values)
+        return urljoin(app_base_url.rstrip("/") + "/", relative_path.lstrip("/"))
+    return url_for(endpoint, _external=True, **values)
+
 def send_password_reset_email(user_instance):
     token = user_instance.get_reset_password_token()
-    reset_url = url_for('auth.reset_password_with_token', token=token, _external=True)
+    reset_url = _build_external_url('auth.reset_password_with_token', token=token)
 
     # CORRECTED: Use your existing template file
     html_body = render_template('email/reset_password_email.html', 
@@ -22,12 +30,12 @@ def send_password_reset_email(user_instance):
     # --- THIS IS THE ONLY PART THAT CHANGES ---
     # Instead of building a Message object and printing, we call our new utility
     send_email(to_email=user_instance.email,
-               subject='Password Reset Request - WearHouse',
+               subject='Password Reset Request - Soletrak',
                html_content=html_body)
 
 def send_confirm_new_email_address_email(user_instance, new_email_address):
     token = user_instance.get_confirm_new_email_token(new_email_address)
-    confirm_url = url_for('auth.confirm_new_email_with_token', token=token, _external=True)
+    confirm_url = _build_external_url('auth.confirm_new_email_with_token', token=token)
 
     # CORRECTED: Use your existing template file
     html_body = render_template('email/confirm_new_email_address.html', 
@@ -37,7 +45,7 @@ def send_confirm_new_email_address_email(user_instance, new_email_address):
 
     # --- THIS IS THE ONLY PART THAT CHANGES ---
     send_email(to_email=new_email_address,
-               subject='Confirm Your New Email Address - WearHouse',
+               subject='Confirm Your New Email Address - Soletrak',
                html_content=html_body)
 
 # Registration Route
@@ -55,6 +63,7 @@ def register():
         first_name_from_form = form.first_name.data
         last_name_from_form = form.last_name.data
         marketing_opt_in_from_form = form.marketing_opt_in.data # Get this value
+        preferred_region_from_form = form.preferred_region.data
 
         existing_user_by_username = User.query.filter_by(username=username_from_form).first()
         existing_user_by_email = User.query.filter_by(email=email_from_form).first()
@@ -73,7 +82,8 @@ def register():
                 email=email_from_form,
                 first_name=first_name_from_form.strip(),
                 last_name=last_name_from_form.strip(),
-                marketing_opt_in=marketing_opt_in_from_form 
+                marketing_opt_in=marketing_opt_in_from_form,
+                preferred_region=preferred_region_from_form or "UK",
                 # is_email_confirmed will default to False as per model definition
             )
             new_user.set_password(password_from_form)
@@ -182,7 +192,10 @@ def reset_password_with_token(token):
             
     # For a GET request (token was valid and user_for_token was found), 
     # or if POST form validation failed
-    print(f"DEBUG: Rendering reset_password_form.html for token, user_for_token ID: {user_for_token.id if user_for_token else 'None'}")
+    current_app.logger.debug(
+        "Rendering reset_password_form for user_id=%s",
+        user_for_token.id if user_for_token else None,
+    )
     return render_template('reset_password_form.html', title='Reset Your Password', form=form, token=token)
 
 # Change Password Route
@@ -242,7 +255,7 @@ def confirm_new_email_with_token(token):
             return redirect(url_for('auth.login')) # Good place to go after confirming
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"Error finalizing email change for user {user.id}: {e}")
+        current_app.logger.error(f"Error finalizing email change for user {user.id}: {e}")
         flash('An error occurred while updating your email. Please try again.', 'danger')
         return redirect(url_for('main.home'))
 
@@ -261,7 +274,7 @@ def send_change_password_link_route(): # Renamed for clarity
 
 def send_account_confirmation_email(user_instance):
     token = user_instance.get_email_confirmation_token()
-    confirm_url = url_for('auth.confirm_email_from_token', token=token, _external=True)
+    confirm_url = _build_external_url('auth.confirm_email_from_token', token=token)
 
     # CORRECTED: Use your existing template file
     html_body = render_template('email/confirm_registration_email.html', 
@@ -270,7 +283,7 @@ def send_account_confirmation_email(user_instance):
 
     # --- THIS IS THE ONLY PART THAT CHANGES ---
     send_email(to_email=user_instance.email,
-               subject='Confirm Your WearHouse Account Email',
+               subject='Confirm Your Soletrak Account Email',
                html_content=html_body)
 
 # Confirm Regisration with Token Route

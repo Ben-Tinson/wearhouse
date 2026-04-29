@@ -16,13 +16,30 @@ depends_on = None
 
 
 def upgrade():
+    user_table = sa.table(
+        "user",
+        sa.column("timezone", sa.String(length=64)),
+    )
+    step_bucket_table = sa.table(
+        "step_bucket",
+        sa.column("timezone", sa.String(length=64)),
+    )
+
     op.add_column(
         "user",
         sa.Column("timezone", sa.String(length=64), nullable=False, server_default="Europe/London"),
     )
-    op.execute("UPDATE user SET timezone='Europe/London' WHERE timezone IS NULL")
+    op.execute(
+        user_table.update()
+        .where(user_table.c.timezone.is_(None))
+        .values(timezone="Europe/London")
+    )
 
-    op.execute("UPDATE step_bucket SET timezone='Europe/London' WHERE timezone IS NULL")
+    op.execute(
+        step_bucket_table.update()
+        .where(step_bucket_table.c.timezone.is_(None))
+        .values(timezone="Europe/London")
+    )
     with op.batch_alter_table("step_bucket") as batch:
         batch.alter_column(
             "timezone",

@@ -1,6 +1,9 @@
 # tests/test_wishlist.py
+from decimal import Decimal
+
 from models import User, Release, wishlist_items
 from extensions import db
+from routes.main_routes import _format_month_filter_choices
 
 def test_wishlist_filter(test_client, auth, user_with_wishlist):
     """
@@ -25,5 +28,9 @@ def test_wishlist_filter(test_client, auth, user_with_wishlist):
     # 3. Assert that the Adidas model is NOT present
     assert 'Non-Wishlist Adidas' not in response_data_string
 
+
+def test_month_filter_choices_handle_postgres_decimal_extract_results():
+    choices = _format_month_filter_choices([(Decimal("2025"), Decimal("12"))])
+    assert choices == [("2025-12", "December 2025")]
 
 

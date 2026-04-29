@@ -5,10 +5,22 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional, Tuple
 
 from models import Release, AffiliateOffer
+from services.heat_service import compute_heat_for_release
 from sqlalchemy.orm import joinedload
 from utils.sku import normalize_sku
 
 logger = logging.getLogger(__name__)
+CSV_PROTECTED_FIELDS = {
+    "brand",
+    "name",
+    "model_name",
+    "colorway",
+    "image_url",
+    "retail_price",
+    "retail_currency",
+    "release_date",
+    "sku",
+}
 
 
 def ingest_kicksdb_releases(
@@ -86,6 +98,8 @@ def ingest_kicksdb_releases(
             force_refresh=pricing_force,
         )
 
+    _update_heat_for_window(db_session, start_date, end_date)
+
     if not commit_per_page:
         _safe_commit(db_session, "final_commit")
 
@@ -120,6 +134,22 @@ def ingest_kicksdb_releases(
         "pricing_offers_updated": pricing_stats["pricing_offers_updated"],
         "pricing_offers_skipped": pricing_stats["pricing_offers_skipped"],
     }
+
+
+def _update_heat_for_window(db_session, start_date: date, end_date: date) -> None:
+    releases = (
+        db_session.query(Release)
+        .options(joinedload(Release.offers), joinedload(Release.sales_points))
+        .filter(
+            Release.release_date.isnot(None),
+            Release.release_date >= start_date,
+            Release.release_date <= end_date,
+        )
+        .all()
+    )
+    for release in releases:
+        compute_heat_for_release(db_session, release)
+    _safe_commit(db_session, "heat_update")
 
 
 def _ingest_stockx_pass(
@@ -782,6 +812,8 @@ def _upsert_release(db_session, fields: Dict[str, Any]) -> Tuple[Release, bool]:
             continue
         if value is None:
             continue
+        if _should_preserve_csv_field(release, key):
+            continue
         if getattr(release, key, None) != value:
             setattr(release, key, value)
             updated = True
@@ -789,6 +821,14 @@ def _upsert_release(db_session, fields: Dict[str, Any]) -> Tuple[Release, bool]:
     fields["_updated"] = updated
     db_session.add(release)
     return release, created
+
+
+def _should_preserve_csv_field(release: Release, key: str) -> bool:
+    if getattr(release, "ingestion_source", None) != "csv_admin":
+        return False
+    if key not in CSV_PROTECTED_FIELDS:
+        return False
+    return getattr(release, key, None) is not None
 
 
 def _ensure_stockx_offer(

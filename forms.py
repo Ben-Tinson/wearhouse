@@ -1,6 +1,6 @@
 # forms.py
 from flask_wtf import FlaskForm
-from flask_wtf.file import FileField, FileAllowed # For file uploads
+from flask_wtf.file import FileField, FileAllowed, FileRequired # For file uploads
 from datetime import datetime
 import re
 
@@ -27,6 +27,11 @@ CURRENCY_CHOICES = [
     ('EUR', '€ EUR'),
 ]
 
+REGION_CHOICES = [
+    ('UK', 'UK'),
+    ('US', 'US'),
+    ('EU', 'EU'),
+]
 class SneakerForm(FlaskForm):
     brand = StringField('Brand', validators=[DataRequired(), Length(max=150)])
     model = StringField('Model', validators=[DataRequired(), Length(max=150)])
@@ -64,13 +69,14 @@ class RegistrationForm(FlaskForm):
                              validators=[DataRequired(), Length(max=50)])
     last_name = StringField('Last Name', 
                             validators=[DataRequired(), Length(max=50)])
+    preferred_region = SelectField('Region / Market', choices=REGION_CHOICES, validators=[DataRequired()])
     # --- END OF NEW FIELDS ---
     password = PasswordField('Password',
                              validators=[DataRequired(), Length(min=6, message='Password must be at least 6 characters long.')])
     confirm_password = PasswordField('Confirm Password',
                                      validators=[DataRequired(),
                                                  EqualTo('password', message='Passwords must match.')])
-    marketing_opt_in = BooleanField("I'd like to receive marketing communications from WearHouse.")
+    marketing_opt_in = BooleanField("I'd like to receive marketing communications from Soletrak.")
     submit = SubmitField('Register')
     pass
 
@@ -105,8 +111,9 @@ class EditProfileForm(FlaskForm):
     email = StringField('Email Address',
                         validators=[DataRequired(message="Please enter your email address."),
                                     Email(message="Please enter a valid email address.")])
-    marketing_opt_in = BooleanField("I'd like to receive marketing communications and newsletters from WearHouse.")
+    marketing_opt_in = BooleanField("I'd like to receive marketing communications and newsletters from Soletrak.")
     preferred_currency = SelectField('Preferred Currency', choices=CURRENCY_CHOICES, validators=[Optional()])
+    preferred_region = SelectField('Region / Market', choices=REGION_CHOICES, validators=[DataRequired()])
     submit = SubmitField('Update Profile')
     
     def validate_username(self, username):
@@ -134,14 +141,45 @@ class MobileTokenForm(FlaskForm):
     submit = SubmitField('Create token')
 
 class ReleaseForm(FlaskForm):
-    name = StringField('Sneaker Name', validators=[DataRequired()])
+    model_name = StringField('Model', validators=[DataRequired()])
+    name = StringField('Display Name (optional)', validators=[Optional()])
     brand = StringField('Brand', validators=[DataRequired()])
-    release_date = DateField('Release Date', format='%Y-%m-%d', validators=[DataRequired()])
+    sku = StringField('SKU', validators=[DataRequired()])
+    colorway = StringField('Colorway', validators=[Optional()])
+    release_date = DateField('Release Date (fallback)', format='%Y-%m-%d', validators=[Optional()])
     retail_currency = SelectField('Currency', choices=CURRENCY_CHOICES, validators=[Optional()])
     retail_price = DecimalField('Retail Price', places=2, validators=[Optional()])
-    regional_price_gbp = DecimalField('GBP MSRP', places=2, validators=[Optional()])
-    regional_price_usd = DecimalField('USD MSRP', places=2, validators=[Optional()])
-    regional_price_eur = DecimalField('EUR MSRP', places=2, validators=[Optional()])
+    description = TextAreaField('Description', validators=[Optional()])
+    notes = TextAreaField('Notes', validators=[Optional()])
+    stockx_url = StringField('StockX URL', validators=[Optional(), URL()])
+    goat_url = StringField('GOAT URL', validators=[Optional(), URL()])
+
+    us_release_date = DateField('US Release Date', format='%Y-%m-%d', validators=[Optional()])
+    us_release_time = StringField('US Release Time (HH:MM)', validators=[Optional()])
+    us_timezone = StringField('US Timezone', validators=[Optional()])
+    us_retail_price = DecimalField('US Retail Price', places=2, validators=[Optional()])
+    us_currency = SelectField('US Currency', choices=CURRENCY_CHOICES, validators=[Optional()])
+    us_retailer_links = TextAreaField('US Retailer Links', validators=[Optional()])
+    apply_us_date_to_uk = BooleanField('Apply US date to UK')
+    apply_us_date_to_eu = BooleanField('Apply US date to EU')
+
+    uk_release_date = DateField('UK Release Date', format='%Y-%m-%d', validators=[Optional()])
+    uk_release_time = StringField('UK Release Time (HH:MM)', validators=[Optional()])
+    uk_timezone = StringField('UK Timezone', validators=[Optional()])
+    uk_retail_price = DecimalField('UK Retail Price', places=2, validators=[Optional()])
+    uk_currency = SelectField('UK Currency', choices=CURRENCY_CHOICES, validators=[Optional()])
+    uk_retailer_links = TextAreaField('UK Retailer Links', validators=[Optional()])
+    apply_uk_date_to_us = BooleanField('Apply UK date to US')
+    apply_uk_date_to_eu = BooleanField('Apply UK date to EU')
+
+    eu_release_date = DateField('EU Release Date', format='%Y-%m-%d', validators=[Optional()])
+    eu_release_time = StringField('EU Release Time (HH:MM)', validators=[Optional()])
+    eu_timezone = StringField('EU Timezone', validators=[Optional()])
+    eu_retail_price = DecimalField('EU Retail Price', places=2, validators=[Optional()])
+    eu_currency = SelectField('EU Currency', choices=CURRENCY_CHOICES, validators=[Optional()])
+    eu_retailer_links = TextAreaField('EU Retailer Links', validators=[Optional()])
+    apply_eu_date_to_us = BooleanField('Apply EU date to US')
+    apply_eu_date_to_uk = BooleanField('Apply EU date to UK')
 
     # --- NEW & MODIFIED IMAGE FIELDS ---
     image_option = RadioField(
@@ -162,6 +200,26 @@ class ReleaseForm(FlaskForm):
     # --- END OF NEW & MODIFIED FIELDS ---
 
     submit = SubmitField('Add Release')
+
+
+class ReleaseCsvImportForm(FlaskForm):
+    csv_file = FileField(
+        'CSV File',
+        validators=[
+            FileRequired(),
+            FileAllowed(['csv'], 'CSV files only.'),
+        ],
+    )
+    skip_existing = BooleanField('Skip rows that match existing releases')
+    submit = SubmitField('Preview Import')
+
+
+class DeleteAllReleasesForm(FlaskForm):
+    confirmation = StringField(
+        'Type DELETE ALL RELEASES to confirm',
+        validators=[DataRequired(), Length(max=50)],
+    )
+    submit = SubmitField('Delete All Releases')
 
 
 class FlexibleDateField(DateField):

@@ -62,3 +62,29 @@ def test_kicks_client_rejects_invalid_goat_sort():
     assert "filters" in captured["params"]
     assert "filter" not in captured["params"]
     assert "sort" not in captured["params"]
+
+
+def test_kicks_client_get_goat_product_uses_display_params():
+    captured = {}
+
+    def fake_request(method, url, headers=None, params=None, timeout=None):
+        captured["url"] = url
+        captured["params"] = params or {}
+        return DummyResponse(url, payload={"data": {}})
+
+    client = KicksClient(api_key="test-key")
+    client.session.request = fake_request
+
+    client.get_goat_product(
+        "1748509",
+        include_variants=True,
+        include_traits=True,
+        include_statistics=True,
+        include_market=True,
+    )
+
+    assert captured["url"].endswith("/v3/goat/products/1748509")
+    assert captured["params"].get("display[variants]") == "true"
+    assert captured["params"].get("display[traits]") == "true"
+    assert captured["params"].get("display[statistics]") == "true"
+    assert captured["params"].get("display[market]") == "true"

@@ -17,6 +17,7 @@ depends_on = None
 
 
 def upgrade():
+    false_default = sa.false() if op.get_bind().dialect.name == "postgresql" else sa.text("0")
     op.add_column("sneaker", sa.Column("last_cleaned_at", sa.DateTime(), nullable=True))
 
     op.create_table(
@@ -25,8 +26,8 @@ def upgrade():
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("date_local", sa.Date(), nullable=False),
         sa.Column("timezone", sa.String(length=64), nullable=False),
-        sa.Column("got_wet", sa.Boolean(), nullable=False, server_default=sa.text("0")),
-        sa.Column("got_dirty", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+        sa.Column("got_wet", sa.Boolean(), nullable=False, server_default=false_default),
+        sa.Column("got_dirty", sa.Boolean(), nullable=False, server_default=false_default),
         sa.Column("wet_severity", sa.Integer(), nullable=True),
         sa.Column("dirty_severity", sa.Integer(), nullable=True),
         sa.Column("note", sa.String(length=140), nullable=True),

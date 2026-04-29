@@ -1,7 +1,6 @@
 # tests/test_auth.py
 from models import User
 from extensions import db
-
 def test_duplicate_username_registration(test_client, init_database):
     """
     GIVEN a registered user exists
@@ -17,7 +16,8 @@ def test_duplicate_username_registration(test_client, init_database):
         'last_name': 'User',
         'email': 'another@example.com', # Different email
         'password': 'password123',
-        'confirm_password': 'password123'
+        'confirm_password': 'password123',
+        'preferred_region': 'US'
     }, follow_redirects=True)
 
     # 1. Check the response
@@ -31,6 +31,22 @@ def test_duplicate_username_registration(test_client, init_database):
     # 2. Check the database to ensure a second user was NOT created
     user_count = db.session.query(User).count()
     assert user_count == 1 # Should still only be the one user from the fixture
+
+
+def test_registration_saves_preferred_region(test_client):
+    response = test_client.post('/register', data={
+        'username': 'regionuser',
+        'first_name': 'Region',
+        'last_name': 'User',
+        'email': 'region@example.com',
+        'password': 'password123',
+        'confirm_password': 'password123',
+        'preferred_region': 'EU'
+    }, follow_redirects=True)
+    assert response.status_code == 200
+    user = User.query.filter_by(username='regionuser').first()
+    assert user is not None
+    assert user.preferred_region == 'EU'
 
 def test_duplicate_email_registration(test_client, init_database):
     """
@@ -47,7 +63,8 @@ def test_duplicate_email_registration(test_client, init_database):
         'last_name': 'User',
         'email': 'test@example.com', # Using the EXISTING email
         'password': 'password123',
-        'confirm_password': 'password123'
+        'confirm_password': 'password123',
+        'preferred_region': 'US'
     }, follow_redirects=True)
 
     # 1. Check the response
@@ -203,5 +220,3 @@ def test_logout_functionality(test_client, auth, init_database):
     response_after_logout = test_client.get('/my-collection')
     # Assert that this now results in a redirect (status 302) to the login page
     assert response_after_logout.status_code == 302
-
-
