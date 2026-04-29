@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy import Uuid as SA_Uuid
 from extensions import db # Import db from our new extensions.py
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -28,6 +29,11 @@ class User(db.Model, UserMixin):
     is_admin = db.Column(db.Boolean, nullable=False, default=False)
     preferred_currency = db.Column(db.String(3), nullable=False, default="GBP")
     timezone = db.Column(db.String(64), nullable=False, default="Europe/London")
+
+    # Phase 1 Supabase Auth linkage column. Dormant in Phase 1: no writers, no readers.
+    # Native UUID on Postgres; CHAR(32) hex on SQLite. Uniqueness is enforced by a
+    # partial index defined in the migration (WHERE supabase_auth_user_id IS NOT NULL).
+    supabase_auth_user_id = db.Column(SA_Uuid(as_uuid=True), nullable=True)
 
 
     sneakers = db.relationship('Sneaker', backref='owner', lazy=True)
@@ -75,7 +81,7 @@ class User(db.Model, UserMixin):
             user_id = data.get('user_id')
             new_email = data.get('new_email')
         except Exception: # Catches BadSignature, SignatureExpired, etc.
-            return None, None 
+            return None, None
         return user_id, new_email
 
     @staticmethod
