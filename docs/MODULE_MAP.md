@@ -2,41 +2,76 @@
 
 Quick reference for where things live and how they connect.
 
+## Current Runtime Context
+- Active database runtime: Supabase Postgres project `sjwdvsefjlflgavshiyy`.
+- Supabase Postgres cutover is completed.
+- Previous Supabase project `mizyioplztuzycipfdsd` is fallback/reference only until retirement.
+- SQLite is local/dev and archival fallback only.
+- Flask backend, Flask-Login auth, and app-owned `User` records remain live.
+- The app-owned `user` table remains central to profile data, admin status, preferences, collection ownership, wishlist links, and API token ownership.
+- Supabase Auth is planned next but not implemented.
+- Postgres backup/restore artefacts live under `backups/postgres/`.
+- Operational restores/cutovers should use Postgres dump/restore, not SQLite re-import or CSV.
+- Future Supabase Auth work should be phased. Do not hard-replace Flask auth without readiness analysis.
+- Auth assumptions are spread across `routes/auth_routes.py`, `routes/main_routes.py`, `routes/sneakers_routes.py`, `decorators.py`, `services/api_tokens.py`, `forms.py`, profile templates, admin checks, and tests.
+
 - `app.py` — Creates Flask app, configures extensions, registers blueprints (`routes/auth_routes.py`, `routes/main_routes.py`, `routes/news_routes.py`, `routes/sneakers_routes.py`).
 - `config.py` — Configuration source (secrets, DB URI, mail, API keys); uses environment variables.
 - `extensions.py` — Shared extension instances (`db`, `migrate`, `login_manager`, `mail`, `csrf`).
-- `models.py` — SQLAlchemy models: `User`, `UserApiToken`, `Sneaker`, `SneakerDB`, `Release`, `Article`, `ArticleBlock`, `SiteSchema`, `AffiliateOffer`, `ReleasePrice`, `ExchangeRate`, `SneakerNote`, `SneakerSale`, `SneakerWear`, `StepBucket`, `StepAttribution`, `ExposureEvent`, `SneakerExposureAttribution`, `ReleaseSizeBid`, `ReleaseSalePoint`, and `wishlist_items`.
-- `forms.py` — WTForms for auth, profile, sneakers, releases, FX rates, news/SEO, and an `EmptyForm` for CSRF‑only cases.
-- `routes/auth_routes.py` — Auth flows (register/login/logout, password reset, email confirmation).
-- `routes/main_routes.py` — Home/profile pages, release calendar, product detail (`/products/...`), wishlist, admin FX + sales breakdown.
+- `models.py` — SQLAlchemy models:
+  - `User` (`preferred_currency`, `preferred_region`, `timezone`, API tokens, wishlist)
+  - `Sneaker`, `SneakerDB`, `SneakerWear`, `SneakerSale`, `SneakerNote`, `SneakerExpense`, health / exposure / steps models
+  - `Release` (`release_slug`, calendar visibility, KicksDB source ids/slugs, fetch timestamps, ingestion metadata)
+  - `ReleaseRegion`, `ReleasePrice`, `AffiliateOffer`, `ReleaseSizeBid`, `ReleaseSalePoint`, `ReleaseSalesMonthly`, `ReleaseMarketStats`
+  - `ExchangeRate`, `Article`, `ArticleBlock`, `SiteSchema`, `wishlist_items`
+- `forms.py` — WTForms for auth, profile, sneakers, releases, FX rates, news/SEO, CSV import, destructive admin actions, and `EmptyForm` for CSRF-only cases.
+- `routes/auth_routes.py` — Auth flows (register/login/logout, password reset, email confirmation); registration persists `preferred_region`.
+- `routes/main_routes.py` — Home/profile pages, release calendar, product detail (`/products/...`), wishlist, admin release add/edit/delete, admin release CSV import (`/admin/release-import`, `/admin/release-import/confirm`, `/admin/release-import/template`), admin release market refresh, FX/admin sales tools.
 - `routes/news_routes.py` — Public news feed + article detail and admin authoring (create/edit/delete).
-- `routes/sneakers_routes.py` — Collection/rotation CRUD, slugged my‑sneaker detail (`/my/sneakers/...`), wear logging, resale refresh, materials management, steps/exposure attribution, AJAX helpers, SneakerDB search.
-- `templates/` — Jinja templates and partials (partials prefixed `_`; email templates under `templates/email/`).
-- `templates/news/` — News feed + article detail templates.
-- `templates/admin/news_form.html` — Admin article create/edit form with SEO + JSON‑LD sections and markdown toolbars.
-- `static/` — Assets under `static/brand/`, `static/images/`, `static/js/`.
-- `static/js/markdown_toolbar.js` — Markdown toolbar for article textareas.
-- `static/js/sneaker_lookup.js` — Autocomplete lookup UI for the Add Sneaker form (calls `/api/sneaker-lookup`).
-- `uploads/` — User‑uploaded sneaker/release/article images (stored by UUID filename).
+- `routes/sneakers_routes.py` — Collection/rotation CRUD, slugged my-sneaker detail (`/my/sneakers/...`), wear logging, resale refresh helpers, release-market chart data for sneaker detail, materials management, steps/exposure attribution, AJAX helpers, SneakerDB search.
+- `templates/release_calendar.html` — Release calendar page and admin-only add / CSV import / hide-all controls.
+- `templates/release_detail.html` — Canonical release detail page used from calendar / wishlist release flows.
+- `templates/sneaker_detail.html` — Collection / rotation sneaker detail page; includes release info / market sections when a linked `Release` is found.
+- `templates/wishlist.html` — Wishlist page and simplified wishlist release cards.
+- `templates/admin/release_import.html` — Admin CSV import UI (upload + preview + confirm) with hidden CSV payload confirm flow.
+- `templates/_release_about_section.html` — Shared conditional “About this release” block.
+- `templates/_release_market_metrics.html` — Shared release-detail / sneaker-detail market metrics grid.
+- `templates/_wishlist_button.html` — Shared add/remove wishlist control.
+- `templates/_single_sneaker_card.html` — Shared collection / rotation card partial.
+- `static/` — Assets under `static/brand/`, `static/images/`, `static/js/` (Soletrak tokens live in `static/brand/soletrak-tokens.css`).
 - `email_utils.py` — SendGrid email sender.
 - `decorators.py` — `admin_required` and bearer/session auth helpers.
+- `services/auth_resolver.py` — Phase 1 + Phase 2 Supabase Auth resolver shim. Returns `current_user` via Flask-Login first; when `SUPABASE_AUTH_ENABLED=true`, falls back to verified Supabase JWT → `user.supabase_auth_user_id` lookup. Never auto-links; never writes the linkage column.
+- `services/supabase_auth_service.py` — Phase 2 Supabase Auth verification helpers (`verify_access_token`, `looks_like_jwt`, `is_enabled`) plus the `SupabaseAdminClient` REST wrapper used only by the linkage CLI.
+- `services/supabase_auth_linkage.py` — Phase 2 linkage helpers; the only sanctioned writers of `user.supabase_auth_user_id` (`link_app_user_to_supabase`, `unlink_app_user`, `find_app_user_by_supabase_id`, `find_app_user_by_email`).
+- `scripts/auth_audit_users.py` — Read-only auth audit script. Reports baseline counts and blocking hazards (case-collision emails, unconfirmed admins, pending-email collisions, orphan API tokens, unexpected Supabase links). Writes nothing to the DB.
+- `scripts/link_supabase_identities.py` — Phase 2 admin linkage CLI. Dry-run by default; `--apply` required for mutation; `--admins-only` or `--user-id` required for explicit scope; audit-logged JSONL to `backups/auth/`; reversible via `--unlink --user-id <id> --apply`. The only sanctioned production writer of `user.supabase_auth_user_id`.
 - `utils/money.py` — Currency formatting + conversion helpers using cached `ExchangeRate`.
 - `utils/sku.py` — SKU normalisation helpers (space/hyphen/case variants).
 - `utils/slugs.py` — Slug helpers for user sneaker URLs and product URLs.
-- `services/kicks_client.py` — KicksDB API client (StockX/GOAT list + detail, prices, sales history).
-- `services/sneaker_lookup_service.py` — Local‑first lookup, scoring, staleness checks, and SneakerDB upserts.
-- `services/materials_extractor.py` — Keyword‑based materials extraction from descriptions.
-- `services/news_service.py` — Article slug + tags helpers.
-- `services/article_render.py` — Safe Markdown rendering (Markdown → HTML + Bleach sanitisation) for articles.
+- `services/kicks_client.py` — KicksDB API client for StockX / GOAT list, product detail, prices, and sales history.
+- `services/sneaker_lookup_service.py` — Local-first lookup, scoring, staleness checks, and SneakerDB upserts.
+- `services/materials_extractor.py` — Keyword-based materials extraction from descriptions.
 - `services/api_tokens.py` — Mobile bearer token generation + hashing.
 - `services/steps_attribution_service.py` — Step bucket attribution (v1 equal split per day).
-- `services/steps_seed_service.py` — Dev‑only helpers for seeding and verifying step buckets/attribution.
 - `services/exposure_service.py` — Daily exposure attribution (wet/dirty) + material weighting.
-- `services/release_ingestion_service.py` — Low‑cost release ingestion, GOAT backfill, resale refresh helpers.
+- `services/release_ingestion_service.py` — KicksDB release ingestion, GOAT backfill, StockX/GOAT offer upserts, CSV-protected-field guard, aftermarket pricing refresh, detail normalisation helpers.
+- `services/release_csv_import_service.py` — Release CSV parsing, row validation, duplicate detection, match detection, preview summary, and region-aware upsert into `Release`, `ReleaseRegion`, `ReleasePrice`, and `AffiliateOffer`.
+- `services/release_display_service.py` — Shared region-aware release display selection for date, price, offers, single-region fallback, and market-context messaging.
+- `services/release_detail_service.py` — Shared release-detail extras: description fallback to `SneakerDB`, average resale summary, and market metric formatting for templates.
+- `services/heat_service.py` — Heat Factor computation, confidence, and snapshot helpers (backend retained, UI hidden).
+- `services/article_render.py` — Safe Markdown rendering (Markdown → HTML + Bleach sanitisation) for articles.
 - `docs/MOBILE_SYNC.md` — Steps sync payload formats, timezone rules, and mobile token usage.
-- `docs/steps_debug.md` — Dev‑only steps pipeline verification guide.
+- `docs/steps_debug.md` — Dev-only steps pipeline verification guide.
 - `docs/SNEAKER_HEALTH.md` — Health score inputs, exposure events, and privacy notes.
 - `docs/DECISIONS.md` — Key architectural/product decisions.
-- `migrations/` — Alembic env and migration scripts (news SEO fields, schema JSON‑LD fields, steps/exposure tables, etc.).
-- `tests/` — Pytest suite covering auth, profile, admin sales, sneakers, releases, wishlist, money utils, steps, exposure, news, and API behaviour.
-- Scripts: `release_updater.py` (KicksDB ingest + pricing refresh), `scripts/set_fx_rate.py` (manual FX), `scraper.py` (drop dates), `sneaker_db_updater.py` (SneakerDB sync), `import_data.py` (data import), `make_admin.py` (elevate a user).
+- `docs/PRODUCTION_POSTGRES_CUTOVER_RUNBOOK.md` — Completed Postgres cutover record plus future fresh-target restore guidance.
+- `docs/STAGING_STATUS_AND_NEXT_STEPS.md` — Current platform status, deferred items, and next workstream.
+- `docs/SUPABASE_POSTGRES_MIGRATION_PLAN.md` — Historical migration roadmap plus current Postgres-source-of-truth cutover strategy and Supabase Auth next phase.
+- `docs/SUPABASE_AUTH_MIGRATION_PLAN.md` — Planning document for phased Supabase Auth migration and app-user linkage.
+- `docs/SUPABASE_AUTH_READINESS_REVIEW.md` — Pre-implementation readiness/gap analysis against the live codebase.
+- `docs/SUPABASE_AUTH_PHASE1_IMPLEMENTATION_PLAN.md` — Concrete Phase 1 design (linkage column + audit script + resolver shim).
+- `migrations/` — Alembic env and migration scripts (includes `preferred_region`, `ReleaseMarketStats` windows, and release-related schema changes).
+- `tests/` — Pytest suite covering auth, profile, release CSV import, region-aware release display, release detail rendering, sneakers, wishlist, money utils, steps, exposure, news, and API behaviour.
+- `release_updater.py` — CLI entry for KicksDB release ingestion, aftermarket pricing refresh, bids/sales enrichment, and heat backfill.
+- Scripts: `scripts/set_fx_rate.py` (manual FX), `scraper.py` (drop dates), `sneaker_db_updater.py` (SneakerDB sync), `import_data.py` (data import), `make_admin.py` (elevate a user).

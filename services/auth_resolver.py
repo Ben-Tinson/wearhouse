@@ -1,67 +1,130 @@
-"""Auth resolver shim — Phase 1 of the Supabase Auth migration.
+"""Auth resolver shim — Phase 1 + Phase 2 (flag-off-by-default).
 
-This module is the single seam through which future Supabase Auth-aware code
-will resolve "who is the current app user?". In Phase 1 it is a deliberate
-no-op shim that delegates entirely to ``flask_login.current_user``; no
-existing route or decorator is migrated to use it yet.
+This module is the single seam through which Supabase Auth-aware code
+will resolve "who is the current app user?".
 
-Phase 2 will extend ``get_current_app_user`` to fall back to a Supabase JWT
-verification branch behind a feature flag. Until then, this module changes
-no live behaviour.
+Resolution order (codified per ``docs/DECISIONS.md``):
+
+    1. Flask-Login session — if ``current_user`` is authenticated, return it.
+       This protects existing logged-in users and the documented admin
+       break-glass path during the dual-run window.
+    2. Supabase JWT branch — only when ``SUPABASE_AUTH_ENABLED`` is True and
+       a structurally-valid JWT is present in the ``Authorization: Bearer …``
+       header. The JWT is verified against ``SUPABASE_JWT_SECRET`` and the
+       app user is looked up by ``user.supabase_auth_user_id``.
+    3. ``None``.
+
+Hard invariants (must not regress):
+
+    - When ``SUPABASE_AUTH_ENABLED`` is False, the resolver is byte-for-byte
+      equivalent to the Phase 1 shape: ``current_user if authenticated
+      else None``. Verified by ``tests/test_auth_resolver_phase2.py``.
+    - The resolver never writes to ``user.supabase_auth_user_id``. A JWT
+      whose email matches an unlinked app user is logged but does not
+      auto-link; explicit linkage is the linkage CLI's job.
+    - The resolver tolerates being called outside a request context by
+      simply skipping the JWT branch.
 
 Public surface:
     - ``get_current_app_user() -> Optional[User]``
     - ``get_current_app_user_id() -> Optional[int]``
     - ``is_current_app_user_admin() -> bool``
 
-Do not delete this module as "unused"; it exists ahead of its callers on
-purpose so Phase 2 can extend it in one place rather than touching every
-route.
+This module is **not yet imported by any live route or decorator**. Phase 2
+ships only the resolver capability; existing routes and decorators continue
+to read ``flask_login.current_user`` directly.
 """
 
 from __future__ import annotations
 
 from typing import Optional
 
+from flask import current_app, has_request_context, request
 from flask_login import current_user
 
 from models import User
+from services.supabase_auth_linkage import (
+    find_app_user_by_email,
+    find_app_user_by_supabase_id,
+)
+from services.supabase_auth_service import (
+    SupabaseAuthError,
+    is_enabled as supabase_auth_is_enabled,
+    looks_like_jwt,
+    verify_access_token,
+)
 
 
-def _resolved_user() -> Optional[User]:
-    """Return the underlying ``User`` row backing ``current_user``, or None.
-
-    Flask-Login exposes ``current_user`` as a proxy that, when no user is
-    authenticated, behaves like an anonymous user (``is_authenticated`` is
-    False). This helper normalises that to ``None`` so callers do not have
-    to interrogate the proxy.
-    """
+def _flask_login_user() -> Optional[User]:
+    """Return the underlying ``User`` row backing ``current_user``, or None."""
     if not current_user or not current_user.is_authenticated:
         return None
-    # ``current_user`` is a LocalProxy; ``_get_current_object`` returns the
-    # real underlying ``User`` instance. We avoid touching that private API
-    # in Phase 1 and instead rely on attribute access, which is sufficient.
     return current_user  # type: ignore[return-value]
 
 
-def get_current_app_user() -> Optional[User]:
-    """Return the resolved app ``User`` row for this request, or ``None``.
+def _supabase_jwt_user() -> Optional[User]:
+    """Resolve the request to an app User via a verified Supabase JWT.
 
-    Phase 1 semantics: equivalent to
-        ``current_user if current_user.is_authenticated else None``.
+    Returns None when the flag is off, when there is no request context,
+    when no ``Authorization: Bearer …`` header is present, when the value
+    is not structurally a JWT, when verification fails, or when the JWT is
+    valid but its identity is not yet linked to an app user.
 
-    Phase 2 will extend this with a Supabase JWT branch behind a feature
-    flag. The return shape will not change.
+    Never writes ``user.supabase_auth_user_id``. Per the accepted
+    write-safety rule, linkage is performed only by the explicit linkage
+    tooling.
     """
+    if not supabase_auth_is_enabled():
+        return None
+    if not has_request_context():
+        return None
+
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.lower().startswith("bearer "):
+        return None
+    token = auth_header.split(None, 1)[1].strip()
+    if not looks_like_jwt(token):
+        return None
+
+    try:
+        claims = verify_access_token(token)
+    except SupabaseAuthError:
+        return None
+
+    linked = find_app_user_by_supabase_id(claims.supabase_user_id)
+    if linked is not None:
+        return linked
+
+    if claims.email:
+        candidate = find_app_user_by_email(claims.email)
+        if candidate is not None and candidate.supabase_auth_user_id is None:
+            current_app.logger.warning(
+                "Supabase JWT for unlinked email %s — explicit linkage required",
+                claims.email,
+            )
+    return None
+
+
+def _resolved_user() -> Optional[User]:
+    """Resolve the current request to an app User, or ``None``.
+
+    Flask-Login wins when present; the Supabase JWT branch is only
+    consulted when no Flask-Login session is established and the feature
+    flag is on.
+    """
+    user = _flask_login_user()
+    if user is not None:
+        return user
+    return _supabase_jwt_user()
+
+
+def get_current_app_user() -> Optional[User]:
+    """Return the resolved app ``User`` row for this request, or ``None``."""
     return _resolved_user()
 
 
 def get_current_app_user_id() -> Optional[int]:
-    """Return the integer ``user.id`` for this request, or ``None``.
-
-    Convenience for query filters. Returns ``None`` when no user is
-    authenticated.
-    """
+    """Return the integer ``user.id`` for this request, or ``None``."""
     user = _resolved_user()
     if user is None:
         return None
@@ -69,11 +132,7 @@ def get_current_app_user_id() -> Optional[int]:
 
 
 def is_current_app_user_admin() -> bool:
-    """Return ``True`` iff a resolved user exists and is an admin.
-
-    Phase 1 semantics: equivalent to
-        ``current_user.is_authenticated and current_user.is_admin``.
-    """
+    """Return ``True`` iff a resolved user exists and is an admin."""
     user = _resolved_user()
     if user is None:
         return False

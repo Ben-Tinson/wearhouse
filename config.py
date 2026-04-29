@@ -25,6 +25,8 @@ class Config:
     # Email Configuration (using SendGrid API)
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER')
     SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
+    APP_BASE_URL = os.environ.get('APP_BASE_URL')
+    PREFERRED_URL_SCHEME = os.environ.get('PREFERRED_URL_SCHEME', 'http')
     
     # External API Keys
     RETAILED_API_KEY = os.environ.get('RETAILED_API_KEY')
@@ -32,6 +34,17 @@ class Config:
     KICKS_API_KEY = os.environ.get('KICKS_API_KEY')
     KICKS_API_BASE_URL = os.environ.get('KICKS_API_BASE_URL', 'https://api.kicks.dev')
     KICKS_STOCKX_PRICES_ENABLED = os.environ.get('KICKS_STOCKX_PRICES_ENABLED', 'true').lower() in ('1', 'true', 'yes')
+
+    # Supabase Auth (Phase 2 foundation — disabled by default).
+    # SUPABASE_AUTH_ENABLED is the master kill switch: while False, no
+    # Supabase Auth code path executes for any live request. The other
+    # vars are only consulted when the flag is True or by the admin-side
+    # linkage CLI (forthcoming).
+    SUPABASE_URL = os.environ.get('SUPABASE_URL')
+    SUPABASE_ANON_KEY = os.environ.get('SUPABASE_ANON_KEY')
+    SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
+    SUPABASE_JWT_SECRET = os.environ.get('SUPABASE_JWT_SECRET')
+    SUPABASE_AUTH_ENABLED = os.environ.get('SUPABASE_AUTH_ENABLED', 'false').lower() in ('1', 'true', 'yes')
 
 
 class TestConfig(Config):
