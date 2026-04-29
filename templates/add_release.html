@@ -11,10 +11,15 @@
                 <div class="card-body">
                     <form method="POST" action="" enctype="multipart/form-data">
                         {{ form.hidden_tag() }}
+                        {{ render_field(form.model_name) }}
                         {{ render_field(form.name) }}
                         {{ render_field(form.brand) }}
+                        {{ render_field(form.sku) }}
+                        {{ render_field(form.colorway) }}
+                        {{ render_field(form.description) }}
+                        {{ render_field(form.notes) }}
                         {{ render_field(form.release_date) }}
-                        
+
                         <div class="mb-3">
                             {{ form.retail_price.label(class="form-label") }}
                             <div class="input-group">
@@ -29,22 +34,75 @@
                             {% endif %}
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Regional MSRP (optional)</label>
-                            <div class="row g-2">
-                                <div class="col-md-4">
-                                    {{ form.regional_price_gbp(class="form-control", placeholder="GBP") }}
+                        <div class="row g-3">
+                            <div class="col-md-6">{{ render_field(form.stockx_url) }}</div>
+                            <div class="col-md-6">{{ render_field(form.goat_url) }}</div>
+                        </div>
+
+                        <hr class="my-4">
+                        <h4 class="mb-3">Regional Releases</h4>
+
+                        <div class="card border-0 mb-3">
+                            <div class="card-body p-0">
+                                <h6 class="mb-2">US</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-4">{{ render_field(form.us_release_date) }}</div>
+                                    <div class="col-md-4">{{ render_field(form.us_release_time) }}</div>
+                                    <div class="col-md-4">{{ render_field(form.us_timezone) }}</div>
                                 </div>
-                                <div class="col-md-4">
-                                    {{ form.regional_price_usd(class="form-control", placeholder="USD") }}
+                                <div class="row g-2 mt-1">
+                                    <div class="col-md-6">{{ render_field(form.apply_us_date_to_uk) }}</div>
+                                    <div class="col-md-6">{{ render_field(form.apply_us_date_to_eu) }}</div>
                                 </div>
-                                <div class="col-md-4">
-                                    {{ form.regional_price_eur(class="form-control", placeholder="EUR") }}
+                                <div class="row g-2 mt-1">
+                                    <div class="col-md-4">{{ render_field(form.us_retail_price) }}</div>
+                                    <div class="col-md-4">{{ render_field(form.us_currency) }}</div>
                                 </div>
+                                {{ render_field(form.us_retailer_links) }}
                             </div>
                         </div>
-                        
-                        <hr class="my-4">
+
+                        <div class="card border-0 mb-3">
+                            <div class="card-body p-0">
+                                <h6 class="mb-2">UK</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-4">{{ render_field(form.uk_release_date) }}</div>
+                                    <div class="col-md-4">{{ render_field(form.uk_release_time) }}</div>
+                                    <div class="col-md-4">{{ render_field(form.uk_timezone) }}</div>
+                                </div>
+                                <div class="row g-2 mt-1">
+                                    <div class="col-md-6">{{ render_field(form.apply_uk_date_to_us) }}</div>
+                                    <div class="col-md-6">{{ render_field(form.apply_uk_date_to_eu) }}</div>
+                                </div>
+                                <div class="row g-2 mt-1">
+                                    <div class="col-md-4">{{ render_field(form.uk_retail_price) }}</div>
+                                    <div class="col-md-4">{{ render_field(form.uk_currency) }}</div>
+                                </div>
+                                {{ render_field(form.uk_retailer_links) }}
+                            </div>
+                        </div>
+
+                        <div class="card border-0 mb-3">
+                            <div class="card-body p-0">
+                                <h6 class="mb-2">EU</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-4">{{ render_field(form.eu_release_date) }}</div>
+                                    <div class="col-md-4">{{ render_field(form.eu_release_time) }}</div>
+                                    <div class="col-md-4">{{ render_field(form.eu_timezone) }}</div>
+                                </div>
+                                <div class="row g-2 mt-1">
+                                    <div class="col-md-6">{{ render_field(form.apply_eu_date_to_us) }}</div>
+                                    <div class="col-md-6">{{ render_field(form.apply_eu_date_to_uk) }}</div>
+                                </div>
+                                <div class="row g-2 mt-1">
+                                    <div class="col-md-4">{{ render_field(form.eu_retail_price) }}</div>
+                                    <div class="col-md-4">{{ render_field(form.eu_currency) }}</div>
+                                </div>
+                                {{ render_field(form.eu_retailer_links) }}
+                            </div>
+                        </div>
+
+<hr class="my-4">
                         <h4 class="mb-3">Release Image</h4>
                         
                         <div class="mb-3">
@@ -81,8 +139,8 @@
 
                         <div class="mb-3" id="imagePreviewArea" style="display: none; text-align: center;">
                             <p class="mb-1"><small class="text-muted">Image preview:</small></p>
-                            <img src="#" id="imagePreview" class="img-thumbnail" 
-                                 style="max-width: 300px; max-height: 300px; object-fit: contain; background-color: #f8f9fa;" 
+                            <img src="#" id="imagePreview" class="img-thumbnail surface-muted-bg" 
+                                 style="max-width: 300px; max-height: 300px; object-fit: contain;" 
                                  alt="Image preview">
                         </div>
                         <div class="mt-4">

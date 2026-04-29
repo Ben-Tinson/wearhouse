@@ -1,0 +1,305 @@
+/* ============================================================
+   SOLETRAK DESIGN TOKENS
+   Version 19.0 — April 2026
+   
+   Usage: import this file at the root of your CSS/SCSS.
+   All tokens are CSS custom properties (variables).
+   Dark mode tokens are applied automatically via
+   @media (prefers-color-scheme: dark) and the
+   [data-theme="dark"] attribute on <html>.
+   ============================================================ */
+
+
+/* ============================================================
+   COLOUR — LIGHT MODE (DEFAULT)
+   ============================================================ */
+:root {
+
+  /* Neutrals */
+  --color-background:          #F9F9F9;
+  --color-surface:             #FFFFFF;
+  --color-text-primary:        #111111;
+  --color-text-secondary:      #6B7280;
+  --color-border:              #E5E7EB;
+  --color-disabled:            #D1D5DB;
+
+  /* Purple — Primary accent */
+  --color-purple-primary:      #7C3AED;
+  --color-purple-dark:         #5B21B6;
+  --color-purple-light:        #EDE9FE;
+  --color-purple-interactive:  #A78BFA; /* dark mode only — defined here for reference */
+
+  /* Data Blue — charts and data viz ONLY */
+  --color-data-blue:           #3B82F6;
+  --color-data-blue-light:     #EFF6FF;
+  --color-data-blue-dark:      #1D4ED8;
+
+  /* Semantic — Healthy */
+  --color-healthy:             #0D9488;
+  --color-healthy-light:       #F0FDFA;
+
+  /* Semantic — Monitor */
+  --color-monitor:             #D97706;
+  --color-monitor-light:       #FFFBEB;
+
+  /* Semantic — Needs Attention */
+  --color-needs-attention:     #B45309;
+  --color-needs-attention-light: #FEF3C7;
+
+  /* Semantic — Critical Damage */
+  --color-critical:            #DC2626;
+  --color-critical-light:      #FEF2F2;
+
+  /* Heat Factor */
+  --color-heat:                #F59E0B;
+  --color-heat-light:          #FEF9EE;
+
+  /* Data viz categorical (pie chart) */
+  --color-chart-1:             #3B82F6;
+  --color-chart-2:             #7C3AED;
+  --color-chart-3:             #A78BFA;
+  --color-chart-4:             #1D4ED8;
+  --color-chart-5:             #60A5FA;
+  --color-chart-other:         #E5E7EB;
+
+  /* ROI semantic */
+  --color-roi-positive:        #0D9488;
+  --color-roi-negative:        #B45309;
+}
+
+
+/* ============================================================
+   COLOUR — DARK MODE
+   Applied via media query AND data-theme attribute
+   ============================================================ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background:          #0F0F14;
+    --color-surface:             #1A1A24;
+    --color-text-primary:        #F9F9F9;
+    --color-text-secondary:      #9CA3AF;
+    --color-border:              #2D2D3A;
+    --color-disabled:            #374151;
+
+    --color-purple-primary:      #A78BFA;
+    --color-purple-dark:         #5B21B6;
+    --color-purple-light:        #2E1065;
+
+    --color-healthy:             #14B8A6;
+    --color-healthy-light:       rgba(13,148,136,0.15);
+
+    --color-monitor:             #F59E0B;
+    --color-monitor-light:       rgba(217,119,6,0.15);
+
+    --color-needs-attention:     #EF4444;
+    --color-needs-attention-light: rgba(180,83,9,0.15);
+
+    --color-critical:            #DC2626;
+    --color-critical-light:      rgba(220,38,38,0.15);
+
+    --color-heat:                #FBBF24;
+    --color-heat-light:          rgba(245,158,11,0.12);
+
+    --color-chart-other:         #2D2D3A;
+
+    --color-roi-positive:        #14B8A6;
+    --color-roi-negative:        #EF4444;
+  }
+}
+
+[data-theme="dark"] {
+  --color-background:          #0F0F14;
+  --color-surface:             #1A1A24;
+  --color-text-primary:        #F9F9F9;
+  --color-text-secondary:      #9CA3AF;
+  --color-border:              #2D2D3A;
+  --color-disabled:            #374151;
+
+  --color-purple-primary:      #A78BFA;
+  --color-purple-dark:         #5B21B6;
+  --color-purple-light:        #2E1065;
+
+  --color-healthy:             #14B8A6;
+  --color-healthy-light:       rgba(13,148,136,0.15);
+
+  --color-monitor:             #F59E0B;
+  --color-monitor-light:       rgba(217,119,6,0.15);
+
+  --color-needs-attention:     #EF4444;
+  --color-needs-attention-light: rgba(180,83,9,0.15);
+
+  --color-critical:            #DC2626;
+  --color-critical-light:      rgba(220,38,38,0.15);
+
+  --color-heat:                #FBBF24;
+  --color-heat-light:          rgba(245,158,11,0.12);
+
+  --color-chart-other:         #2D2D3A;
+
+  --color-roi-positive:        #14B8A6;
+  --color-roi-negative:        #EF4444;
+}
+
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+:root {
+  --font-family:               'Inter', -apple-system, BlinkMacSystemFont,
+                               'Segoe UI', Helvetica, Arial, sans-serif;
+
+  /* Font weights */
+  --font-weight-regular:       400;
+  --font-weight-medium:        500;
+  --font-weight-semibold:      600;
+  --font-weight-bold:          700;
+
+  /* Type scale — web (px) */
+  --font-size-display:         40px;
+  --font-size-h1:              32px;
+  --font-size-h2:              24px;
+  --font-size-h3:              20px;
+  --font-size-body-lg:         18px;
+  --font-size-body:            16px;
+  --font-size-label-lg:        15px;
+  --font-size-label:           14px;
+  --font-size-metric:          32px;
+  --font-size-metric-label:    13px;
+  --font-size-caption:         12px;
+  --font-size-micro:           11px;  /* minimum — never go below this */
+
+  /* Line heights */
+  --line-height-display:       1.2;
+  --line-height-h1:            1.25;
+  --line-height-h2:            1.3;
+  --line-height-h3:            1.35;
+  --line-height-body:          1.5;
+  --line-height-label:         1.4;
+  --line-height-metric:        1.1;
+  --line-height-metric-label:  1.3;
+  --line-height-caption:       1.4;
+  --line-height-micro:         1.3;
+}
+
+
+/* ============================================================
+   SPACING
+   Base unit: 4px
+   ============================================================ */
+:root {
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+}
+
+
+/* ============================================================
+   CORNER RADIUS
+   ============================================================ */
+:root {
+  --radius-xs:    2px;
+  --radius-sm:    4px;
+  --radius-md:    8px;
+  --radius-lg:    12px;
+  --radius-full:  9999px;
+}
+
+
+/* ============================================================
+   ELEVATION — LIGHT MODE
+   Dark mode uses borders instead of shadows
+   ============================================================ */
+:root {
+  --elevation-0:  none;
+  --elevation-1:  0 1px 3px rgba(0, 0, 0, 0.06);
+  --elevation-2:  0 4px 12px rgba(0, 0, 0, 0.10);
+  --elevation-3:  0 8px 32px rgba(0, 0, 0, 0.14);
+}
+
+/* Dark mode elevation — use border instead of shadow */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --elevation-0:  none;
+    --elevation-1:  0 0 0 1px #2D2D3A;
+    --elevation-2:  0 0 0 1px #2D2D3A;
+    --elevation-3:  0 0 0 1px #374151;
+  }
+}
+
+[data-theme="dark"] {
+  --elevation-0:  none;
+  --elevation-1:  0 0 0 1px #2D2D3A;
+  --elevation-2:  0 0 0 1px #2D2D3A;
+  --elevation-3:  0 0 0 1px #374151;
+}
+
+
+/* ============================================================
+   MOTION
+   ============================================================ */
+:root {
+  --motion-fast:     80ms;
+  --motion-default:  150ms;
+  --motion-enter:    200ms;
+  --motion-exit:     150ms;
+  --motion-reveal:   400ms;
+  --motion-skeleton: 1400ms;
+
+  --ease-default:    ease-out;
+  --ease-in:         ease-in;
+  --ease-spring:     cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Reduced motion — override all transitions */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:       0.01ms !important;
+    animation-iteration-count: 1     !important;
+    transition-duration:      0.01ms !important;
+  }
+}
+
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+:root {
+  /* Breakpoints — reference only (use in @media queries) */
+  --breakpoint-mobile:   768px;
+  --breakpoint-tablet:   1200px;
+
+  /* Max content widths */
+  --max-width-app:       1280px;
+  --max-width-editorial: 800px;
+
+  /* Page margins */
+  --page-margin-mobile:  16px;
+  --page-margin-tablet:  24px;
+  --page-margin-desktop: 32px;
+
+  /* Card grid gutters */
+  --grid-gutter-mobile:  0px;
+  --grid-gutter-tablet:  16px;
+  --grid-gutter-desktop: 16px;
+}
+
+
+/* ============================================================
+   Z-INDEX
+   ============================================================ */
+:root {
+  --z-base:       0;
+  --z-raised:     10;
+  --z-dropdown:   100;
+  --z-sticky:     200;
+  --z-overlay:    300;
+  --z-modal:      400;
+  --z-toast:      500;
+}

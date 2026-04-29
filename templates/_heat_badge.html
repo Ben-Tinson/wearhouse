@@ -1,0 +1,12 @@
+{% if release.heat_score is not none %}
+    {% set label_data = heat_label_for_score(release.heat_score) %}
+    {% if label_data %}
+        {% set heat_label = label_data[0] %}
+        {% set heat_emoji = label_data[1] %}
+        {% set heat_tooltip_text = heat_tooltip(release) %}
+        <span class="badge bg-light text-dark border"
+              {% if heat_tooltip_text %}data-bs-toggle="tooltip" data-bs-placement="top" title="{{ heat_tooltip_text }}"{% endif %}>
+            Heat: {{ heat_label }} {{ heat_emoji }}
+        </span>
+    {% endif %}
+{% endif %}

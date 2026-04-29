@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Welcome to WearHouse{% endblock %}
+{% block title %}Welcome to Soletrak{% endblock %}
 
 {% block content %}
 
@@ -30,8 +30,8 @@
         <div class="row g-4 py-4 row-cols-1 row-cols-lg-2">
             
             <div class="feature col">
-                {# MODIFIED: Changed text-bg-primary to bg-wearhouse-primary #}
-                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-wearhouse-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+                {# MODIFIED: Changed text-bg-primary to bg-soletrak-primary #}
+                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-soletrak-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
                     <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-collection-fill" viewBox="0 0 16 16"><path d="M0 13a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 16 13V6a1.5 1.5 0 0 0-1.5-1.5h-13A1.5 1.5 0 0 0 0 6v7zM2 3a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 0-1h-11A.5.5 0 0 0 2 3zm2-2a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 0-1h-7A.5.5 0 0 0 4 1z"/></svg>
                 </div>
                 <h3 class="fs-2">Manage Your Collection</h3>
@@ -39,7 +39,7 @@
             </div>
     
             <div class="feature col">
-                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-wearhouse-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-soletrak-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
                     {# --- NEW: Up and Down Arrow Icon --- #}
                     <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-arrow-down-up" viewBox="0 0 16 16">
                       <path fill-rule="evenodd" d="M11.5 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L11 2.707V14.5a.5.5 0 0 0 .5.5zm-7-14a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L4 13.293V1.5a.5.5 0 0 1 .5-.5z"/>
@@ -50,8 +50,8 @@
             </div>
     
             <div class="feature col">
-                {# MODIFIED: Changed text-bg-primary to bg-wearhouse-primary #}
-                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-wearhouse-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+                {# MODIFIED: Changed text-bg-primary to bg-soletrak-primary #}
+                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-soletrak-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
                     <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-calendar-heart-fill" viewBox="0 0 16 16"><path d="M4 .5a.5.5 0 0 0-1 0V1H2a2 2 0 0 0-2 2v1h16V3a2 2 0 0 0-2-2h-1V.5a.5.5 0 0 0-1 0V1H4V.5zM16 14V5H0v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2zM8 7.993c1.664-1.711 5.825 1.283 0 5.132-5.825-3.85-1.664-6.843 0-5.132z"/></svg>
                 </div>
                 <h3 class="fs-2">Track Upcoming Releases</h3>
@@ -59,8 +59,8 @@
             </div>
     
             <div class="feature col">
-                {# MODIFIED: Changed text-bg-primary to bg-wearhouse-primary #}
-                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-wearhouse-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+                {# MODIFIED: Changed text-bg-primary to bg-soletrak-primary #}
+                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-soletrak-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
                     <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-bar-chart-line-fill" viewBox="0 0 16 16"><path d="M11 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12h.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1 0-1H1v-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h1V7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7h1V2z"/></svg>
                 </div>
                 <h3 class="fs-2">View Your Stats</h3>
@@ -163,7 +163,9 @@
                             data-image-src="{{ release.image_url | release_image }}"
                             data-image-alt="{{ release.name }}"
                             class="d-none d-md-block image-modal-trigger">
-                             <img src="{{ release.image_url | release_image }}" class="card-img-top" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
+                             <div class="card-media-well">
+                                 <img src="{{ release.image_url | release_image }}" class="card-img-top card-media-img" alt="{{ release.name }}">
+                             </div>
                              <span class="expand-icon">
                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
                              </span>
@@ -182,7 +184,7 @@
                                         data-image-src="{{ release.image_url | release_image }}"
                                         data-image-alt="{{ release.name }}"
                                         class="image-modal-trigger">
-                                         <img src="{{ release.image_url | release_image }}" class="img-fluid rounded" alt="{{ release.name }} mobile" style="max-height: 75px; object-fit: contain; background-color: #f8f9fa;">
+                                         <img src="{{ release.image_url | release_image }}" class="img-fluid rounded surface-muted-bg" alt="{{ release.name }} mobile" style="max-height: 75px; object-fit: contain;">
                                          <span class="expand-icon expand-icon-mobile">
                                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
                                          </span>
@@ -272,7 +274,9 @@
                             data-image-src="{{ release.image_url | release_image }}"
                             data-image-alt="{{ release.name }}"
                             class="d-none d-md-block image-modal-trigger">
-                             <img src="{{ release.image_url | release_image }}" class="card-img-top" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
+                             <div class="card-media-well">
+                                 <img src="{{ release.image_url | release_image }}" class="card-img-top card-media-img" alt="{{ release.name }}">
+                             </div>
                              <span class="expand-icon">
                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
                              </span>
@@ -291,7 +295,7 @@
                                         data-image-src="{{ release.image_url | release_image }}"
                                         data-image-alt="{{ release.name }}"
                                         class="image-modal-trigger">
-                                         <img src="{{ release.image_url | release_image }}" class="img-fluid rounded" alt="{{ release.name }} mobile" style="max-height: 75px; object-fit: contain; background-color: #f8f9fa;">
+                                         <img src="{{ release.image_url | release_image }}" class="img-fluid rounded surface-muted-bg" alt="{{ release.name }} mobile" style="max-height: 75px; object-fit: contain;">
                                          <span class="expand-icon expand-icon-mobile">
                                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
                                          </span>
@@ -327,7 +331,7 @@
     {# --- VERSION 2: FOR LOGGED-OUT GUESTS (with new consistent layout) --- #}
 
     <div class="p-5 mb-4 card h-100 rounded-3 shadow-sm text-center">
-        <h1 class="display-4 fw-bold">Welcome to WearHouse!</h1>
+        <h1 class="display-4 fw-bold">Welcome to Soletrak!</h1>
         <p class="fs-4 col-md-10 mx-auto">The ultimate place to manage, track, and showcase your prized sneaker collection.</p>
         <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg mt-3 px-5">Get Started for Free</a>
         <p class="mt-3">Already have an account? <a href="{{ url_for('auth.login') }}">Log in here</a>.</p>
@@ -339,8 +343,8 @@
         <div class="row g-4 py-4 row-cols-1 row-cols-lg-2">
             
             <div class="feature col">
-                {# MODIFIED: Changed text-bg-primary to bg-wearhouse-primary #}
-                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-wearhouse-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+                {# MODIFIED: Changed text-bg-primary to bg-soletrak-primary #}
+                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-soletrak-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
                     <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-collection-fill" viewBox="0 0 16 16"><path d="M0 13a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 16 13V6a1.5 1.5 0 0 0-1.5-1.5h-13A1.5 1.5 0 0 0 0 6v7zM2 3a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 0-1h-11A.5.5 0 0 0 2 3zm2-2a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 0-1h-7A.5.5 0 0 0 4 1z"/></svg>
                 </div>
                 <h3 class="fs-2">Manage Your Collection</h3>
@@ -348,7 +352,7 @@
             </div>
     
             <div class="feature col">
-                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-wearhouse-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-soletrak-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
                     {# --- NEW: Up and Down Arrow Icon --- #}
                     <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-arrow-down-up" viewBox="0 0 16 16">
                       <path fill-rule="evenodd" d="M11.5 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L11 2.707V14.5a.5.5 0 0 0 .5.5zm-7-14a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L4 13.293V1.5a.5.5 0 0 1 .5-.5z"/>
@@ -359,8 +363,8 @@
             </div>
     
             <div class="feature col">
-                {# MODIFIED: Changed text-bg-primary to bg-wearhouse-primary #}
-                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-wearhouse-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+                {# MODIFIED: Changed text-bg-primary to bg-soletrak-primary #}
+                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-soletrak-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
                     <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-calendar-heart-fill" viewBox="0 0 16 16"><path d="M4 .5a.5.5 0 0 0-1 0V1H2a2 2 0 0 0-2 2v1h16V3a2 2 0 0 0-2-2h-1V.5a.5.5 0 0 0-1 0V1H4V.5zM16 14V5H0v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2zM8 7.993c1.664-1.711 5.825 1.283 0 5.132-5.825-3.85-1.664-6.843 0-5.132z"/></svg>
                 </div>
                 <h3 class="fs-2">Track Upcoming Releases</h3>
@@ -368,8 +372,8 @@
             </div>
     
             <div class="feature col">
-                {# MODIFIED: Changed text-bg-primary to bg-wearhouse-primary #}
-                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-wearhouse-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+                {# MODIFIED: Changed text-bg-primary to bg-soletrak-primary #}
+                <div class="feature-icon d-inline-flex align-items-center justify-content-center bg-soletrak-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
                     <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="currentColor" class="bi bi-bar-chart-line-fill" viewBox="0 0 16 16"><path d="M11 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12h.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1 0-1H1v-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h1V7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7h1V2z"/></svg>
                 </div>
                 <h3 class="fs-2">View Your Stats</h3>
@@ -388,7 +392,9 @@
             {% for release in general_releases %}
                 <div class="col">
                     <div class="card h-100 shadow-sm">
-                        <img src="{{ release.image_url | release_image }}" class="card-img-top p-3" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
+                        <div class="card-media-well">
+                            <img src="{{ release.image_url | release_image }}" class="card-img-top card-media-img p-3" alt="{{ release.name }}">
+                        </div>
                         <div class="card-body">
                             <h5 class="card-title fs-6">{{ release.name }}</h5>
                             <p class="card-text"><small class="text-muted">Releases: {{ release.release_date.strftime('%b %d, %Y') }}</small></p>

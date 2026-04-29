@@ -4,50 +4,107 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{% block title %}WearHouse{% endblock %}</title>
-    <link rel="icon" type="image/png" sizes="96x96" href="{{ url_for('static', filename='brand/wearhouse-favicon.png') }}">
+    <title>{% block title %}Soletrak{% endblock %}</title>
+    <link rel="icon" type="image/png" sizes="96x96" href="{{ url_for('static', filename='brand/soletrak-favicon.png') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='brand/soletrak-tokens.css') }}">
     {% block head_extra %}{% endblock %}
     <style>
         :root {
-            /* --- Color Palette --- */
-            --wearhouse-primary: #FF6600;       /* Vibrant Orange */
-            --wearhouse-accent: #007bff;        /* Example Accent - Electric Blue (can be used for other elements) */
-            
-            /* --- Light Theme (Default) --- */
-                --wearhouse-page-bg: #f8f9fa;      /* Light grey page background */
-                --wearhouse-card-bg: #ffffff;     /* White card background */
-                --wearhouse-text-color: #212529;   /* Dark text */
-                --wearhouse-muted-color: #6c757d;  /* Muted dark text */
-                --wearhouse-border-color: #dee2e6; /* Default border color */
-                --wearhouse-input-bg: #ffffff;    /* Light input background */
+            /* --- Soletrak Token Bridge (Light by default) --- */
+            --wearhouse-primary: var(--color-purple-primary);
+            --wearhouse-accent: var(--color-data-blue);
+
+            --wearhouse-page-bg: var(--color-background);
+            --wearhouse-card-bg: var(--color-surface);
+            --wearhouse-text-color: var(--color-text-primary);
+            --wearhouse-muted-color: var(--color-text-secondary);
+            --wearhouse-border-color: var(--color-border);
+            --wearhouse-input-bg: var(--color-surface);
+
+            /* Compatibility variables (previously referenced but undefined) */
+            --wearhouse-button-orange: var(--color-purple-primary);
+            --wearhouse-button-clear-bg: var(--color-purple-light);
+            --wearhouse-text-on-light: var(--color-text-primary);
+            --wearhouse-muted-on-light: var(--color-text-secondary);
+            --wearhouse-component-dark-bg: var(--color-surface);
+            --wearhouse-text-on-dark: var(--color-text-primary);
+            --wearhouse-muted-on-dark: var(--color-text-secondary);
+            --wearhouse-page-bg-light: var(--color-background);
             
 
             /* Navbar specific variables */
             --navbar-top-offset: 20px; 
-            --navbar-height: 56px; /* Approximate, adjust based on your actual navbar height */
+            --navbar-height: 72px; /* Approximate, adjust based on your actual navbar height */
     
         }
         
         /* --- NEW: Dark Theme Variable Overrides --- */
-        html.dark-mode {
-            --wearhouse-page-bg: #121212;      /* Very dark grey */
-            --wearhouse-card-bg: #1e1e1e;      /* Slightly lighter dark grey for cards */
-            --wearhouse-text-color: #e8e6e3;   /* Off-white text */
-            --wearhouse-muted-color: rgba(232, 230, 227, 0.6); /* Muted light text */
-            --wearhouse-border-color: #444;    /* Darker border color */
-            --wearhouse-input-bg: #2a2a2a;     /* Dark input background */
+        :root[data-theme="light"] {
+            color-scheme: light;
+            --color-background:          #F9F9F9;
+            --color-surface:             #FFFFFF;
+            --color-text-primary:        #111111;
+            --color-text-secondary:      #6B7280;
+            --color-border:              #E5E7EB;
+            --color-disabled:            #D1D5DB;
+
+            --color-purple-primary:      #7C3AED;
+            --color-purple-dark:         #5B21B6;
+            --color-purple-light:        #EDE9FE;
+            --color-purple-interactive:  #A78BFA;
+
+            --color-data-blue:           #3B82F6;
+            --color-data-blue-light:     #EFF6FF;
+            --color-data-blue-dark:      #1D4ED8;
+
+            --color-healthy:             #0D9488;
+            --color-healthy-light:       #F0FDFA;
+
+            --color-monitor:             #D97706;
+            --color-monitor-light:       #FFFBEB;
+
+            --color-needs-attention:     #B45309;
+            --color-needs-attention-light: #FEF3C7;
+
+            --color-critical:            #DC2626;
+            --color-critical-light:      #FEF2F2;
+
+            --color-heat:                #F59E0B;
+            --color-heat-light:          #FEF9EE;
+
+            --color-chart-1:             #3B82F6;
+            --color-chart-2:             #7C3AED;
+            --color-chart-3:             #A78BFA;
+            --color-chart-4:             #1D4ED8;
+            --color-chart-5:             #60A5FA;
+            --color-chart-other:         #E5E7EB;
+
+            --color-roi-positive:        #0D9488;
+            --color-roi-negative:        #B45309;
+
+            --elevation-0:  none;
+            --elevation-1:  0 1px 3px rgba(0, 0, 0, 0.06);
+            --elevation-2:  0 4px 12px rgba(0, 0, 0, 0.10);
+            --elevation-3:  0 8px 32px rgba(0, 0, 0, 0.14);
+        }
+        :root[data-theme="dark"] {
+            color-scheme: dark;
+            /* Rely on Soletrak dark tokens (set via data-theme) */
+            --wearhouse-page-bg: var(--color-background);
+            --wearhouse-card-bg: var(--color-surface);
+            --wearhouse-text-color: var(--color-text-primary);
+            --wearhouse-muted-color: var(--color-text-secondary);
+            --wearhouse-border-color: var(--color-border);
+            --wearhouse-input-bg: var(--color-surface);
         }
     
         /* --- 1. Base & Typography --- */
         body { 
-            font-family: 'Open Sans', sans-serif;
+            font-family: var(--font-family);
             color: var(--wearhouse-text-color);
             background-color: var(--wearhouse-page-bg);
             display: flex; 
@@ -58,73 +115,102 @@
         }
 
         .card, .modal-content {
-            background-color: var(--wearhouse-card-bg);
-            color: var(--wearhouse-text-color);
-            border-color: var(--wearhouse-border-color);
+            background-color: var(--color-surface);
+            color: var(--color-text-primary);
+            border-color: var(--color-border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--elevation-1);
+        }
+        .card-img-top,
+        .card-img-bottom {
+            display: block;
+        }
+        .card-media-well {
+            background-color: #ffffff;
+            height: 250px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            width: 100%;
+            border-top-left-radius: var(--radius-lg);
+            border-top-right-radius: var(--radius-lg);
+            position: relative;
+        }
+        .card-media-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: transparent;
         }
 
         /* Specific overrides for Dark Mode */
-        html.dark-mode .navbar.bg-white {
-            background-color: var(--wearhouse-card-bg) !important; /* Override .bg-white */
+        html[data-theme="dark"] .navbar.bg-white {
+            background-color: var(--color-surface) !important; /* Override .bg-white */
         }
-        html.dark-mode .controls-bar.bg-light {
-            background-color: var(--wearhouse-card-bg) !important; /* Override .bg-light */
-            border-color: var(--wearhouse-border-color) !important;
+        html[data-theme="dark"] .controls-bar.bg-light {
+            background-color: var(--color-surface) !important; /* Override .bg-light */
+            border-color: var(--color-border) !important;
         }
-        html.dark-mode .table {
+        html[data-theme="dark"] .table {
             --bs-table-bg: var(--wearhouse-card-bg);
             --bs-table-color: var(--wearhouse-text-color);
             --bs-table-border-color: var(--wearhouse-border-color);
             --bs-table-striped-bg: #2c2c2c;
         }
-        html.dark-mode .btn-outline-dark {
-            color: var(--wearhouse-text-color);
-            border-color: var(--wearhouse-text-color);
+        html[data-theme="dark"] .btn-outline-dark {
+            color: var(--color-text-primary);
+            border-color: var(--color-border);
         }
-        html.dark-mode .btn-outline-dark:hover,
-        html.dark-mode .btn-outline-dark:focus {
-            background-color: rgba(232, 230, 227, 0.08);
-            color: var(--wearhouse-text-color);
-            border-color: var(--wearhouse-text-color);
+        html[data-theme="dark"] .btn-outline-dark:hover,
+        html[data-theme="dark"] .btn-outline-dark:focus {
+            background-color: color-mix(in srgb, var(--color-purple-primary) 20%, #000);
+            color: var(--color-text-primary);
+            border-color: var(--color-purple-primary);
         }
-        html.dark-mode .form-control, 
-        html.dark-mode .form-select {
-            background-color: var(--wearhouse-input-bg);
-            color: var(--wearhouse-text-color);
-            border-color: var(--wearhouse-border-color);
+        html[data-theme="dark"] .form-control, 
+        html[data-theme="dark"] .form-select {
+            background-color: var(--color-surface);
+            color: var(--color-text-primary);
+            border-color: var(--color-border);
         }
-        html.dark-mode .form-control:focus, 
-        html.dark-mode .form-select:focus {
-            background-color: var(--wearhouse-input-bg);
-            color: var(--wearhouse-text-color);
+        html[data-theme="dark"] .form-control:focus, 
+        html[data-theme="dark"] .form-select:focus {
+            background-color: var(--color-surface);
+            color: var(--color-text-primary);
+            border-color: var(--color-purple-primary);
+            box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--color-purple-primary) 25%, transparent);
         }
-        html.dark-mode hr {
-            border-top-color: var(--wearhouse-border-color);
+        html[data-theme="dark"] hr {
+            border-top-color: var(--color-border);
         }
-        html.dark-mode .form-text {
-            color: var(--wearhouse-muted-color) !important;
+        html[data-theme="dark"] .form-text {
+            color: var(--color-text-secondary) !important;
         }
-        html.dark-mode .badge.bg-light.text-dark {
-            background-color: #2a2a2a !important;
-            color: var(--wearhouse-text-color) !important;
-            border-color: var(--wearhouse-border-color) !important;
+        html[data-theme="dark"] .badge.bg-light.text-dark {
+            background-color: color-mix(in srgb, var(--color-surface) 85%, #000) !important;
+            color: var(--color-text-primary) !important;
+            border-color: var(--color-border) !important;
         }
     
         h1, h2, h3, h4, h5, h6,
         .navbar-brand, 
         .card-title, 
         .modal-title {
-            font-family: 'Montserrat', sans-serif;
+            font-family: var(--font-family);
         }
-        .btn { /* Using Montserrat for all buttons for consistency */
-            font-family: 'Montserrat', sans-serif;
+        .btn {
+            font-family: var(--font-family);
         }
     
         a {
-            color: var(--wearhouse-primary);
+            color: var(--color-purple-primary);
+            text-decoration-color: color-mix(in srgb, var(--color-purple-primary) 40%, transparent);
+            text-underline-offset: 0.2em;
         }
         a:hover {
-            color: #E65C00; /* Darker orange for hover */
+            color: var(--color-purple-dark);
+            text-decoration-color: var(--color-purple-dark);
         }
     
         .text-muted { /* Global muted text for the light page theme */
@@ -135,9 +221,16 @@
             border-top-color: var(--wearhouse-border-color);
         }
 
-        .bg-wearhouse-primary {
-            background-color: var(--wearhouse-primary) !important;
+        .bg-soletrak-primary {
+            background-color: var(--color-purple-primary) !important;
             color: #fff !important; /* Ensure text on the badge is white */
+        }
+
+        .surface-bg {
+            background-color: #ffffff !important;
+        }
+        .surface-muted-bg {
+            background-color: #f9f9f9 !important;
         }
 
         .stats-grid {
@@ -157,8 +250,11 @@
                 --navbar-top-offset: 10px;
             }
             main.container {
-                margin-top: 0.75rem !important;
+                margin-top: 0.25rem !important;
                 margin-bottom: 0.75rem !important;
+            }
+            .wearhouse-content-pusher {
+                height: calc(var(--navbar-height) + var(--navbar-top-offset) + 1rem);
             }
             .home-page .p-5 {
                 padding: 1.25rem !important;
@@ -261,10 +357,6 @@
             .wishlist-controls .btn-custom-clear {
                 margin-bottom: 0 !important;
             }
-            .wishlist-controls .controls-filter-form,
-            .wishlist-controls .controls-search-form {
-                margin-bottom: 0 !important;
-            }
             .controls-filter-form,
             .controls-search-form {
                 width: 100%;
@@ -323,26 +415,64 @@
         /* The <nav> tag itself uses Bootstrap classes: navbar navbar-expand-lg navbar-light bg-white shadow-lg rounded */
         /* This means its background, shadow, and rounded corners are handled. */
     
+        .navbar {
+            --bs-navbar-padding-x: 0.5rem;
+            --bs-navbar-padding-y: 0.6rem;
+        }
+        .navbar .container-fluid {
+            padding-left: 0;
+            padding-right: 0;
+        }
         .navbar-brand {
             color: var(--wearhouse-primary) !important; /* Ensure brand color */
+            display: inline-flex !important;
+            align-items: center;
+            align-self: center;
+            flex: 0 0 auto;
+            padding: 0;
+            margin-right: 0.5rem;
+            line-height: 1;
+            gap: 0;
         }
         .navbar-brand:hover {
             opacity: 0.75;
         }
         .navbar-brand-logo {
             display: block;
-            height: auto;
+            height: 52px;
             width: auto;
-            max-height: clamp(32px, 6vw, 52px);
+        }
+        .navbar-brand-logo.logo-dark {
+            display: none;
+        }
+        html[data-theme="dark"] .navbar-brand-logo.logo-light {
+            display: none;
+        }
+        html[data-theme="dark"] .navbar-brand-logo.logo-dark {
+            display: block;
         }
         @media (max-width: 1200px) {
             .navbar-brand-logo {
-                max-height: clamp(28px, 6vw, 44px);
+                height: 48px;
             }
         }
         @media (max-width: 992px) {
             .navbar-brand-logo {
-                max-height: clamp(24px, 7vw, 40px);
+                height: 42px;
+            }
+        }
+        @media (max-width: 575.98px) {
+            .navbar-brand-logo {
+                height: 38px;
+            }
+        }
+        @media (max-width: 1199.98px) {
+            .navbar-collapse {
+                background-color: var(--color-surface);
+                border-radius: var(--radius-lg);
+                padding: 0.75rem;
+                margin-top: 0.5rem;
+                box-shadow: var(--elevation-1);
             }
         }
     
@@ -367,7 +497,7 @@
     
         /* Content Pusher for the custom fixed navbar */
         .wearhouse-content-pusher {
-            height: calc(var(--navbar-height) + var(--navbar-top-offset) + 2rem); /* e.g., 56px + 20px + 16px = 92px */
+            height: calc(var(--navbar-height) + var(--navbar-top-offset) + 1.25rem); /* e.g., 56px + 20px + 20px = 96px */
         }
     
         /* --- 3. Main Content Area & Default Card Styling (for light theme) --- */
@@ -375,16 +505,16 @@
             flex-grow: 1; /* For sticky footer */
         }
         .card { 
-            background-color: var(--wearhouse-card-bg);
-            color: var(--wearhouse-text-color);
+            background-color: var(--color-surface);
+            color: var(--color-text-primary);
         }
         .card .text-muted {
-            color: var(--wearhouse-muted-color) !important; /* Darker muted for light cards */
+            color: var(--color-text-secondary) !important; /* Darker muted for light cards */
         }
         .card .card-header { /* Default light card header */
-            background-color: #f8f9fa; /* Bootstrap light grey */
-            border-bottom: 1px solid var(--wearhouse-border-color);
-            color: var(--wearhouse-text-color); /* Ensure header text is dark */
+            background-color: var(--color-data-blue-light);
+            border-bottom: 1px solid var(--color-border);
+            color: var(--color-text-primary); /* Ensure header text is dark */
         }
         .news-card__excerpt {
             display: -webkit-box;
@@ -406,28 +536,31 @@
         /* --- 4. Specific Component Styles --- */
         /* Controls Bar on Dashboard (assuming it keeps .bg-light class from Bootstrap) */
         .controls-bar.bg-light {
-            color: var(--wearhouse-text-on-light) !important; 
-            border: 1px solid var(--wearhouse-border-color);
+            color: var(--color-text-primary) !important; 
+            border: 1px solid var(--color-border);
+            background-color: var(--color-surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--elevation-1);
         }
         .controls-bar.bg-light .text-muted {
-            color: var(--wearhouse-muted-on-light) !important;
+            color: var(--color-text-secondary) !important;
         }
         .controls-bar.bg-light .btn-outline-secondary {
-            --bs-btn-color: var(--wearhouse-muted-on-light);
-            --bs-btn-border-color: var(--wearhouse-muted-on-light);
-            --bs-btn-hover-bg: var(--wearhouse-muted-on-light);
-            --bs-btn-hover-color: var(--wearhouse-page-bg); /* e.g., white text on grey hover */
+            --bs-btn-color: var(--color-text-secondary);
+            --bs-btn-border-color: var(--color-border);
+            --bs-btn-hover-bg: var(--color-purple-light);
+            --bs-btn-hover-color: var(--color-purple-dark);
         }
         .controls-bar.bg-light .btn-group-sm .btn.btn-outline-secondary:hover {
-            color: var(--wearhouse-primary) !important; /* Your primary orange for text */
-            background-color: #e9ecef; /* A slightly off-white/very light grey for hover background on controls bar */
-            border-color: #dee2e6; /* Optional: match background or slightly darker */
+            color: var(--color-purple-primary) !important;
+            background-color: var(--color-purple-light);
+            border-color: var(--color-purple-primary);
         }
         .controls-bar.bg-light .btn.btn-outline-secondary:hover,
         .controls-bar.bg-light .btn.btn-outline-warning:hover {
-            color: var(--wearhouse-primary) !important; /* Text turns orange */
-            background-color: #e9ecef; /* A very light background, almost white, or use #e9ecef */
-            /* border-color: var(--wearhouse-primary); /* Optional: border turns orange */
+            color: var(--color-purple-primary) !important;
+            background-color: var(--color-purple-light);
+            border-color: var(--color-purple-primary);
         }
         .controls-bar.bg-light .btn-primary,
         .controls-bar.bg-light .btn-info { /* For active sort/order buttons */
@@ -435,9 +568,9 @@
         }
         /* Custom style for the "Clear" buttons */
         .btn-custom-clear {
-            color: var(--wearhouse-button-orange);
-            background-color: var(--wearhouse-button-clear-bg);
-            border-color: var(--wearhouse-button-orange);
+            color: var(--color-purple-primary);
+            background-color: var(--color-purple-light);
+            border-color: var(--color-purple-primary);
             /* Ensure other Bootstrap button base styles are inherited or set if needed */
             /* display: inline-block; font-weight: 400; line-height: 1.5; text-align: center; ... */
             /* text-decoration: none; vertical-align: middle; cursor: pointer; user-select: none; */
@@ -451,24 +584,24 @@
         .btn-custom-clear:focus, /* Added focus style for accessibility */
         .btn-custom-clear:active { /* Added active style */
             color: #ffffff;
-            background-color: var(--wearhouse-button-orange);
-            border-color: var(--wearhouse-button-orange);
+            background-color: var(--color-purple-dark);
+            border-color: var(--color-purple-dark);
             /* box-shadow: 0 0 0 0.25rem rgba(255, 128, 0, 0.5); /* Optional: focus shadow */
         }
 
         /* Ensure the active sort button (btn-primary in controls-bar) has the correct base style */
         .controls-bar.bg-light .btn.btn-primary {
-            background-color: var(--wearhouse-primary);
-            border-color: var(--wearhouse-primary);
+            background-color: var(--color-purple-primary);
+            border-color: var(--color-purple-primary);
             color: #fff; /* White text when active and not hovered */
         }
 
         /* New hover and focus style for an ACTIVE sort button */
         .controls-bar.bg-light .btn.btn-primary:hover,
         .controls-bar.bg-light .btn.btn-primary:focus {
-            background-color: #e9ecef;         /* Very light grey/off-white background on hover/focus */
-            color: var(--wearhouse-primary);    /* Orange text on hover/focus */
-            border-color: transparent; /* Keep an orange border or make it subtle */
+            background-color: var(--color-purple-light);
+            color: var(--color-purple-dark);
+            border-color: var(--color-purple-primary);
             box-shadow: none;                   /* Remove Bootstrap's default focus shadow/ring */
         }
 
@@ -478,13 +611,15 @@
         /* We should also ensure the :focus state for non-active outline buttons is clean */
         .controls-bar.bg-light .btn.btn-outline-secondary:focus,
         .controls-bar.bg-light .btn.btn-outline-warning:focus {
-            box-shadow: 0 0 0 0.25rem rgba(255, 128, 0, 0.25); /* Use your orange for focus glow, or 'none' */
+            box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--color-purple-primary) 30%, transparent);
         }
     
         /* Custom Dark Component Class */
         .wearhouse-dark-component {
-            background-color: var(--wearhouse-component-dark-bg); /* #242424 */
-            color: var(--wearhouse-text-on-dark);
+            background-color: var(--color-surface); /* token surface in dark mode */
+            color: var(--color-text-primary);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--elevation-1);
         }
         .wearhouse-dark-component h1, .wearhouse-dark-component h2, .wearhouse-dark-component h3, 
         .wearhouse-dark-component h4, .wearhouse-dark-component h5, .wearhouse-dark-component h6,
@@ -493,25 +628,28 @@
             color: var(--wearhouse-text-on-dark);
         }
         .wearhouse-dark-component .text-muted {
-            color: var(--wearhouse-muted-on-dark) !important;
+            color: var(--color-text-secondary) !important;
         }
         .wearhouse-dark-component a {
-            color: var(--wearhouse-primary); /* Orange links on this dark component */
+            color: var(--color-purple-primary);
         }
         .wearhouse-dark-component a:hover {
-            color: #E65C00; /* Darker orange on hover */
+            color: var(--color-purple-dark);
         }
         
         .form-control, .form-select {
-            background-color: var(--wearhouse-input-bg);
-            color: var(--wearhouse-text-color);
-            border-color: var(--wearhouse-border-color);
+            background-color: var(--color-surface);
+            color: var(--color-text-primary);
+            border-color: var(--color-border);
+            border-radius: var(--radius-md);
         }
 
         /* --- 5. Forms (general styling for light theme) --- */
         .form-control:focus, .form-select:focus {
-            background-color: var(--wearhouse-input-bg);
-            color: var(--wearhouse-text-color);
+            background-color: var(--color-surface);
+            color: var(--color-text-primary);
+            border-color: var(--color-purple-primary);
+            box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--color-purple-primary) 25%, transparent);
         }
         
         /* Hide the up/down spinner arrows on date and number inputs */
@@ -525,14 +663,103 @@
 
         /* Primary Button (overriding Bootstrap's default if you use .btn-primary) */
         .btn-primary {
-            background-color: var(--wearhouse-primary);
-            border-color: var(--wearhouse-primary);
+            background-color: var(--color-purple-primary);
+            border-color: var(--color-purple-primary);
             color: #fff; /* Ensure text is white */
+            border-radius: var(--radius-md);
+            font-weight: var(--font-weight-semibold);
         }
         .btn-primary:hover {
-            background-color: #e9ecef;
-            border-color: var(--wearhouse-component-dark-bg);
-            color: var(--wearhouse-component-dark-bg);
+            background-color: var(--color-purple-dark);
+            border-color: var(--color-purple-dark);
+            color: #fff;
+        }
+        .btn-primary:focus,
+        .btn-primary:active {
+            box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--color-purple-primary) 35%, transparent);
+        }
+
+        .btn-outline-secondary {
+            border-color: var(--color-border);
+            color: var(--color-text-secondary);
+            border-radius: var(--radius-md);
+            font-weight: var(--font-weight-medium);
+        }
+        .btn-outline-secondary:hover,
+        .btn-outline-secondary:focus {
+            border-color: var(--color-purple-primary);
+            color: var(--color-purple-dark);
+            background-color: var(--color-purple-light);
+            box-shadow: none;
+        }
+
+        .btn-outline-primary {
+            border-color: var(--color-purple-primary);
+            color: var(--color-purple-primary);
+            border-radius: var(--radius-md);
+            font-weight: var(--font-weight-medium);
+        }
+        .btn-outline-primary:hover,
+        .btn-outline-primary:focus {
+            background-color: var(--color-purple-primary);
+            color: #fff;
+            border-color: var(--color-purple-primary);
+        }
+
+        .btn-outline-danger {
+            border-color: var(--color-critical);
+            color: var(--color-critical);
+            border-radius: var(--radius-md);
+            font-weight: var(--font-weight-medium);
+        }
+        .btn-outline-danger:hover,
+        .btn-outline-danger:focus {
+            background-color: var(--color-critical);
+            color: #fff;
+            border-color: var(--color-critical);
+        }
+        .btn-outline-danger-soft {
+            border-color: color-mix(in srgb, var(--color-critical) 45%, var(--color-border));
+            color: var(--color-critical);
+            background-color: transparent;
+            border-radius: var(--radius-md);
+            font-weight: var(--font-weight-medium);
+        }
+        .btn-outline-danger-soft:hover,
+        .btn-outline-danger-soft:focus {
+            background-color: color-mix(in srgb, var(--color-critical) 12%, transparent);
+            color: var(--color-critical);
+            border-color: var(--color-critical);
+            box-shadow: none;
+        }
+
+        .btn-danger {
+            background-color: var(--color-critical);
+            border-color: var(--color-critical);
+            color: #fff;
+            border-radius: var(--radius-md);
+            font-weight: var(--font-weight-semibold);
+        }
+        .btn-danger:hover,
+        .btn-danger:focus {
+            background-color: color-mix(in srgb, var(--color-critical) 85%, #000);
+            border-color: color-mix(in srgb, var(--color-critical) 85%, #000);
+            color: #fff;
+        }
+
+        .btn-ghost {
+            background-color: transparent;
+            border-color: transparent;
+            color: var(--color-purple-primary);
+            border-radius: var(--radius-md);
+            font-weight: var(--font-weight-medium);
+        }
+        .btn-ghost:hover,
+        .btn-ghost:focus {
+            background-color: var(--color-purple-light);
+            color: var(--color-purple-dark);
+            border-color: var(--color-purple-light);
+            box-shadow: none;
         }
     
         /* --- 6. Modals (assuming they should generally match the page theme) --- */
@@ -541,10 +768,10 @@
         .modal-content.bg-dark, .modal-content.wearhouse-dark-component { ... }
         */
         .modal-header {
-            border-bottom-color: var(--wearhouse-border-color);
+            border-bottom-color: var(--color-border);
         }
         .modal-footer {
-            border-top-color: var(--wearhouse-border-color);
+            border-top-color: var(--color-border);
         }
     
     
@@ -563,7 +790,7 @@
         .image-modal-trigger .card-img-top, .image-modal-trigger img.img-fluid { display: block; }
     
         /* AJAX Status Message */
-        .ajax-status-message { display: block; overflow: hidden; max-height: 0; opacity: 0; transition: opacity 0.3s ease-in-out, max-height 0.3s ease-in-out, margin-top 0.3s ease-in-out; color: var(--bs-success); margin-top: 0; font-weight: 500; }
+        .ajax-status-message { display: block; overflow: hidden; max-height: 0; opacity: 0; transition: opacity 0.3s ease-in-out, max-height 0.3s ease-in-out, margin-top 0.3s ease-in-out; color: var(--bs-success); margin-top: 0; font-weight: var(--font-weight-medium); }
         .ajax-status-message.visible { max-height: 3em; opacity: 1; margin-top: 0.25rem; }
     
         /* Mobile Sort Button Alignment */
@@ -607,10 +834,10 @@
         }
 
         /* When dark mode is active... */
-        html.dark-mode .theme-icon-sun {
+        html[data-theme="dark"] .theme-icon-sun {
             display: none; /* Hide the sun */
         }
-        html.dark-mode .theme-icon-moon {
+        html[data-theme="dark"] .theme-icon-moon {
             display: inline-block; /* Show the moon */
         }
 
@@ -620,94 +847,110 @@
         }
 
         /* Fix for navbar link text color in dark mode */
-        html.dark-mode .navbar-dark .navbar-nav .nav-link {
+        html[data-theme="dark"] .navbar-dark .navbar-nav .nav-link {
             color: rgba(255, 255, 255, 0.75); /* A standard light text color */
         }
-        html.dark-mode .navbar-dark .navbar-nav .nav-link:hover,
-        html.dark-mode .navbar-dark .navbar-nav .nav-link.active {
+        html[data-theme="dark"] .navbar-dark .navbar-nav .nav-link:hover,
+        html[data-theme="dark"] .navbar-dark .navbar-nav .nav-link.active {
             color: #fff; /* A brighter white for hover/active states */
             border-bottom-color: var(--wearhouse-primary);
         }
-        html.dark-mode .navbar-dark .navbar-brand {
+        html[data-theme="dark"] .navbar-dark .navbar-brand {
             color: var(--wearhouse-primary) !important; /* Ensure brand is always orange */
         }
 
         /* Force dark backgrounds on key components */
-        html.dark-mode .bg-white,
-        html.dark-mode .bg-light {
-            background-color: var(--wearhouse-card-bg) !important;
-            border-color: var(--wearhouse-border-color) !important;
+        html[data-theme="dark"] .bg-white,
+        html[data-theme="dark"] .bg-light {
+            background-color: var(--color-surface) !important;
+            border-color: var(--color-border) !important;
         }
 
         /* Force light text color on navbar links when in dark mode */
-        html.dark-mode .navbar-light .navbar-nav .nav-link {
+        html[data-theme="dark"] .navbar-light .navbar-nav .nav-link {
             color: rgba(255, 255, 255, 0.75); /* A standard light text color */
             border-bottom-color: transparent; /* Reset border for non-active links */
         }
 
         /* Correctly style the ACTIVE navbar link in dark mode */
-        html.dark-mode .navbar-light .navbar-nav .nav-link.active,
-        html.dark-mode .navbar-light .navbar-nav .nav-link:hover {
+        html[data-theme="dark"] .navbar-light .navbar-nav .nav-link.active,
+        html[data-theme="dark"] .navbar-light .navbar-nav .nav-link:hover {
             color: #fff; /* A brighter white for hover/active states */
             border-bottom-color: var(--wearhouse-primary);
         }
 
         /* Make the mobile menu "hamburger" icon visible on a dark background */
-        html.dark-mode .navbar-toggler-icon {
+        html[data-theme="dark"] .navbar-toggler-icon {
             filter: invert(1) grayscale(100%) brightness(200%);
         }
 
         /* Ensure modals also get the dark theme */
-        html.dark-mode .modal-header,
-        html.dark-mode .modal-footer {
-            border-color: var(--wearhouse-border-color);
+        html[data-theme="dark"] .modal-header,
+        html[data-theme="dark"] .modal-footer {
+            border-color: var(--color-border);
         }
 
         /* Style the placeholder text of form inputs in dark mode */
-        html.dark-mode .form-control::placeholder {
-            color: var(--wearhouse-muted-color);
+        html[data-theme="dark"] .form-control::placeholder {
+            color: var(--color-text-secondary);
             opacity: 0.7; /* Make it slightly more subtle */
         }
         /* Older browser compatibility for placeholder */
-        html.dark-mode .form-control::-webkit-input-placeholder {
-            color: var(--wearhouse-muted-color);
+        html[data-theme="dark"] .form-control::-webkit-input-placeholder {
+            color: var(--color-text-secondary);
             opacity: 0.7;
         }
-        html.dark-mode .form-control::-moz-placeholder {
-            color: var(--wearhouse-muted-color);
+        html[data-theme="dark"] .form-control::-moz-placeholder {
+            color: var(--color-text-secondary);
             opacity: 0.7;
         }
 
         /* Override Bootstrap's .text-dark class specifically for the footer in dark mode */
-        html.dark-mode footer.text-dark {
+        html[data-theme="dark"] footer.text-dark {
             color: var(--wearhouse-text-color) !important;
         }
 
-        html.dark-mode .list-group-item {
+        html[data-theme="dark"] .list-group-item {
             background-color: var(--wearhouse-card-bg);
             color: var(--wearhouse-text-color);
             border-color: var(--wearhouse-border-color);
         }
 
-        html.dark-mode .card-header {
-            background-color: #2a2a2a; /* A slightly different dark shade for contrast */
-            border-bottom-color: var(--wearhouse-border-color);
-            color: var(--wearhouse-text-color);
+        html[data-theme="dark"] .card-header {
+            background-color: color-mix(in srgb, var(--color-surface) 85%, #000);
+            border-bottom-color: var(--color-border);
+            color: var(--color-text-primary);
         }
 
-        html.dark-mode .btn-primary:hover,
-        html.dark-mode .btn-primary:focus {
-            background-color: var(--wearhouse-card-bg); /* Use the dark card background */
-            color: var(--wearhouse-primary);            /* Make the text orange */
-            border-color: var(--wearhouse-primary);    /* Keep the border orange */
+        html[data-theme="dark"] .btn-primary:hover,
+        html[data-theme="dark"] .btn-primary:focus {
+            background-color: var(--color-purple-dark);
+            color: #fff;
+            border-color: var(--color-purple-dark);
         }
 
         /* Define a high-contrast hover for secondary outline buttons in dark mode */
-        html.dark-mode .btn-outline-secondary:hover,
-        html.dark-mode .btn-outline-secondary:focus {
-            background-color: #6c757d; /* Standard Bootstrap secondary color */
-            color: #ffffff;            /* Force the text to be white */
-            border-color: #6c757d;
+        html[data-theme="dark"] .btn-outline-secondary:hover,
+        html[data-theme="dark"] .btn-outline-secondary:focus {
+            background-color: color-mix(in srgb, var(--color-purple-primary) 20%, #000);
+            color: #ffffff;
+            border-color: var(--color-purple-primary);
+        }
+        html[data-theme="dark"] .btn-outline-danger-soft {
+            border-color: color-mix(in srgb, var(--color-critical) 35%, var(--color-border));
+            color: var(--color-critical);
+        }
+        html[data-theme="dark"] .btn-outline-danger-soft:hover,
+        html[data-theme="dark"] .btn-outline-danger-soft:focus {
+            background-color: color-mix(in srgb, var(--color-critical) 18%, transparent);
+            color: var(--color-text-primary);
+            border-color: var(--color-critical);
+        }
+        html[data-theme="dark"] .btn-ghost:hover,
+        html[data-theme="dark"] .btn-ghost:focus {
+            background-color: color-mix(in srgb, var(--color-purple-primary) 20%, transparent);
+            color: var(--color-text-primary);
+            border-color: transparent;
         }
 
         .news-card .card-title {
@@ -721,7 +964,7 @@
         .news-card__image {
             display: block;
             height: 100%;
-            border-right: 1px solid var(--wearhouse-border-color);
+            border-right: 1px solid var(--color-border);
         }
         .news-card__image img {
             width: 100%;
@@ -738,7 +981,7 @@
             }
             .news-card__image {
                 border-right: none;
-                border-bottom: 1px solid var(--wearhouse-border-color);
+                border-bottom: 1px solid var(--color-border);
             }
             .news-card__image img {
                 border-bottom-left-radius: 0;
@@ -752,15 +995,16 @@
             gap: 6px;
         }
         .news-tag {
-            background: #f1f3f5;
-            color: #495057;
-            border-radius: 999px;
+            background: var(--color-purple-light);
+            color: var(--color-purple-dark);
+            border-radius: var(--radius-full);
             padding: 2px 10px;
             font-size: 0.75rem;
+            font-weight: var(--font-weight-medium);
         }
-        html.dark-mode .news-tag {
-            background: #2b2f33;
-            color: #e3e6ea;
+        html[data-theme="dark"] .news-tag {
+            background: color-mix(in srgb, var(--color-purple-primary) 18%, transparent);
+            color: var(--color-text-primary);
         }
         .news-hero {
             width: 100%;
@@ -789,7 +1033,7 @@
         @media (max-width: 767.98px) {
             .news-article-page .news-block-image {
                 max-height: 360px;
-                background-color: #f8f9fa;
+                background-color: var(--color-background);
             }
         }
         .news-block-side {
@@ -806,8 +1050,8 @@
         }
         .news-article-page .news-carousel {
             margin-top: 0.5rem;
-            background-color: #ffffff;
-            border-radius: 12px;
+            background-color: var(--color-surface);
+            border-radius: var(--radius-lg);
             padding: 12px;
         }
         @media (min-width: 768px) {
@@ -886,18 +1130,18 @@
         .news-article-page .carousel-indicators .active {
             background-color: rgba(0, 0, 0, 0.85);
         }
-        html.dark-mode .news-article-page .carousel-control-prev-icon,
-        html.dark-mode .news-article-page .carousel-control-next-icon {
+        html[data-theme="dark"] .news-article-page .carousel-control-prev-icon,
+        html[data-theme="dark"] .news-article-page .carousel-control-next-icon {
             filter: none;
             background-color: rgba(255, 255, 255, 0.35);
         }
-        html.dark-mode .news-article-page .carousel-indicators {
+        html[data-theme="dark"] .news-article-page .carousel-indicators {
             background: rgba(255, 255, 255, 0.35);
         }
-        html.dark-mode .news-article-page .carousel-indicators [data-bs-target] {
+        html[data-theme="dark"] .news-article-page .carousel-indicators [data-bs-target] {
             background-color: rgba(0, 0, 0, 0.55);
         }
-        html.dark-mode .news-article-page .carousel-indicators .active {
+        html[data-theme="dark"] .news-article-page .carousel-indicators .active {
             background-color: rgba(0, 0, 0, 0.85);
         }
         .collapse-toggle-icon {
@@ -922,9 +1166,12 @@
     <script>
         // Immediately invoked function to apply theme before page load
         (function() {
-            const theme = localStorage.getItem('theme');
-            if (theme === 'dark') {
-                document.documentElement.classList.add('dark-mode');
+            const storedTheme = localStorage.getItem('theme');
+            const theme = storedTheme === 'dark' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            document.documentElement.classList.toggle('dark-mode', theme === 'dark');
+            if (!storedTheme) {
+                localStorage.setItem('theme', theme);
             }
         })();
     </script>
@@ -932,14 +1179,13 @@
 <body>
     <div class="wearhouse-navbar-fixed-wrapper"> {# Outer fixed, full-width, transparent wrapper #}
         <div class="container"> {# This standard Bootstrap container centers and sets responsive max-width #}
-            <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-lg rounded"> {# Actual visible navbar #}
+            <nav class="navbar navbar-expand-xl navbar-light bg-white shadow-lg rounded"> {# Actual visible navbar #}
                 <div class="container-fluid"> {# For navbar's internal padding & content flow #}
                     <a class="navbar-brand d-flex align-items-center" href="{{ url_for('main.home') }}">
-                        <img src="{{ url_for('static', filename='brand/wearhouse-logo.svg') }}" alt="WearHouse" class="navbar-brand-logo">
+                        <img src="{{ url_for('static', filename='brand/soletrak-logo.svg') }}" alt="Soletrak" class="navbar-brand-logo logo-light">
+                        <img src="{{ url_for('static', filename='brand/soletrak-logo-dark.svg') }}" alt="Soletrak" class="navbar-brand-logo logo-dark">
+                        <span class="visually-hidden">Soletrak</span>
                     </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav ms-auto">
                         {# Your existing nav items (Home, My Collection, Profile, Login/Register, Logout) go here #}
@@ -975,20 +1221,23 @@
                             </li>
                         {% endif %}
                     </ul>
-                    <div class="d-flex align-items-center ms-lg-3">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="theme-toggle-switch">
-                            <label class="form-check-label" for="theme-toggle-switch">
-                                {# --- NEW: Sun and Moon Icons --- #}
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-sun-fill theme-icon-sun" viewBox="0 0 16 16">
-                                    <path d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z"/>
-                                </svg>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-moon-fill theme-icon-moon" viewBox="0 0 16 16">
-                                    <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"/>
-                                </svg>
-                            </label>
-                        </div>
+                </div>
+                <div class="navbar-controls d-flex align-items-center ms-auto gap-2">
+                    <div class="form-check form-switch m-0">
+                        <input class="form-check-input" type="checkbox" id="theme-toggle-switch">
+                        <label class="form-check-label" for="theme-toggle-switch">
+                            {# --- NEW: Sun and Moon Icons --- #}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-sun-fill theme-icon-sun" viewBox="0 0 16 16">
+                                <path d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z"/>
+                            </svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-moon-fill theme-icon-moon" viewBox="0 0 16 16">
+                                <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"/>
+                            </svg>
+                        </label>
                     </div>
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
                 </div>
             </div>
         </nav>
@@ -1014,7 +1263,7 @@
 
     <footer class="bg-white text-dark text-center p-3 mt-auto shadow-lg">
         <div class="container">
-            <p class="mb-0">&copy; 2025 WearHouse</p> {# Simpler copyright, mb-0 to remove bottom margin from p #}
+            <p class="mb-0">&copy; 2025 Soletrak</p> {# Simpler copyright, mb-0 to remove bottom margin from p #}
         </div>
     </footer>
 
@@ -1123,20 +1372,18 @@
             });
             // Function to set the theme
             function setTheme(isDark) {
-                if (isDark) {
-                    document.documentElement.classList.add('dark-mode');
-                    localStorage.setItem('theme', 'dark');
-                } else {
-                    document.documentElement.classList.remove('dark-mode');
-                    localStorage.setItem('theme', 'light');
-                }
+                const nextTheme = isDark ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-theme', nextTheme);
+                document.documentElement.classList.toggle('dark-mode', isDark);
+                localStorage.setItem('theme', nextTheme);
+                window.dispatchEvent(new CustomEvent('soletrak:themechange', { detail: { theme: nextTheme } }));
             }
 
 
             // Set the initial state of the toggle switch
-            const currentTheme = localStorage.getItem('theme');
-            if (currentTheme === 'dark') {
-                themeToggle.checked = true;
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            if (themeToggle) {
+                themeToggle.checked = currentTheme === 'dark';
             }
 
             // Listen for clicks on the toggle switch

@@ -3,6 +3,8 @@
 {% block content %}
     {% set preferred_currency = current_user.preferred_currency if current_user.is_authenticated else 'GBP' %}
     {% set display_name = release.model_name or release.name %}
+    {% set display_date = release_display.release_date if release_display and release_display.release_date else release.release_date %}
+    {% set market_context = release_display.market_context_message if release_display else None %}
 
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
@@ -12,10 +14,13 @@
             {% endif %}
         </div>
         <div class="d-flex flex-wrap gap-2 align-items-center">
+            {% if current_user.is_authenticated and current_user.is_admin %}
+                <a href="{{ url_for('main.edit_release', release_id=release.id) }}" class="btn btn-outline-secondary btn-sm">Edit Release</a>
+            {% endif %}
             {% if current_user.is_authenticated %}
                 <button
                     type="button"
-                    class="btn btn-success btn-sm add-to-collection-btn"
+                    class="btn btn-primary btn-sm add-to-collection-btn"
                     data-release-id="{{ release.id }}"
                     data-release-name="{{ display_name }}"
                     data-release-brand="{{ release.brand or '' }}"
@@ -27,16 +32,17 @@
                     Add to Collection
                 </button>
                 <div class="flex-grow-1">
+                    {% set wishlist_variant = 'detail' %}
                     {% include '_wishlist_button.html' %}
                 </div>
             {% else %}
-                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-sm">Log in to add to wishlist</a>
-                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary btn-sm">Log in to add to collection</a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary btn-sm">Log in to add to wishlist</a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-sm">Log in to add to collection</a>
             {% endif %}
             {% if request.args.get('source') == 'wishlist' %}
-                <a href="{{ url_for('main.wishlist') }}" class="btn btn-outline-secondary btn-sm">Back to Wishlist</a>
+                <a href="{{ url_for('main.wishlist') }}" class="btn btn-ghost btn-sm">Back to Wishlist</a>
             {% else %}
-                <a href="{{ url_for('main.release_calendar') }}" class="btn btn-outline-secondary btn-sm">Back to Calendar</a>
+                <a href="{{ url_for('main.release_calendar') }}" class="btn btn-ghost btn-sm">Back to Calendar</a>
             {% endif %}
         </div>
     </div>
@@ -55,85 +61,114 @@
         <div class="col-lg-8">
             <div class="card shadow-sm mb-3">
                 <div class="card-body">
-                    <h5 class="card-title">Release Info</h5>
-                    <div class="row g-3">
+                    <h5 class="card-title">Release Overview</h5>
+                    <div class="row g-4">
                         <div class="col-md-6">
-                            <div class="text-muted">Model</div>
-                            <div>{{ display_name or 'N/A' }}</div>
+                            <div class="text-muted">Release Date</div>
+                            <div class="fw-semibold">
+                                {{ display_date.strftime('%b %d, %Y') if display_date else 'N/A' }}
+                            </div>
+                            {% if market_context %}
+                                <div class="text-muted small">{{ market_context }}</div>
+                            {% endif %}
                         </div>
                         <div class="col-md-6">
+                            <div class="text-muted">Retail Price</div>
+                            <div class="fw-semibold">
+                                {% if release_display and release_display.price_display and release_display.price_display.display %}
+                                    {{ release_display.price_display.display }}
+                                    {% if release_display.price_display.is_converted and release_display.price_display.original %}
+                                        <span class="text-muted">
+                                            ({{ release_display.price_display.label }} {{ release_display.price_display.original }})
+                                        </span>
+                                    {% endif %}
+                                {% elif release.retail_price is not none %}
+                                    {{ release.retail_price | money(release.retail_currency or 'USD') }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </div>
+                            {% if market_context %}
+                                <div class="text-muted small">{{ market_context }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
                             <div class="text-muted">Brand</div>
                             <div>{{ release.brand or 'N/A' }}</div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="text-muted">Colorway</div>
+                        <div class="col-md-8">
+                            <div class="text-muted">Colourway</div>
                             <div>{{ release.colorway or 'N/A' }}</div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="text-muted">Release Date</div>
-                            <div>{{ release.release_date.strftime('%b %d, %Y') if release.release_date else 'N/A' }}</div>
                         </div>
                     </div>
                 </div>
             </div>
 
+            {% include '_release_about_section.html' %}
+
+            {% if current_user.is_authenticated and current_user.is_admin and admin_diagnostics %}
+                <div class="card border-warning-subtle bg-warning-subtle mb-3">
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                            <h6 class="mb-0 text-warning">Admin diagnostics</h6>
+                            <form method="POST" action="{{ url_for('main.refresh_release_market_admin', release_id=release.id) }}">
+                                {{ form.hidden_tag() if form }}
+                                <input type="hidden" name="next" value="{{ request.path }}">
+                                <button type="submit" class="btn btn-outline-warning btn-sm">Refresh market data</button>
+                            </form>
+                        </div>
+                        <ul class="small text-muted mb-0">
+                            <li>Description: {{ 'present' if admin_diagnostics.has_description else 'missing' }}</li>
+                            <li>SneakerDB description: {{ 'present' if admin_diagnostics.has_sneakerdb_description else 'missing' }}</li>
+                            <li>Average resale metric: {{ 'present' if admin_diagnostics.has_avg_price else 'missing' }}</li>
+                            <li>Volatility: {{ 'present' if admin_diagnostics.has_volatility else 'missing' }}</li>
+                            <li>Sales price range: {{ 'present' if admin_diagnostics.has_sales_price_range else 'missing' }}</li>
+                            {% if admin_diagnostics.market_stats_debug %}
+                                <li>Market stats: {{ admin_diagnostics.market_stats_debug }}</li>
+                            {% endif %}
+                            <li>Sales history: {{ 'present' if admin_diagnostics.has_sales else 'missing' }} ({{ admin_diagnostics.sales_count }} records)</li>
+                            <li>Aftermarket offers: {{ admin_diagnostics.aftermarket_offers }} total, {{ admin_diagnostics.offers_missing_price }} missing price</li>
+                            <li>Source: {{ admin_diagnostics.source or 'none' }}</li>
+                            <li>Source slug/id: {{ admin_diagnostics.source_slug or 'n/a' }} / {{ admin_diagnostics.source_product_id or 'n/a' }}</li>
+                            <li>Needs refresh: {{ 'yes' if admin_diagnostics.needs_refresh else 'no' }}</li>
+                        </ul>
+                    </div>
+                </div>
+            {% endif %}
+
             <div class="card shadow-sm mb-4">
                 <div class="card-body">
-                    <h5 class="card-title">Sneaker Finances</h5>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="text-muted">Retail Price</div>
-                            {% if release.retail_price is not none %}
-                                <div>{{ release.retail_price | money(release.retail_currency or 'USD') }}</div>
-                            {% else %}
-                                <div>N/A</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6">
-                            <div class="text-muted">{{ avg_resale_label }}</div>
-                            <div id="avgResaleValue">
-                                {% if avg_resale_price is not none %}
-                                    {% set avg_display = avg_resale_price|money_display(avg_resale_currency, preferred_currency) %}
-                                    {% if avg_display.display %}
-                                        {{ avg_display.display }}
-                                    {% else %}
-                                        N/A
-                                    {% endif %}
-                                {% else %}
-                                    N/A
-                                {% endif %}
+                    <h5 class="card-title">Pricing & Market</h5>
+                    {% include '_release_market_metrics.html' %}
+                    <div class="mt-4">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <div class="text-muted">
+                                Lowest Ask by Size (StockX)
+                                <span id="sizeTypeLabel" class="ms-2 small text-muted"></span>
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                                <div class="text-muted">
-                                    Lowest Ask by Size (StockX)
-                                    <span id="sizeTypeLabel" class="ms-2 small text-muted"></span>
+                            {% if size_type_options %}
+                                <div class="d-flex align-items-center gap-2">
+                                    <label for="sizeTypeSelect" class="text-muted small mb-0">Size Type</label>
+                                    <select id="sizeTypeSelect" class="form-select form-select-sm" style="width: auto;">
+                                        {% for size_type in size_type_options %}
+                                            <option value="{{ size_type }}" {% if size_type == size_type_default %}selected{% endif %}>{{ size_type }}</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
-                                {% if size_type_options %}
-                                    <div class="d-flex align-items-center gap-2">
-                                        <label for="sizeTypeSelect" class="text-muted small mb-0">Size Type</label>
-                                        <select id="sizeTypeSelect" class="form-select form-select-sm" style="width: auto;">
-                                            {% for size_type in size_type_options %}
-                                                <option value="{{ size_type }}" {% if size_type == size_type_default %}selected{% endif %}>{{ size_type }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                {% endif %}
-                            </div>
-                            <div class="chart-wrapper">
-                                <canvas id="sizeAskChart" height="140"></canvas>
-                            </div>
-                            {% if not size_bid_series %}
-                                <div class="text-muted small mt-2">No size pricing available yet.</div>
                             {% endif %}
-                            <div class="form-text">
-                                {% if size_bids_fetched_at %}
-                                    Last refreshed {{ size_bids_fetched_at.strftime('%b %d, %Y') }}. Data refreshes every 5 days.
-                                {% else %}
-                                    Data will appear after the first refresh.
-                                {% endif %}
-                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="sizeAskChart" height="140"></canvas>
+                        </div>
+                        {% if not size_bid_series %}
+                            <div id="sizeBidEmptyState" class="text-muted small mt-2">No size pricing available yet.</div>
+                        {% endif %}
+                        <div class="form-text">
+                            {% if size_bids_fetched_at %}
+                                Last refreshed {{ size_bids_fetched_at.strftime('%b %d, %Y') }}. Data refreshes every 5 days.
+                            {% else %}
+                                Data will appear after the first refresh.
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -181,10 +216,11 @@
         </div>
     </div>
 
-    {% if needs_resale_refresh %}
+    {% if needs_market_refresh %}
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const resaleTarget = document.getElementById('avgResaleValue');
+            const resaleLabelTarget = document.getElementById('avgResaleLabel');
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             if (!csrfToken) return;
             fetch("{{ url_for('main.refresh_release_resale', release_id=release.id) }}", {
@@ -193,8 +229,14 @@
             })
                 .then(response => response.json())
                 .then(data => {
-                    if (!resaleTarget || !data || !data.avg_resale_display) return;
-                    resaleTarget.textContent = data.avg_resale_display;
+                    if (!data) return;
+                    if (resaleTarget && data.avg_resale_display) {
+                        resaleTarget.textContent = data.avg_resale_display;
+                    }
+                    if (resaleLabelTarget && data.avg_resale_label) {
+                        resaleLabelTarget.textContent = data.avg_resale_label;
+                    }
+                    window.dispatchEvent(new CustomEvent('soletrak:marketrefresh', { detail: data }));
                 })
                 .catch(() => {});
         });
@@ -208,45 +250,86 @@
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         const sizeAskCanvas = document.getElementById('sizeAskChart');
-        const sizeAskData = {{ (size_bid_series or []) | tojson }};
+        let sizeAskData = {{ (size_bid_series or []) | tojson }};
         const sizeTypeSelect = document.getElementById('sizeTypeSelect');
         const sizeTypeLabel = document.getElementById('sizeTypeLabel');
-        if (sizeAskCanvas && sizeAskData.length) {
-            const defaultSizeType = {{ (size_type_default or '') | tojson }};
-            function parseSizeLabel(label) {
-                const parsed = parseFloat(label);
-                return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
-            }
+        const sizeBidEmptyState = document.getElementById('sizeBidEmptyState');
+        let sizeAskChart = null;
+        let sizeTypeListenerAttached = false;
+        const defaultSizeType = {{ (size_type_default or '') | tojson }};
+        const currencySymbols = { GBP: '£', USD: '$', EUR: '€' };
 
-            function buildSizeSeries(selectedType) {
-                const filtered = selectedType
-                    ? sizeAskData.filter(item => item.size_type === selectedType)
-                    : sizeAskData;
-                filtered.sort((a, b) => {
-                    const aNum = parseSizeLabel(a.label);
-                    const bNum = parseSizeLabel(b.label);
-                    if (aNum === bNum) return String(a.label).localeCompare(String(b.label));
-                    return aNum - bNum;
-                });
-                return filtered;
-            }
+        function parseSizeLabel(label) {
+            const parsed = parseFloat(label);
+            return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+        }
 
-            const initialSeries = buildSizeSeries(defaultSizeType);
+        function buildSizeSeries(selectedType) {
+            const filtered = selectedType
+                ? sizeAskData.filter(item => item.size_type === selectedType)
+                : sizeAskData;
+            filtered.sort((a, b) => {
+                const aNum = parseSizeLabel(a.label);
+                const bNum = parseSizeLabel(b.label);
+                if (aNum === bNum) return String(a.label).localeCompare(String(b.label));
+                return aNum - bNum;
+            });
+            return filtered;
+        }
+        function resolveSizeSeries(selectedType) {
+            const series = buildSizeSeries(selectedType);
+            return series.length ? series : buildSizeSeries('');
+        }
+
+        function updateSizeTypeOptions(nextOptions, nextDefault) {
+            if (!sizeTypeSelect) return;
+            const options = Array.isArray(nextOptions) ? nextOptions : [];
+            sizeTypeSelect.innerHTML = '';
+            options.forEach(optionValue => {
+                const option = document.createElement('option');
+                option.value = optionValue;
+                option.textContent = optionValue;
+                if (optionValue === nextDefault) {
+                    option.selected = true;
+                }
+                sizeTypeSelect.appendChild(option);
+            });
+            if (!options.length) {
+                sizeTypeSelect.value = '';
+            }
+        }
+
+        function initSizeAskChart() {
+            if (!sizeAskCanvas || !sizeAskData.length) return;
+            const rootStyles = getComputedStyle(document.documentElement);
+            const token = (name, fallback = '') => rootStyles.getPropertyValue(name).trim() || fallback;
+            const colorDataBlue = token('--color-data-blue', '#3B82F6');
+            const colorDataBlueLight = token('--color-data-blue-light', '#EFF6FF');
+            const colorText = token('--color-text-primary', '#111111');
+            const colorTextSecondary = token('--color-text-secondary', '#6B7280');
+            const colorBorder = token('--color-border', '#E5E7EB');
+            const colorSurface = token('--color-surface', '#FFFFFF');
+
+            let selectedType = sizeTypeSelect?.value || defaultSizeType;
+            let initialSeries = resolveSizeSeries(selectedType);
+            if (!initialSeries.length && sizeAskData.length) {
+                selectedType = '';
+                initialSeries = sizeAskData;
+            }
             const initialCurrency = initialSeries[0]?.currency || '';
-            const currencySymbols = { GBP: '£', USD: '$', EUR: '€' };
             const initialSymbol = currencySymbols[initialCurrency] || '';
             if (sizeTypeLabel) {
-                sizeTypeLabel.textContent = defaultSizeType ? `(Sizes: ${defaultSizeType})` : '';
+                sizeTypeLabel.textContent = selectedType ? `(Sizes: ${selectedType})` : '';
             }
-            const sizeAskChart = new Chart(sizeAskCanvas, {
+            sizeAskChart = new Chart(sizeAskCanvas, {
                 type: 'bar',
                 data: {
                     labels: initialSeries.map(item => item.label),
                     datasets: [{
                         label: initialCurrency ? `Lowest Ask (${initialCurrency})` : 'Lowest Ask',
                         data: initialSeries.map(item => item.value),
-                        backgroundColor: 'rgba(249, 115, 22, 0.45)',
-                        borderColor: '#f97316',
+                        backgroundColor: colorDataBlueLight,
+                        borderColor: colorDataBlue,
                         borderWidth: 1
                     }]
                 },
@@ -260,9 +343,14 @@
                         legend: {
                             display: true,
                             position: 'bottom',
-                            labels: { usePointStyle: true }
+                            labels: { usePointStyle: true, color: colorTextSecondary }
                         },
                         tooltip: {
+                            backgroundColor: colorSurface,
+                            titleColor: colorText,
+                            bodyColor: colorText,
+                            borderColor: colorBorder,
+                            borderWidth: 1,
                             callbacks: {
                                 label: context => {
                                     const label = context.dataset.label || '';
@@ -282,7 +370,10 @@
                     scales: {
                         y: {
                             beginAtZero: true,
+                            grid: { color: colorBorder },
+                            border: { color: colorBorder },
                             ticks: {
+                                color: colorTextSecondary,
                                 callback: value => {
                                     const formattedValue = Number(value).toFixed(2);
                                     return initialCurrency
@@ -290,43 +381,80 @@
                                         : formattedValue;
                                 }
                             }
+                        },
+                        x: {
+                            grid: { color: colorBorder },
+                            border: { color: colorBorder },
+                            ticks: { color: colorTextSecondary }
                         }
                     }
                 }
             });
 
-            if (sizeTypeSelect) {
-                sizeTypeSelect.addEventListener('change', () => {
-                    const selectedType = sizeTypeSelect.value;
-                    const nextSeries = buildSizeSeries(selectedType);
-                    const nextCurrency = nextSeries[0]?.currency || '';
-                    sizeAskChart.data.labels = nextSeries.map(item => item.label);
-                    sizeAskChart.data.datasets[0].data = nextSeries.map(item => item.value);
-                    const nextSymbol = currencySymbols[nextCurrency] || '';
-                    sizeAskChart.data.datasets[0].label = nextCurrency ? `Lowest Ask (${nextCurrency})` : 'Lowest Ask';
-                    sizeAskChart.options.scales.y.ticks.callback = value => {
-                        const formattedValue = Number(value).toFixed(2);
-                        return nextCurrency ? `${nextSymbol}${formattedValue}` : formattedValue;
-                    };
-                    sizeAskChart.options.plugins.tooltip.callbacks.label = context => {
-                        const label = context.dataset.label || '';
-                        const value = context.parsed.y;
-                        if (value === null || value === undefined) {
-                            return label;
-                        }
-                        const formattedValue = Number(value).toFixed(2);
-                        const formatted = nextCurrency
-                            ? `${nextSymbol}${formattedValue}`
-                            : formattedValue;
-                        return label ? `${label}: ${formatted}` : formatted;
-                    };
-                    if (sizeTypeLabel) {
-                        sizeTypeLabel.textContent = selectedType ? `(Sizes: ${selectedType})` : '';
-                    }
-                    sizeAskChart.update();
-                });
-            }
         }
+
+        initSizeAskChart();
+
+        if (sizeTypeSelect && !sizeTypeListenerAttached) {
+            sizeTypeSelect.addEventListener('change', () => {
+            if (!sizeAskChart) return;
+                let selectedType = sizeTypeSelect.value;
+                let nextSeries = resolveSizeSeries(selectedType);
+                if (!nextSeries.length && sizeAskData.length) {
+                    selectedType = '';
+                    nextSeries = sizeAskData;
+                }
+                const nextCurrency = nextSeries[0]?.currency || '';
+                sizeAskChart.data.labels = nextSeries.map(item => item.label);
+                sizeAskChart.data.datasets[0].data = nextSeries.map(item => item.value);
+                const nextSymbol = currencySymbols[nextCurrency] || '';
+                sizeAskChart.data.datasets[0].label = nextCurrency ? `Lowest Ask (${nextCurrency})` : 'Lowest Ask';
+                sizeAskChart.options.scales.y.ticks.callback = value => {
+                    const formattedValue = Number(value).toFixed(2);
+                    return nextCurrency ? `${nextSymbol}${formattedValue}` : formattedValue;
+                };
+                sizeAskChart.options.plugins.tooltip.callbacks.label = context => {
+                    const label = context.dataset.label || '';
+                    const value = context.parsed.y;
+                    if (value === null || value === undefined) {
+                        return label;
+                    }
+                    const formattedValue = Number(value).toFixed(2);
+                    const formatted = nextCurrency
+                        ? `${nextSymbol}${formattedValue}`
+                        : formattedValue;
+                    return label ? `${label}: ${formatted}` : formatted;
+                };
+                if (sizeTypeLabel) {
+                    sizeTypeLabel.textContent = selectedType ? `(Sizes: ${selectedType})` : '';
+                }
+                sizeAskChart.update();
+            });
+            sizeTypeListenerAttached = true;
+        }
+
+        window.addEventListener('soletrak:marketrefresh', event => {
+            const detail = event.detail || {};
+            if (!Array.isArray(detail.size_bid_series)) return;
+            sizeAskData = detail.size_bid_series;
+            updateSizeTypeOptions(detail.size_type_options || [], detail.size_type_default || '');
+            if (sizeBidEmptyState) {
+                sizeBidEmptyState.classList.toggle('d-none', sizeAskData.length > 0);
+            }
+            if (sizeAskChart) {
+                sizeAskChart.destroy();
+                sizeAskChart = null;
+            }
+            initSizeAskChart();
+        });
+
+        window.addEventListener('soletrak:themechange', () => {
+            if (sizeAskChart) {
+                sizeAskChart.destroy();
+                sizeAskChart = null;
+            }
+            initSizeAskChart();
+        });
 
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         const addToCollectionButton = document.querySelector('.add-to-collection-btn');

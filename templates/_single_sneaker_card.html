@@ -8,14 +8,16 @@
             <a href="#" data-bs-toggle="modal" data-bs-target="#sneakerImageModal" 
                data-image-src="{{ desktop_image_src }}" 
                data-image-alt="{{ sneaker.brand }} {{ sneaker.model }}"
-               class="d-none d-md-block image-modal-trigger">
-                <img src="{{ desktop_image_src }}" class="card-img-top" alt="{{ sneaker.brand }} {{ sneaker.model }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
+               class="d-none d-md-block image-modal-trigger card-media-well">
+                <img src="{{ desktop_image_src }}" class="card-img-top card-media-img" alt="{{ sneaker.brand }} {{ sneaker.model }}">
                 <span class="expand-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 1 0 .707z"/></svg>
                 </span>
             </a>
         {% else %}
-            <img src="https://via.placeholder.com/300x250.png?text=No+Image" class="card-img-top d-none d-md-block" alt="No image available" style="height: 250px; object-fit: cover;">
+            <div class="card-media-well d-none d-md-block">
+                <img src="https://via.placeholder.com/300x250.png?text=No+Image" class="card-img-top card-media-img" alt="No image available">
+            </div>
         {% endif %}
 
         <div class="card-body d-flex flex-column">
@@ -31,7 +33,7 @@
                            data-image-src="{{ mobile_image_source }}"
                            data-image-alt="{{ sneaker.brand }} {{ sneaker.model }}"
                            class="image-modal-trigger">
-                            <img src="{{ mobile_image_source }}" class="img-fluid rounded" alt="{{ sneaker.brand }} {{ sneaker.model }} mobile" style="max-height: 75px; object-fit: contain; background-color: #f8f9fa;">
+                            <img src="{{ mobile_image_source }}" class="img-fluid rounded surface-muted-bg" alt="{{ sneaker.brand }} {{ sneaker.model }} mobile" style="max-height: 75px; object-fit: contain;">
                             <span class="expand-icon expand-icon-mobile">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 1 0 .707z"/></svg>
                             </span>
@@ -118,37 +120,136 @@
                            class="form-control" 
                            value="{{ sneaker.last_worn_date.strftime('%Y-%m-%d') if sneaker.last_worn_date else '' }}"
                            aria-label="New last worn date">
-                    <button type="submit" class="btn btn-outline-info">Update</button>
+                    <button type="submit" class="btn btn-outline-secondary">Update</button>
                 </div>
                 <span id="update-status-{{ sneaker.id }}" class="form-text ajax-status-message" style="font-size: 0.85em;"></span>
             </form>
-
-            <div class="mt-auto d-flex justify-content-between pt-2 align-items-center">
-                <a href="{{ url_for('sneakers.my_sneaker_detail', sneaker_id=sneaker.id, slug=build_my_sneaker_slug(sneaker), source=('rotation' if on_rotation_page else None)) }}"
-                   class="btn btn-outline-secondary btn-sm">View Details</a>
-
-                {# --- Conditionally Render Remove or Delete Button --- #}
+            <div class="mt-auto pt-2">
                 {% if on_rotation_page %}
-                    {# On the "My Rotation" page, show this button: #}
-                    <form method="POST" action="{{ url_for('sneakers.remove_from_rotation', sneaker_id=sneaker.id) }}" class="d-inline remove-from-rotation-ajax-form">
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <a href="{{ url_for('sneakers.my_sneaker_detail', sneaker_id=sneaker.id, slug=build_my_sneaker_slug(sneaker), source='rotation') }}"
+                           class="btn btn-ghost btn-sm">View Details</a>
+                        <button type="button"
+                                class="btn btn-outline-secondary btn-sm"
+                                data-bs-toggle="modal"
+                                data-bs-target="#cleanedNotesModal-{{ sneaker.id }}">
+                            Mark Clean
+                        </button>
+                    </div>
+                    <form method="POST" action="{{ url_for('sneakers.remove_from_rotation', sneaker_id=sneaker.id) }}" class="d-grid remove-from-rotation-ajax-form mt-2">
                         {{ form_for_modal.hidden_tag() }}
-                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                        <button type="submit" class="btn btn-outline-danger-soft btn-sm w-100">
                             Remove from Rotation
                         </button>
                     </form>
                 {% else %}
-                    {# On the "My Collection" page, show this button: #}
-                    <form method="POST" action="{{ url_for('sneakers.delete_sneaker', sneaker_id=sneaker.id) }}" class="d-inline delete-sneaker-ajax-form">
-                        <button type="submit"
-                                class="btn btn-outline-danger btn-sm delete-sneaker-btn"
-                                data-sneaker-id="{{ sneaker.id }}"
-                                data-sneaker-size="{{ sneaker.size or '' }}"
-                                data-sneaker-size-type="{{ sneaker.size_type or '' }}">
-                            Remove
-                        </button>
-                    </form>
+                    <div class="d-flex flex-column gap-2">
+                        <a href="{{ url_for('sneakers.my_sneaker_detail', sneaker_id=sneaker.id, slug=build_my_sneaker_slug(sneaker), source=('rotation' if on_rotation_page else None)) }}"
+                           class="btn btn-ghost btn-sm">View Details</a>
+                        {# On the "My Collection" page, show this button: #}
+                        <form method="POST" action="{{ url_for('sneakers.delete_sneaker', sneaker_id=sneaker.id) }}" class="d-grid delete-sneaker-ajax-form">
+                            <button type="submit"
+                                    class="btn btn-outline-danger-soft btn-sm w-100 delete-sneaker-btn"
+                                    data-sneaker-id="{{ sneaker.id }}"
+                                    data-sneaker-size="{{ sneaker.size or '' }}"
+                                    data-sneaker-size-type="{{ sneaker.size_type or '' }}">
+                                Remove
+                            </button>
+                        </form>
+                    </div>
                 {% endif %}
             </div>
         </div>
     </div>
+
+    {% if on_rotation_page %}
+        <div class="modal fade" id="cleanedNotesModal-{{ sneaker.id }}" tabindex="-1" aria-labelledby="cleanedNotesModalLabel-{{ sneaker.id }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form method="POST" action="{{ url_for('sneakers.mark_sneaker_cleaned', sneaker_id=sneaker.id) }}">
+                        {{ form_for_modal.hidden_tag() }}
+                        <input type="hidden" name="source" value="rotation">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="cleanedNotesModalLabel-{{ sneaker.id }}">Mark Cleaned</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="small text-muted mb-3">
+                                Would you like to remove exposure notes linked to this sneaker?
+                            </p>
+                            {% if has_stains_since_clean_map and has_stains_since_clean_map.get(sneaker.id) %}
+                                <div class="border rounded p-2 mb-3">
+                                    <div class="small text-muted mb-2">Stain check</div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="stain_removed" id="stain-removed-yes-{{ sneaker.id }}" value="yes" checked>
+                                        <label class="form-check-label" for="stain-removed-yes-{{ sneaker.id }}">Stain removed</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="stain_removed" id="stain-removed-no-{{ sneaker.id }}" value="no">
+                                        <label class="form-check-label" for="stain-removed-no-{{ sneaker.id }}">Stain still visible</label>
+                                    </div>
+                                </div>
+                            {% endif %}
+                            {% if has_sensitive_materials_map and has_sensitive_materials_map.get(sneaker.id) %}
+                                <div class="border rounded p-2 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="lasting_material_impact" id="lasting-material-impact-{{ sneaker.id }}">
+                                        <label class="form-check-label" for="lasting-material-impact-{{ sneaker.id }}">
+                                            Did wet/dirt leave a lasting impact on suede/nubuck?
+                                        </label>
+                                    </div>
+                                </div>
+                            {% endif %}
+                            <div class="d-flex flex-column gap-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="notes_action" id="notes-keep-{{ sneaker.id }}" value="keep" checked>
+                                    <label class="form-check-label" for="notes-keep-{{ sneaker.id }}">Keep all notes</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="notes_action" id="notes-delete-all-{{ sneaker.id }}" value="delete_all">
+                                    <label class="form-check-label" for="notes-delete-all-{{ sneaker.id }}">Remove all notes for this sneaker</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="notes_action" id="notes-delete-selected-{{ sneaker.id }}" value="delete_selected">
+                                    <label class="form-check-label" for="notes-delete-selected-{{ sneaker.id }}">Remove selected notes</label>
+                                </div>
+                            </div>
+                            {% set exposure_notes = exposure_notes_map.get(sneaker.id) if exposure_notes_map else [] %}
+                            {% if exposure_notes %}
+                                <div class="mt-3 border rounded p-2">
+                                    <div class="small text-muted mb-2">Select notes to remove</div>
+                                    <div class="d-flex flex-column gap-2">
+                                        {% for note in exposure_notes %}
+                                            <label class="d-flex align-items-start gap-2">
+                                                <input class="form-check-input mt-1" type="checkbox" name="note_ids" value="{{ note.id }}">
+                                                <span>
+                                                    <span class="small text-muted">{{ note.date_local.strftime('%b %d, %Y') }}</span><br>
+                                                    <span>{{ note.note }}</span>
+                                                </span>
+                                            </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="small text-muted mt-3">No notes to remove.</div>
+                            {% endif %}
+                            <div class="mt-3">
+                                <label for="clean-notes-{{ sneaker.id }}" class="form-label small text-muted mb-1">Clean notes (optional)</label>
+                                <textarea class="form-control form-control-sm"
+                                          id="clean-notes-{{ sneaker.id }}"
+                                          name="clean_notes"
+                                          rows="2"
+                                          maxlength="280"
+                                          placeholder="Optional note about cleaning or stains"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Confirm</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {% endif %}
 </div>

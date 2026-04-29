@@ -1,0 +1,77 @@
+{% if market_metrics %}
+    {% set metrics_3m = [] %}
+    {% set metrics_1y = [] %}
+    {% set metrics_other = [] %}
+    {% set primary_avg = average_resale_summary.primary if average_resale_summary else None %}
+    {% for metric in market_metrics %}
+        {% if '3 months' in metric.label|lower or '3-month' in metric.label|lower %}
+            {% set _ = metrics_3m.append(metric) %}
+        {% elif '1y' in metric.label|lower or '1-year' in metric.label|lower %}
+            {% set _ = metrics_1y.append(metric) %}
+        {% else %}
+            {% set _ = metrics_other.append(metric) %}
+        {% endif %}
+    {% endfor %}
+
+    {% macro render_metric(metric, label_override=None) -%}
+        <div class="text-muted">{{ label_override or metric.label }}</div>
+        {% if metric.display and metric.display.display %}
+            <div class="fw-semibold">
+                {{ metric.display.display }}
+                {% if metric.display.is_converted and metric.display.original %}
+                    <span class="text-muted">
+                        ({{ metric.display.label }} {{ metric.display.original }})
+                    </span>
+                {% endif %}
+            </div>
+        {% elif metric.value %}
+            <div class="fw-semibold">{{ metric.value }}</div>
+        {% else %}
+            <div class="fw-semibold">N/A</div>
+        {% endif %}
+    {%- endmacro %}
+
+    <style>
+        .release-market-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1.25rem 1.5rem;
+        }
+        .release-market-grid__item {
+            min-width: 0;
+        }
+        @media (max-width: 767.98px) {
+            .release-market-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+        }
+    </style>
+
+    <div class="release-market-grid">
+        {% if primary_avg %}
+            <div class="release-market-grid__item">
+                <div class="text-muted">{{ primary_avg.label }}</div>
+                <div id="avgResaleValue" class="fw-semibold">{{ primary_avg.display.display }}</div>
+            </div>
+        {% endif %}
+
+        {% for metric in metrics_3m %}
+            <div class="release-market-grid__item">
+                {{ render_metric(metric, 'Sales volume (3M)' if metric.label == 'Sales volume (last 3 months)' else None) }}
+            </div>
+        {% endfor %}
+
+        {% for metric in metrics_1y %}
+            <div class="release-market-grid__item">
+                {{ render_metric(metric) }}
+            </div>
+        {% endfor %}
+
+        {% for metric in metrics_other %}
+            <div class="release-market-grid__item">
+                {{ render_metric(metric) }}
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}

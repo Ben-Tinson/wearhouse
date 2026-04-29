@@ -1,16 +1,46 @@
 {% extends "base.html" %}
 {% block title %}{{ title }}{% endblock %}
 {% block content %}
-    <div class="d-flex justify-content-between align-items-center mb-3 page-header-actions">
-        <h2 class="mb-0 text-start w-100">{{ title }}</h2>
+    <div class="row align-items-start align-items-lg-center g-3 mb-3 page-header-actions">
+        <div class="col-12 col-lg-8">
+            <h2 class="mb-1 text-start">{{ title }}</h2>
+            <p class="text-muted mb-0">A curated list of upcoming sneaker releases.</p>
+        </div>
         {% if current_user.is_authenticated and current_user.is_admin %}
-            <a href="{{ url_for('main.add_release') }}" class="btn btn-primary">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill me-1" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/></svg>
-                Add New Release
-            </a>
+            <div class="col-12 col-lg-4 d-flex flex-wrap justify-content-start justify-content-lg-end gap-2">
+                <a href="{{ url_for('main.add_release') }}" class="btn btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill me-1" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3v-3z"/></svg>
+                    Add New Release
+                </a>
+                <a href="{{ url_for('main.release_csv_import') }}" class="btn btn-outline-primary">
+                    CSV Import
+                </a>
+            </div>
         {% endif %}
     </div>
-    <p class="text-muted">A curated list of upcoming sneaker releases.</p>
+    {% if current_user.is_authenticated and current_user.is_admin %}
+        <div class="card border-danger-subtle bg-danger-subtle mb-3">
+            <div class="card-body">
+                <h5 class="card-title text-danger mb-2">Danger Zone</h5>
+                <p class="text-danger mb-3">
+                    This will permanently delete every release and related data. This action cannot be undone.
+                </p>
+                <form method="POST" action="{{ url_for('main.delete_all_releases') }}" class="row g-2 align-items-end">
+                    {{ delete_all_form.hidden_tag() if delete_all_form }}
+                    <div class="col-12 col-lg-6">
+                        {{ delete_all_form.confirmation.label(class="form-label text-danger") }}
+                        {{ delete_all_form.confirmation(
+                            class="form-control",
+                            placeholder="DELETE ALL RELEASES",
+                        ) }}
+                    </div>
+                    <div class="col-12 col-lg-auto">
+                        {{ delete_all_form.submit(class="btn btn-danger") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    {% endif %}
     {% if not current_user.is_authenticated %}
         <div class="alert alert-info" role="alert">
             Want to track these releases? 
@@ -36,6 +66,8 @@
             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
                 {# Inner loop: Iterates through the sneakers for THIS month #}
                 {% for release in releases_in_month %}
+                    {% set display = release_display_map.get(release.id) if release_display_map else None %}
+                    {% set display_date = display.release_date if display and display.release_date else release.release_date %}
                     <div class="col" id="release-card-{{ release.id }}">
                         <div class="card h-100 shadow-sm d-flex flex-column release-card">
                             
@@ -44,7 +76,9 @@
                                data-image-src="{{ release.image_url | release_image }}"
                                data-image-alt="{{ release.name }}"
                                class="d-none d-md-block image-modal-trigger">
-                                <img src="{{ release.image_url | release_image }}" class="card-img-top" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
+                                <div class="card-media-well">
+                                    <img src="{{ release.image_url | release_image }}" class="card-img-top card-media-img" alt="{{ release.name }}">
+                                </div>
                                 <span class="expand-icon">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
                                 </span>
@@ -65,7 +99,7 @@
                                            data-image-src="{{ release.image_url | release_image }}"
                                            data-image-alt="{{ release.name }}"
                                            class="image-modal-trigger">
-                                            <img src="{{ release.image_url | release_image }}" class="img-fluid rounded" alt="{{ release.name }} mobile" style="max-height: 75px; object-fit: contain; background-color: #f8f9fa;">
+                                            <img src="{{ release.image_url | release_image }}" class="img-fluid rounded surface-muted-bg" alt="{{ release.name }} mobile" style="max-height: 75px; object-fit: contain;">
                                             <span class="expand-icon expand-icon-mobile">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
                                             </span>
@@ -78,22 +112,19 @@
                                         {{ release.name }}
                                     </a>
                                 </h5>
-                                {% if release.brand %}
-                                    <p class="card-text mb-0"><small class="text-muted">Brand: {{ release.brand }}</small></p>
-                                {% endif %}
-                                {% if release.sku %}
-                                    <p class="card-text mb-0"><small class="text-muted">SKU: {{ release.sku }}</small></p>
-                                {% endif %}
-                                {% set preferred_currency = current_user.preferred_currency if current_user.is_authenticated else 'GBP' %}
-                                {% set regional_price = (release.prices | selectattr('currency', 'equalto', preferred_currency) | list | first) %}
                                 <p class="card-text mb-0">
                                     <small class="text-muted">
-                                        Release: {{ release.release_date.strftime('%b %d, %Y') if release.release_date else 'N/A' }}<br>
-                                        Retail:
-                                        {% if regional_price %}
-                                            {{ regional_price.price | money(preferred_currency) }}
-                                            {% if release.retail_price is not none %}
-                                                <span class="text-muted">(MSRP: {{ release.retail_price | money(release.retail_currency) }})</span>
+                                        Releases on {{ display_date.strftime('%b %d, %Y') if display_date else 'N/A' }}<br>
+                                        {% if display and display.region_context_label %}
+                                            <span class="text-muted">{{ display.region_context_label }}</span><br>
+                                        {% endif %}
+                                        Retails for
+                                        {% if display and display.price_display and display.price_display.display %}
+                                            {{ display.price_display.display }}
+                                            {% if display.price_display.is_converted and display.price_display.original %}
+                                                <span class="text-muted">({{ display.price_display.label }} {{ display.price_display.original }})</span>
+                                            {% endif %}
+                                            {% if display.price_source != 'base' and release.retail_price is not none %}
                                             {% endif %}
                                         {% elif release.retail_price is not none %}
                                             {{ release.retail_price | money(release.retail_currency) }}
@@ -106,19 +137,20 @@
 {# Card Footer with Action Buttons #}
                             <div class="card-footer bg-transparent border-top-0 px-3 pb-3">
                                 <div class="d-grid gap-2">
-                                    <a href="{{ url_for('main.product_detail', product_key=build_product_key(release), slug=build_product_slug(release)) }}" class="btn btn-outline-secondary btn-sm">View Details</a>
+                                    <a href="{{ url_for('main.product_detail', product_key=build_product_key(release), slug=build_product_slug(release)) }}" class="btn btn-ghost btn-sm">View Details</a>
                                     {# Wishlist button for all logged-in users #}
                                     <div id="wishlist-button-container-{{ release.id }}">
+                                        {% set wishlist_variant = 'calendar' %}
                                         {% include '_wishlist_button.html' %}
                                     </div>
 
                                     {# Admin-only buttons #}
                                     {% if current_user.is_authenticated and current_user.is_admin %}
                                         <div class="d-flex justify-content-center gap-2">
-                                            <a href="{{ url_for('main.edit_release', release_id=release.id) }}" class="btn btn-outline-secondary btn-sm flex-grow-1">Edit</a>
+                                            <a href="{{ url_for('main.edit_release', release_id=release.id) }}" class="btn btn-ghost btn-sm flex-grow-1">Edit</a>
                                             <form method="POST" action="{{ url_for('main.delete_release', release_id=release.id) }}" class="d-grid flex-grow-1" onsubmit="return confirm('Are you sure you want to delete this release?');">
                                                 {{ form.hidden_tag() if form }}
-                                                <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                                                <button type="submit" class="btn btn-outline-danger-soft btn-sm">Delete</button>
                                             </form>
                                         </div>
                                     {% endif %}
@@ -230,35 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
         });
-        releaseContainer.addEventListener('mouseover', function(event) {
-            const wishlistButton = event.target.closest('.toggle-wishlist-btn');
-            // If the mouse is over a green "On Wishlist" button...
-            if (wishlistButton && wishlistButton.classList.contains('btn-success')) {
-                // Store the original content so we can restore it later
-                wishlistButton.dataset.originalHtml = wishlistButton.innerHTML;
-                // Change the button to a red "Remove" button
-                wishlistButton.classList.remove('btn-success');
-                wishlistButton.classList.add('btn-danger');
-                wishlistButton.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-circle-fill me-1" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/></svg>
-                    Remove?
-                `;
-            }
-        });
-
-        // --- NEW: Listen for MOUSEOUT to change the button back ---
-        releaseContainer.addEventListener('mouseout', function(event) {
-            const wishlistButton = event.target.closest('.toggle-wishlist-btn');
-            // If the mouse leaves a red "Remove" button...
-            if (wishlistButton && wishlistButton.classList.contains('btn-danger')) {
-                // Restore its original green "On Wishlist" appearance
-                wishlistButton.classList.remove('btn-danger');
-                wishlistButton.classList.add('btn-success');
-                if (wishlistButton.dataset.originalHtml) {
-                    wishlistButton.innerHTML = wishlistButton.dataset.originalHtml;
-                }
-            }
-        });
+        // Calendar buttons use a static "On Wishlist" state; no hover-to-remove behavior.
     } else {
         if (!releaseContainer) console.error("DEBUG: Could not find release container with ID 'release-container'.");
         if (!csrfToken) console.error("DEBUG: Could not find CSRF meta tag.");

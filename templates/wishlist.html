@@ -38,7 +38,9 @@
                                data-image-src="{{ release.image_url | release_image }}"
                                data-image-alt="{{ release.name }}"
                                class="d-none d-md-block image-modal-trigger">
-                                <img src="{{ release.image_url | release_image }}" class="card-img-top" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
+                                <div class="card-media-well">
+                                    <img src="{{ release.image_url | release_image }}" class="card-img-top card-media-img" alt="{{ release.name }}">
+                                </div>
                                 <span class="expand-icon">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
                                 </span>
@@ -53,7 +55,7 @@
                                            data-image-src="{{ release.image_url | release_image }}"
                                            data-image-alt="{{ release.name }}"
                                            class="image-modal-trigger">
-                                            <img src="{{ release.image_url | release_image }}" class="img-fluid rounded" alt="{{ release.name }} mobile" style="max-height: 75px; object-fit: contain; background-color: #f8f9fa;">
+                                            <img src="{{ release.image_url | release_image }}" class="img-fluid rounded surface-muted-bg" alt="{{ release.name }} mobile" style="max-height: 75px; object-fit: contain;">
                                             <span class="expand-icon expand-icon-mobile">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
                                             </span>
@@ -62,47 +64,40 @@
                                 </div>
 
                                 <h5 class="card-title fs-6 mb-1 d-none d-md-block">{{ release.name }}</h5>
-                                {% if release.brand %}
-                                    <p class="card-text mb-0"><small class="text-muted">Brand: {{ release.brand }}</small></p>
-                                {% endif %}
-                                {% if release.sku %}
-                                    <p class="card-text mb-0"><small class="text-muted">SKU: {{ release.sku }}</small></p>
-                                {% endif %}
                                 {% set preferred_currency = current_user.preferred_currency if current_user.is_authenticated else 'GBP' %}
-                                {% set regional_price = (release.prices | selectattr('currency', 'equalto', preferred_currency) | list | first) %}
+                                {% set display = release_display_map.get(release.id) if release_display_map else None %}
+                                {% set avg_resale = avg_resale_map.get(release.id) if avg_resale_map else None %}
                                 <p class="card-text">
                                     <small class="text-muted">
-                                        Release: {{ release.release_date.strftime('%b %d, %Y') if release.release_date else 'N/A' }}<br>
-                                        Retail:
-                                        {% if regional_price %}
-                                            {{ regional_price.price | money(preferred_currency) }}
-                                            {% if release.retail_price is not none %}
-                                                <span class="text-muted">(MSRP: {{ release.retail_price | money(release.retail_currency) }})</span>
-                                            {% endif %}
-                                        {% elif release.retail_price is not none %}
-                                            {{ release.retail_price | money(release.retail_currency) }}
+                                        Retails for
+                                        {% if display and display.price_display and display.price_display.display %}
+                                            {{ display.price_display.display }}
                                         {% else %}
                                             N/A
                                         {% endif %}
-                                        {% set avg_resale = avg_resale_map.get(release.id) if avg_resale_map else None %}
-                                        <br>Avg Resale:
+                                        <br>Avg resale price (3M) is
                                         {% if avg_resale and avg_resale[0] %}
                                             {% set avg_display = avg_resale[0]|money_display(avg_resale[1], preferred_currency) %}
                                             {% if avg_display.display %}
                                                 {{ avg_display.display }}
+                                            {% else %}
+                                                N/A
                                             {% endif %}
                                         {% else %}
                                             N/A
+                                        {% endif %}
+                                        {% if display and display.region_context_label %}
+                                            <br>{{ display.region_context_label }}
                                         {% endif %}
                                     </small>
                                 </p>
                             </div>
                             <div class="card-footer bg-transparent border-top-0 px-3 pb-3">
                                 <div class="d-grid gap-2">
-                                    <a href="{{ url_for('main.product_detail', product_key=build_product_key(release), slug=build_product_slug(release), source='wishlist') }}" class="btn btn-outline-secondary btn-sm">View Details</a>
+                                    <a href="{{ url_for('main.product_detail', product_key=build_product_key(release), slug=build_product_slug(release), source='wishlist') }}" class="btn btn-ghost btn-sm">View Details</a>
                                     <button 
                                         type="button" 
-                                        class="btn btn-success btn-sm add-to-collection-btn"
+                                        class="btn btn-primary btn-sm w-100 add-to-collection-btn"
                                         data-release-id="{{ release.id }}"
                                         data-release-name="{{ release.name }}"
                                         data-release-brand="{{ release.brand or '' }}"
@@ -114,7 +109,7 @@
                                     </button>
                                     <form method="POST" action="{{ url_for('main.remove_from_wishlist', release_id=release.id) }}" class="d-grid remove-wishlist-form" onsubmit="return confirm('Are you sure you want to remove this from your wishlist?');">
                                         {{ form.hidden_tag() if form }}
-                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        <button type="submit" class="btn btn-outline-danger-soft btn-sm">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill me-1" viewBox="0 0 16 16"><path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5zM4.5 5.024l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06zm3 0l-.5 8.5a.5.5 0 1 0 .998-.06l.5-8.5a.5.5 0 1 0-.998-.06zm3 .53l-.5 8.5a.5.5 0 1 0 .998-.06l.5-8.5a.5.5 0 1 0-.998-.06z"/></svg>
                                             Remove from Wishlist
                                         </button>
@@ -137,7 +132,9 @@
                            data-image-src="{{ release.image_url | release_image }}"
                            data-image-alt="{{ release.name }}"
                            class="d-none d-md-block image-modal-trigger">
-                            <img src="{{ release.image_url | release_image }}" class="card-img-top" alt="{{ release.name }}" style="height: 250px; object-fit: contain; background-color: #ffffff;">
+                            <div class="card-media-well">
+                                <img src="{{ release.image_url | release_image }}" class="card-img-top card-media-img" alt="{{ release.name }}">
+                            </div>
                             <span class="expand-icon">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
                             </span>
@@ -152,7 +149,7 @@
                                        data-image-src="{{ release.image_url | release_image }}"
                                        data-image-alt="{{ release.name }}"
                                        class="image-modal-trigger">
-                                        <img src="{{ release.image_url | release_image }}" class="img-fluid rounded" alt="{{ release.name }} mobile" style="max-height: 75px; object-fit: contain; background-color: #f8f9fa;">
+                                        <img src="{{ release.image_url | release_image }}" class="img-fluid rounded surface-muted-bg" alt="{{ release.name }} mobile" style="max-height: 75px; object-fit: contain;">
                                         <span class="expand-icon expand-icon-mobile">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-arrows-fullscreen" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707zm4.344 0a.5.5 0 0 1 .707 0l4.096 4.096V11.5a.5.5 0 1 1 1 0v3.975a.5.5 0 0 1-.5.5H11.5a.5.5 0 0 1 0-1h2.768l-4.096-4.096a.5.5 0 0 1 0-.707zm0-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707zm-4.344 0a.5.5 0 0 1-.707 0L1.025 1.732V4.5a.5.5 0 0 1-1 0V.525a.5.5 0 0 1 .5-.5H4.5a.5.5 0 0 1 0 1H1.732l4.096 4.096a.5.5 0 0 0 0 .707z"/></svg>
                                         </span>
@@ -161,47 +158,40 @@
                             </div>
 
                             <h5 class="card-title fs-6 mb-1 d-none d-md-block">{{ release.name }}</h5>
-                            {% if release.brand %}
-                                <p class="card-text mb-0"><small class="text-muted">Brand: {{ release.brand }}</small></p>
-                            {% endif %}
-                            {% if release.sku %}
-                                <p class="card-text mb-0"><small class="text-muted">SKU: {{ release.sku }}</small></p>
-                            {% endif %}
                             {% set preferred_currency = current_user.preferred_currency if current_user.is_authenticated else 'GBP' %}
-                            {% set regional_price = (release.prices | selectattr('currency', 'equalto', preferred_currency) | list | first) %}
+                            {% set display = release_display_map.get(release.id) if release_display_map else None %}
+                            {% set avg_resale = avg_resale_map.get(release.id) if avg_resale_map else None %}
                             <p class="card-text">
                                 <small class="text-muted">
-                                    Release: {{ release.release_date.strftime('%b %d, %Y') if release.release_date else 'N/A' }}<br>
-                                    Retail:
-                                    {% if regional_price %}
-                                        {{ regional_price.price | money(preferred_currency) }}
-                                        {% if release.retail_price is not none %}
-                                            <span class="text-muted">(MSRP: {{ release.retail_price | money(release.retail_currency) }})</span>
-                                        {% endif %}
-                                    {% elif release.retail_price is not none %}
-                                        {{ release.retail_price | money(release.retail_currency) }}
+                                    Retails for
+                                    {% if display and display.price_display and display.price_display.display %}
+                                        {{ display.price_display.display }}
                                     {% else %}
                                         N/A
                                     {% endif %}
-                                    {% set avg_resale = avg_resale_map.get(release.id) if avg_resale_map else None %}
-                                    <br>Avg Resale:
+                                    <br>Avg resale price (3M) is
                                     {% if avg_resale and avg_resale[0] %}
                                         {% set avg_display = avg_resale[0]|money_display(avg_resale[1], preferred_currency) %}
                                         {% if avg_display.display %}
                                             {{ avg_display.display }}
+                                        {% else %}
+                                            N/A
                                         {% endif %}
                                     {% else %}
                                         N/A
+                                    {% endif %}
+                                    {% if display and display.region_context_label %}
+                                        <br>{{ display.region_context_label }}
                                     {% endif %}
                                 </small>
                             </p>
                         </div>
                         <div class="card-footer bg-transparent border-top-0 px-3 pb-3">
                             <div class="d-grid gap-2">
-                                <a href="{{ url_for('main.product_detail', product_key=build_product_key(release), slug=build_product_slug(release), source='wishlist') }}" class="btn btn-outline-secondary btn-sm">View Details</a>
+                                <a href="{{ url_for('main.product_detail', product_key=build_product_key(release), slug=build_product_slug(release), source='wishlist') }}" class="btn btn-ghost btn-sm">View Details</a>
                                 <button 
                                     type="button" 
-                                    class="btn btn-success btn-sm add-to-collection-btn"
+                                    class="btn btn-primary btn-sm w-100 add-to-collection-btn"
                                     data-release-id="{{ release.id }}"
                                     data-release-name="{{ release.name }}"
                                     data-release-brand="{{ release.brand or '' }}"
@@ -213,7 +203,7 @@
                                 </button>
                                 <form method="POST" action="{{ url_for('main.remove_from_wishlist', release_id=release.id) }}" class="d-grid remove-wishlist-form" onsubmit="return confirm('Are you sure you want to remove this from your wishlist?');">
                                     {{ form.hidden_tag() if form }}
-                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                    <button type="submit" class="btn btn-outline-danger-soft btn-sm">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill me-1" viewBox="0 0 16 16"><path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5zM4.5 5.024l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06zm3 0l-.5 8.5a.5.5 0 1 0 .998-.06l.5-8.5a.5.5 0 1 0-.998-.06zm3 .53l-.5 8.5a.5.5 0 1 0 .998-.06l.5-8.5a.5.5 0 1 0-.998-.06z"/></svg>
                                         Remove from Wishlist
                                     </button>

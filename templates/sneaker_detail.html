@@ -10,7 +10,12 @@
                 <span class="text-muted">SKU: {{ sneaker.sku }}</span>
             {% endif %}
         </div>
-        <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm">{{ back_label }}</a>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            {% if current_user.is_authenticated and current_user.is_admin and release %}
+                <a href="{{ url_for('main.edit_release', release_id=release.id) }}" class="btn btn-outline-secondary btn-sm">Edit Release</a>
+            {% endif %}
+            <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm">{{ back_label }}</a>
+        </div>
     </div>
 
     <div class="row g-4">
@@ -29,23 +34,25 @@
         <div class="col-lg-8">
             <div class="card shadow-sm mb-3">
                 <div class="card-body">
-                    <h5 class="card-title">Release Info</h5>
+                    <h5 class="card-title">Release Overview</h5>
                     <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="text-muted">Model</div>
-                            <div>{{ sneaker.model or 'N/A' }}</div>
-                        </div>
                         <div class="col-md-6">
                             <div class="text-muted">Brand</div>
                             <div>{{ sneaker.brand or 'N/A' }}</div>
                         </div>
                         <div class="col-md-6">
-                            <div class="text-muted">Colorway</div>
+                            <div class="text-muted">Colourway</div>
                             <div>{{ (release.colorway if release else sneaker.colorway) or 'N/A' }}</div>
                         </div>
                         <div class="col-md-6">
                             <div class="text-muted">Release Date</div>
-                            <div>{{ release.release_date.strftime('%b %d, %Y') if release and release.release_date else 'N/A' }}</div>
+                            <div>
+                                {% set display_date = release_display.release_date if release_display and release_display.release_date else (release.release_date if release else None) %}
+                                {{ display_date.strftime('%b %d, %Y') if display_date else 'N/A' }}
+                            </div>
+                            {% if release_display and release_display.region_context_label %}
+                                <div class="text-muted small">{{ release_display.region_context_label }}</div>
+                            {% endif %}
                         </div>
                         <div class="col-12">
                             <div class="text-muted">Materials</div>
@@ -73,7 +80,7 @@
                                     {{ form_for_modal.hidden_tag() }}
                                     <div class="input-group input-group-sm">
                                         <input type="text" name="material" class="form-control" placeholder="Add material">
-                                        <button type="submit" class="btn btn-outline-secondary">Add</button>
+                                        <button type="submit" class="btn btn-ghost btn-sm">Add</button>
                                     </div>
                                 </form>
                             </div>
@@ -82,12 +89,22 @@
                 </div>
             </div>
 
+            {% include '_release_about_section.html' %}
+            {% if average_resale_summary or market_metrics or sales_series %}
+                <div class="card shadow-sm mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Pricing & Market</h5>
+                        {% include '_release_market_metrics.html' %}
+                    </div>
+                </div>
+            {% endif %}
+
             <div class="card shadow-sm mb-3">
                 <div class="card-body">
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                         <h5 class="card-title mb-0">Your Sneaker's Details</h5>
                         <button type="button"
-                                class="btn btn-outline-secondary btn-sm open-edit-sneaker-modal-btn"
+                                class="btn btn-ghost btn-sm open-edit-sneaker-modal-btn"
                                 data-edit-scope="details"
                                 data-sneaker-id="{{ sneaker.id }}"
                                 data-fetch-url="{{ url_for('sneakers.get_sneaker_data', sneaker_id=sneaker.id) }}"
@@ -138,7 +155,7 @@
                                 <div class="input-group input-group-sm">
                                     <input type="date" name="new_last_worn" class="form-control"
                                            value="{{ sneaker.last_worn_date.strftime('%Y-%m-%d') if sneaker.last_worn_date else '' }}">
-                                    <button type="submit" class="btn btn-outline-info">Update</button>
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">Update</button>
                                 </div>
                                 <span class="form-text ajax-status-message" style="font-size: 0.85em;"></span>
                             </form>
@@ -160,7 +177,7 @@
                                 <textarea name="note" class="form-control form-control-sm mb-2" rows="3"
                                           placeholder="Add a note..."></textarea>
                                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                                    <button type="submit" class="btn btn-outline-primary btn-sm">Add Note</button>
+                                    <button type="submit" class="btn btn-ghost btn-sm">Add Note</button>
                                     <span class="form-text ajax-status-message" style="font-size: 0.85em;"></span>
                                 </div>
                             </form>
@@ -204,7 +221,16 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <div class="text-muted">Retail Price</div>
-                            {% if release and release.retail_price %}
+                            {% if release_display and release_display.price_display and release_display.price_display.display %}
+                                <div>
+                                    {{ release_display.price_display.display }}
+                                    {% if release_display.price_display.is_converted and release_display.price_display.original %}
+                                        <span class="text-muted">
+                                            ({{ release_display.price_display.label }} {{ release_display.price_display.original }})
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            {% elif release and release.retail_price %}
                                 <div>{{ release.retail_price|money(release.retail_currency or 'USD') }}</div>
                             {% else %}
                                 <div>N/A</div>
@@ -221,31 +247,6 @@
                                         <span class="text-muted">({{ purchase_display.original }})</span>
                                     {% else %}
                                         {{ purchase_display.display }}
-                                    {% endif %}
-                                {% else %}
-                                    N/A
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="text-muted">Avg 3-Month Resale</div>
-                            <div>
-                                {% if avg_resale %}
-                                    {% set avg_amount = avg_resale.get('amount') %}
-                                    {% set avg_currency = avg_resale.get('currency') %}
-                                    {% set avg_estimate = avg_resale.get('is_estimate') %}
-                                    {% if avg_amount %}
-                                        {% set avg_display = avg_amount|money_display(avg_currency, preferred_currency) %}
-                                        {% if avg_display.display %}
-                                            {% if avg_estimate %}Est. {% endif %}{{ avg_display.display }}
-                                            {% if avg_estimate and avg_display.is_converted %}
-                                                <span class="text-muted">({{ avg_display.original }})</span>
-                                            {% endif %}
-                                        {% else %}
-                                            N/A
-                                        {% endif %}
-                                    {% else %}
-                                        N/A
                                     {% endif %}
                                 {% else %}
                                     N/A
@@ -454,17 +455,17 @@
                         <div class="col-12">
                             <div class="row g-2">
                                 <div class="col-12 col-md-4">
-                                    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('sneakers.sneaker_health_history', sneaker_id=sneaker.id) }}">
+                                    <a class="btn btn-ghost btn-sm" href="{{ url_for('sneakers.sneaker_health_history', sneaker_id=sneaker.id) }}">
                                         Health History
                                     </a>
                                 </div>
                                 <div class="col-12 col-md-4">
-                                    <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#damageModal">
+                                    <button type="button" class="btn btn-ghost btn-sm" data-bs-toggle="modal" data-bs-target="#damageModal">
                                         Report Damage
                                     </button>
                                 </div>
                                 <div class="col-12 col-md-4">
-                                    <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#repairModal">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#repairModal">
                                         Mark Repaired/Restored
                                     </button>
                                 </div>
@@ -502,7 +503,7 @@
                                                 <form method="POST" action="{{ url_for('sneakers.update_exposure_note', sneaker_id=sneaker.id, event_id=note.id) }}" class="flex-grow-1">
                                                     {{ form_for_modal.hidden_tag() }}
                                                     <textarea class="form-control form-control-sm" name="note" rows="2" maxlength="140">{{ note.note }}</textarea>
-                                                    <button type="submit" class="btn btn-outline-primary btn-sm mt-2">Save</button>
+                                                    <button type="submit" class="btn btn-outline-secondary btn-sm mt-2">Save</button>
                                                 </form>
                                                 <form method="POST" action="{{ url_for('sneakers.delete_exposure_note', sneaker_id=sneaker.id, event_id=note.id) }}" class="align-self-start">
                                                     {{ form_for_modal.hidden_tag() }}
@@ -523,7 +524,7 @@
                                         <textarea class="form-control form-control-sm" id="exposure-note-text" name="note" rows="2" maxlength="140" placeholder="Optional note (max 140 characters)" required></textarea>
                                     </div>
                                     <div class="col-12">
-                                        <button type="submit" class="btn btn-outline-secondary btn-sm">Add Note</button>
+                                        <button type="submit" class="btn btn-ghost btn-sm">Add Note</button>
                                     </div>
                                 </div>
                             </form>
@@ -543,20 +544,22 @@
                         data-edit-action-url="{{ url_for('sneakers.edit_sneaker', sneaker_id=sneaker.id) }}">
                     Edit Details
                 </button>
-                {% if sneaker.in_rotation %}
+                {% if source == 'rotation' and sneaker.in_rotation %}
                     <form method="POST" action="{{ url_for('sneakers.remove_from_rotation', sneaker_id=sneaker.id) }}" class="d-inline">
                         {{ form_for_modal.hidden_tag() }}
-                        <button type="submit" class="btn btn-outline-warning">Remove from Rotation</button>
+                        <button type="submit" class="btn btn-outline-danger-soft">Remove from Rotation</button>
                     </form>
-                {% else %}
+                {% elif not sneaker.in_rotation %}
                     <form method="POST" action="{{ url_for('sneakers.add_to_rotation', sneaker_id=sneaker.id) }}" class="d-inline">
                         {{ form_for_modal.hidden_tag() }}
-                        <button type="submit" class="btn btn-outline-info">Add to Rotation</button>
+                        <button type="submit" class="btn btn-outline-secondary">Add to Rotation</button>
                     </form>
+                {% else %}
+                    <button type="button" class="btn btn-outline-secondary" disabled>In Rotation</button>
                 {% endif %}
                 <form method="POST" action="{{ url_for('sneakers.delete_sneaker', sneaker_id=sneaker.id) }}" class="d-inline delete-sneaker-detail-form">
                     {{ form_for_modal.hidden_tag() }}
-                    <button type="submit" class="btn btn-outline-danger">Delete from Collection</button>
+                    <button type="submit" class="btn btn-danger">Delete from Collection</button>
                 </form>
             </div>
         </div>
@@ -765,32 +768,45 @@
             const salesHistoryCanvas = document.getElementById('salesHistoryChart');
             const salesHistoryData = {{ (sales_series or []) | tojson }};
             const salesHistoryCurrency = {{ (sales_series_currency or '') | tojson }};
-            if (salesHistoryCanvas && salesHistoryData.length) {
+            let salesHistoryChart = null;
+
+            function initSalesHistoryChart() {
+                if (!salesHistoryCanvas || !salesHistoryData.length) return;
+                const rootStyles = getComputedStyle(document.documentElement);
+                const token = (name, fallback = '') => rootStyles.getPropertyValue(name).trim() || fallback;
+                const colorDataBlue = token('--color-data-blue', '#3B82F6');
+                const colorDataBlueLight = token('--color-data-blue-light', '#EFF6FF');
+                const colorPurple = token('--color-purple-primary', '#7C3AED');
+                const colorText = token('--color-text-primary', '#111111');
+                const colorTextSecondary = token('--color-text-secondary', '#6B7280');
+                const colorBorder = token('--color-border', '#E5E7EB');
+                const colorSurface = token('--color-surface', '#FFFFFF');
+
                 const labels = salesHistoryData.map(item => item.label);
                 const values = salesHistoryData.map(item => item.value);
                 const currencySymbols = { GBP: '£', USD: '$', EUR: '€' };
                 const currencySymbol = currencySymbols[salesHistoryCurrency] || '';
                 const chartTitle = salesHistoryCurrency ? `Sale Price (${salesHistoryCurrency})` : 'Sale Price';
                 const avgValue = Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 100) / 100;
-                const salesHistoryChart = new Chart(salesHistoryCanvas, {
+                salesHistoryChart = new Chart(salesHistoryCanvas, {
                     type: 'line',
                     data: {
                         labels: labels,
                         datasets: [{
                             label: chartTitle,
                             data: values,
-                            borderColor: '#0ea5e9',
-                            pointBackgroundColor: '#0ea5e9',
-                            pointBorderColor: '#0ea5e9',
-                            backgroundColor: 'rgba(14, 165, 233, 0.2)',
+                            borderColor: colorDataBlue,
+                            pointBackgroundColor: colorDataBlue,
+                            pointBorderColor: colorDataBlue,
+                            backgroundColor: colorDataBlueLight,
                             tension: 0.25,
                             fill: true
                         }, {
                             label: 'Average (Last 30)',
                             data: values.map(() => avgValue),
-                            borderColor: '#f97316',
-                            pointBackgroundColor: '#f97316',
-                            pointBorderColor: '#f97316',
+                            borderColor: colorPurple,
+                            pointBackgroundColor: colorPurple,
+                            pointBorderColor: colorPurple,
                             borderDash: [6, 6],
                             pointRadius: 0,
                             pointHoverRadius: 4,
@@ -807,9 +823,14 @@
                             legend: {
                                 display: true,
                                 position: 'bottom',
-                                labels: { usePointStyle: true }
+                                labels: { usePointStyle: true, color: colorTextSecondary }
                             },
                             tooltip: {
+                                backgroundColor: colorSurface,
+                                titleColor: colorText,
+                                bodyColor: colorText,
+                                borderColor: colorBorder,
+                                borderWidth: 1,
                                 callbacks: {
                                     label: context => {
                                         const label = context.dataset.label || '';
@@ -829,7 +850,10 @@
                         scales: {
                             y: {
                                 beginAtZero: true,
+                                grid: { color: colorBorder },
+                                border: { color: colorBorder },
                                 ticks: {
+                                    color: colorTextSecondary,
                                     callback: value => {
                                         const formattedValue = Number(value).toFixed(2);
                                         return salesHistoryCurrency
@@ -837,12 +861,30 @@
                                             : formattedValue;
                                     }
                                 }
+                            },
+                            x: {
+                                grid: { color: colorBorder },
+                                border: { color: colorBorder },
+                                ticks: { color: colorTextSecondary }
                             }
                         }
                     }
                 });
+            }
+
+            initSalesHistoryChart();
+
+            window.addEventListener('soletrak:themechange', () => {
+                if (salesHistoryChart) {
+                    salesHistoryChart.destroy();
+                    salesHistoryChart = null;
+                }
+                initSalesHistoryChart();
+            });
+
+            if (salesHistoryCanvas) {
                 window.addEventListener('resize', () => {
-                    salesHistoryChart.resize();
+                    if (salesHistoryChart) salesHistoryChart.resize();
                 });
             }
             const modalEl = document.getElementById('sneakerFormModal');

@@ -5,7 +5,7 @@
 {% block content %}
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="mb-0">{{ title }}</h2>
-        <a href="{{ url_for('main.wishlist') }}" class="btn btn-secondary">Back to My Wishlist</a>
+        <a href="{{ url_for('main.wishlist') }}" class="btn btn-ghost">Back to My Wishlist</a>
     </div>
     <p class="text-muted">Select the upcoming releases you want to track. Your selections will be remembered as you filter and search.</p>
 
@@ -20,16 +20,16 @@
             <div class="row align-items-center mb-3">
                 <div class="col-auto me-auto">
                     <h5 class="mb-0">
-                        Selected: <span id="selection-counter" class="badge bg-primary rounded-pill">0</span>
+                        Selected: <span id="selection-counter" class="badge bg-soletrak-primary rounded-pill">0</span>
                     </h5>
                 </div>
                 <div class="col-auto">
                     <div class="row g-2">
                         <div class="col-auto">
-                            <button type="button" class="btn btn-outline-secondary" id="clear-selection-btn">Clear Selection</button>
+                            <button type="button" class="btn btn-ghost" id="clear-selection-btn">Clear Selection</button>
                         </div>
                         <div class="col-auto">
-                            <button type="submit" class="btn btn-success">Add Selected to Wishlist</button>
+                            <button type="submit" class="btn btn-primary">Add Selected to Wishlist</button>
                         </div>
                     </div>
                 </div>
@@ -73,7 +73,7 @@
                 </div>
             </div>
             <div class="text-center my-4">
-                <button type="submit" class="btn btn-success btn-lg">Add Selected to Wishlist</button>
+                <button type="submit" class="btn btn-primary btn-lg">Add Selected to Wishlist</button>
             </div>
         </form>
     {% else %}

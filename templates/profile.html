@@ -59,6 +59,15 @@
                                         {{ form.preferred_currency(class="form-select") }}
                                     {% endif %}
                                 </div>
+                                <div class="col-md-6">
+                                    {{ form.preferred_region.label(class="form-label") }}
+                                    {% if form.preferred_region.errors %}
+                                        {{ form.preferred_region(class="form-select is-invalid") }}
+                                        <div class="invalid-feedback">{% for error in form.preferred_region.errors %}<span>{{ error }}</span><br>{% endfor %}</div>
+                                    {% else %}
+                                        {{ form.preferred_region(class="form-select") }}
+                                    {% endif %}
+                                </div>
                                 <div class="col-12">
                                     <div class="form-check">
                                         {{ form.marketing_opt_in(class="form-check-input") }}

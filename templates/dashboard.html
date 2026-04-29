@@ -488,14 +488,58 @@
                 if (!chartCanvas) return;
                 if (brandChart) brandChart.destroy();
                 if (data && data.length > 0) {
+                    const rootStyles = getComputedStyle(document.documentElement);
+                    const token = (name, fallback = '') => rootStyles.getPropertyValue(name).trim() || fallback;
+                    const chartPalette = [
+                        token('--color-chart-1', '#3B82F6'),
+                        token('--color-chart-2', '#7C3AED'),
+                        token('--color-chart-3', '#A78BFA'),
+                        token('--color-chart-4', '#1D4ED8'),
+                        token('--color-chart-5', '#60A5FA')
+                    ];
+                    const fallbackColor = token('--color-chart-other', '#E5E7EB');
+                    const textColor = token('--color-text-secondary', '#6B7280');
+
                     brandChart = new Chart(chartCanvas, {
                         type: 'pie',
-                        data: { labels, datasets: [{ data, backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'] }] },
-                        options: { responsive: true, maintainAspectRatio: false }
+                        data: {
+                            labels,
+                            datasets: [{
+                                data,
+                                backgroundColor: data.map((_, idx) => chartPalette[idx] || fallbackColor),
+                                borderColor: token('--color-surface', '#FFFFFF'),
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    labels: { color: textColor }
+                                },
+                                tooltip: {
+                                    backgroundColor: token('--color-surface', '#FFFFFF'),
+                                    titleColor: token('--color-text-primary', '#111111'),
+                                    bodyColor: token('--color-text-primary', '#111111'),
+                                    borderColor: token('--color-border', '#E5E7EB'),
+                                    borderWidth: 1
+                                }
+                            }
+                        }
                     });
                 }
             }
-            initializeChart(JSON.parse('{{ brand_labels|tojson|safe }}'), JSON.parse('{{ brand_data|tojson|safe }}'));
+            const brandLabels = JSON.parse('{{ brand_labels|tojson|safe }}');
+            const brandData = JSON.parse('{{ brand_data|tojson|safe }}');
+            initializeChart(brandLabels, brandData);
+            window.addEventListener('soletrak:themechange', () => {
+                if (brandChart) {
+                    brandChart.destroy();
+                    brandChart = null;
+                }
+                initializeChart(brandLabels, brandData);
+            });
             toggleModalImageInputs(); // Initial call to set correct visibility
         });
     </script>
