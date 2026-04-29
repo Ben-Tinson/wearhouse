@@ -44,10 +44,95 @@ from services.release_csv_import_service import (
 )
 from services.release_display_service import build_release_display_map, resolve_release_display
 from services.release_detail_service import build_release_detail_extras, find_matching_sneaker_record
+from services.supabase_auth_linkage import find_app_user_by_supabase_id
+from services.supabase_auth_service import (
+    SupabaseAuthError,
+    looks_like_jwt,
+    verify_access_token,
+)
 import csv
 
 
 main_bp = Blueprint('main', __name__)
+
+
+@main_bp.route('/admin/auth/probe', methods=['GET'])
+@login_required
+@admin_required
+def admin_auth_probe():
+    """Phase 2 admin-only probe for the Supabase Auth verification path.
+
+    Read-only sanity check that the resolver's Supabase JWT branch works
+    against real production data. Returns 404 unless
+    SUPABASE_AUTH_ENABLED is True. Never writes a row, never creates a
+    Flask-Login session, never auto-links.
+
+    Behaviour:
+        - 404 when SUPABASE_AUTH_ENABLED is False (defends against the
+          accidental probe of an unconfigured environment).
+        - 401 from @login_required when the caller is not Flask-Login
+          authenticated.
+        - 403 from @admin_required when the caller is not an admin.
+        - 200 with via=flask_login when no Authorization bearer is sent.
+        - 200 with via=supabase + ok=true when a valid JWT for a linked
+          app user is presented.
+        - 200 with via=supabase + ok=false when the JWT is valid but its
+          identity is not linked to any app user.
+        - 401 when the JWT itself fails verification.
+
+    The endpoint is wrapped in @login_required so an admin must already
+    be Flask-Login authenticated to reach it. The Supabase JWT branch is
+    exercised independently of that session, so the probe truly tests
+    the JWT path and not the Flask-Login session lookup.
+    """
+    if not current_app.config.get('SUPABASE_AUTH_ENABLED'):
+        abort(404)
+
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.lower().startswith('bearer '):
+        return jsonify({
+            'ok': True,
+            'via': 'flask_login',
+            'user_id': current_user.id,
+            'is_admin': bool(current_user.is_admin),
+            'supabase_user_id': None,
+        })
+
+    token = auth_header.split(None, 1)[1].strip()
+    if not looks_like_jwt(token):
+        return jsonify({
+            'ok': False,
+            'via': 'supabase',
+            'error': 'bearer value is not a JWT',
+            'supabase_user_id': None,
+        }), 400
+
+    try:
+        claims = verify_access_token(token)
+    except SupabaseAuthError as exc:
+        return jsonify({
+            'ok': False,
+            'via': 'supabase',
+            'error': str(exc),
+            'supabase_user_id': None,
+        }), 401
+
+    linked = find_app_user_by_supabase_id(claims.supabase_user_id)
+    if linked is None:
+        return jsonify({
+            'ok': False,
+            'via': 'supabase',
+            'error': 'JWT identity is not linked to any app user',
+            'supabase_user_id': claims.supabase_user_id,
+        })
+
+    return jsonify({
+        'ok': True,
+        'via': 'supabase',
+        'user_id': linked.id,
+        'is_admin': bool(linked.is_admin),
+        'supabase_user_id': claims.supabase_user_id,
+    })
 
 
 def _format_month_filter_choices(distinct_months_tuples):

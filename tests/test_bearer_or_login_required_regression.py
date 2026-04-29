@@ -161,18 +161,17 @@ def test_revoked_user_api_token_rejected_with_flag_on(test_app, test_client):
 
 
 # ---------------------------------------------------------------------------
-# JWT-shaped bearer values: the decorator does NOT yet honour them
+# JWT-shaped bearer values: format-disambiguation policy
 # ---------------------------------------------------------------------------
 
 
-def test_jwt_shaped_bearer_does_not_authorise_today(test_app, test_client):
-    """A JWT-shaped bearer must not magically authorise the request.
+def test_jwt_shaped_bearer_for_unlinked_identity_returns_401(test_app, test_client):
+    """Verified JWT but no linked app user → 401.
 
-    Phase 2 introduces JWT *capability* via the resolver, but
-    ``@bearer_or_login_required`` is unchanged in this slice. A JWT in
-    the header should fall through to the ``UserApiToken`` lookup, find
-    nothing matching its SHA-256 hash, and produce a 401 — exactly the
-    same outcome as in Phase 1, regardless of the flag state.
+    Format-disambiguation routes the JWT-shaped value to the Supabase
+    branch (because the flag is on). Verification succeeds, but no
+    ``user.supabase_auth_user_id`` matches the ``sub`` claim, so the
+    decorator must reject — never auto-link.
     """
     test_app.config["SUPABASE_AUTH_ENABLED"] = True
     test_app.config["SUPABASE_JWT_SECRET"] = JWT_SECRET
@@ -185,7 +184,15 @@ def test_jwt_shaped_bearer_does_not_authorise_today(test_app, test_client):
     assert response.status_code == 401
 
 
-def test_jwt_shaped_bearer_with_flag_off_also_401(test_app, test_client):
+def test_jwt_shaped_bearer_with_flag_off_returns_401(test_app, test_client):
+    """JWT-shaped bearer with the flag off must be rejected outright.
+
+    This protects against accidental enablement: even if a JWT happens to
+    be presented, the decorator refuses to verify it while the flag is
+    off, returning 401 rather than falling through to the
+    ``UserApiToken`` lookup (which would also 401, but for less obvious
+    reasons).
+    """
     test_app.config["SUPABASE_AUTH_ENABLED"] = False
     response = test_client.post(
         STEPS_ENDPOINT,
@@ -193,3 +200,175 @@ def test_jwt_shaped_bearer_with_flag_off_also_401(test_app, test_client):
         headers={"Authorization": f"Bearer {_make_jwt()}"},
     )
     assert response.status_code == 401
+
+
+def test_jwt_shaped_bearer_for_linked_user_authorises_when_flag_on(test_app, test_client):
+    """Verified JWT for a linked app user → 200 on a step-write endpoint.
+
+    This locks in the new positive case: format-disambiguation routes
+    the JWT to the Supabase branch, the JWT verifies, the linked user
+    is resolved by ``supabase_auth_user_id``, and the request is
+    authorised as session-equivalent (no scope check, no DB writes for
+    auth bookkeeping).
+    """
+    import uuid as _uuid
+
+    from services.supabase_auth_linkage import link_app_user_to_supabase
+
+    test_app.config["SUPABASE_AUTH_ENABLED"] = True
+    test_app.config["SUPABASE_JWT_SECRET"] = JWT_SECRET
+
+    target_uuid = _uuid.uuid4()
+    with test_app.app_context():
+        user = User(
+            username="jwt_authorised",
+            email="jwt_authorised@example.com",
+            first_name="JWT",
+            last_name="User",
+            is_email_confirmed=True,
+        )
+        user.set_password("password123")
+        db.session.add(user)
+        db.session.commit()
+        link_app_user_to_supabase(user.id, target_uuid)
+        user_id = user.id
+
+    token = _make_jwt(secret=JWT_SECRET)
+    # Re-issue with our linked sub
+    import jwt as _jwt
+    now = int(time.time())
+    token = _jwt.encode(
+        {
+            "sub": str(target_uuid),
+            "email": "jwt_authorised@example.com",
+            "iat": now,
+            "exp": now + 60,
+        },
+        JWT_SECRET,
+        algorithm="HS256",
+    )
+
+    response = test_client.post(
+        STEPS_ENDPOINT,
+        json=_valid_payload(),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+
+    # The JWT branch must NOT have created any UserApiToken row for this user.
+    with test_app.app_context():
+        assert UserApiToken.query.filter_by(user_id=user_id).count() == 0
+
+
+def test_jwt_shaped_bearer_for_linked_user_still_blocked_when_flag_off(test_app, test_client):
+    """Even for a linked user, flag-off JWT must be rejected."""
+    import uuid as _uuid
+
+    from services.supabase_auth_linkage import link_app_user_to_supabase
+
+    test_app.config["SUPABASE_AUTH_ENABLED"] = False
+
+    target_uuid = _uuid.uuid4()
+    with test_app.app_context():
+        user = User(
+            username="off_jwt_user",
+            email="off_jwt@example.com",
+            first_name="Off",
+            last_name="JWT",
+            is_email_confirmed=True,
+        )
+        user.set_password("password123")
+        db.session.add(user)
+        db.session.commit()
+        link_app_user_to_supabase(user.id, target_uuid)
+
+    import jwt as _jwt
+    now = int(time.time())
+    token = _jwt.encode(
+        {
+            "sub": str(target_uuid),
+            "email": "off_jwt@example.com",
+            "iat": now,
+            "exp": now + 60,
+        },
+        JWT_SECRET,
+        algorithm="HS256",
+    )
+
+    response = test_client.post(
+        STEPS_ENDPOINT,
+        json=_valid_payload(),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 401
+
+
+def test_malformed_jwt_with_flag_on_returns_401(test_app, test_client):
+    """A JWT-shaped value that fails verification must be rejected cleanly."""
+    test_app.config["SUPABASE_AUTH_ENABLED"] = True
+    test_app.config["SUPABASE_JWT_SECRET"] = JWT_SECRET
+
+    response = test_client.post(
+        STEPS_ENDPOINT,
+        json=_valid_payload(),
+        headers={"Authorization": "Bearer malformed.jwt.value"},
+    )
+    assert response.status_code == 401
+
+
+def test_jwt_branch_does_not_write_last_used_at(test_app, test_client):
+    """The Supabase JWT branch must not perform DB writes (no last_used_at).
+
+    This locks in the accepted-decision rule that the JWT branch is pure
+    verification — no compounding of the decorator's existing implicit-
+    commit footprint.
+    """
+    import uuid as _uuid
+    import jwt as _jwt
+
+    from services.supabase_auth_linkage import link_app_user_to_supabase
+
+    test_app.config["SUPABASE_AUTH_ENABLED"] = True
+    test_app.config["SUPABASE_JWT_SECRET"] = JWT_SECRET
+
+    target_uuid = _uuid.uuid4()
+    with test_app.app_context():
+        user = User(
+            username="no_writes_user",
+            email="no_writes@example.com",
+            first_name="No",
+            last_name="Writes",
+            is_email_confirmed=True,
+        )
+        user.set_password("password123")
+        db.session.add(user)
+        db.session.commit()
+        link_app_user_to_supabase(user.id, target_uuid)
+        user_id = user.id
+        # Capture the supabase_auth_user_id we just wrote (the only
+        # legitimate write); it must be unchanged after a JWT request.
+        original_link = user.supabase_auth_user_id
+
+    now = int(time.time())
+    token = _jwt.encode(
+        {
+            "sub": str(target_uuid),
+            "email": "no_writes@example.com",
+            "iat": now,
+            "exp": now + 60,
+        },
+        JWT_SECRET,
+        algorithm="HS256",
+    )
+    response = test_client.post(
+        STEPS_ENDPOINT,
+        json=_valid_payload(),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+
+    # No UserApiToken created. supabase_auth_user_id unchanged.
+    with test_app.app_context():
+        reloaded = db.session.get(User, user_id)
+        assert reloaded.supabase_auth_user_id == original_link
+        assert UserApiToken.query.filter_by(user_id=user_id).count() == 0
