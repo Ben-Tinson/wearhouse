@@ -28,6 +28,7 @@ class User(db.Model, UserMixin):
     is_email_confirmed = db.Column(db.Boolean, nullable=False, default=False)
     is_admin = db.Column(db.Boolean, nullable=False, default=False)
     preferred_currency = db.Column(db.String(3), nullable=False, default="GBP")
+    preferred_region = db.Column(db.String(3), nullable=False, default="UK")
     timezone = db.Column(db.String(64), nullable=False, default="Europe/London")
 
     # Phase 1 Supabase Auth linkage column. Dormant in Phase 1: no writers, no readers.
@@ -416,7 +417,10 @@ class Release(db.Model):
     brand = db.Column(db.String(100), nullable=True, index=True)
     name = db.Column(db.String(200), nullable=False)
     model_name = db.Column(db.String(200), nullable=True)
+    release_slug = db.Column(db.String(255), nullable=True, index=True)
     colorway = db.Column(db.String(200), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
     release_date = db.Column(db.Date, nullable=False, index=True)
     is_calendar_visible = db.Column(db.Boolean, nullable=False, default=True)
     # --- MODIFIED AND NEW LINES ---
@@ -424,23 +428,55 @@ class Release(db.Model):
     retail_currency = db.Column(db.String(10), nullable=True)   # New field
     image_url = db.Column(db.String(500), nullable=True)
     source = db.Column(db.String(50), nullable=True)
-    source_product_id = db.Column(db.String(100), nullable=True)
+    source_product_id = db.Column(db.String(100), nullable=True, index=True)
     source_slug = db.Column(db.String(255), nullable=True)
     source_updated_at = db.Column(db.DateTime, nullable=True)
     last_synced_at = db.Column(db.DateTime, nullable=True)
     sales_last_fetched_at = db.Column(db.DateTime, nullable=True)
     size_bids_last_fetched_at = db.Column(db.DateTime, nullable=True)
+    heat_score = db.Column(db.Float, nullable=True)
+    heat_confidence = db.Column(db.String(20), nullable=True)
+    heat_premium_ratio = db.Column(db.Float, nullable=True)
+    heat_basis = db.Column(db.String(30), nullable=True)
+    heat_updated_at = db.Column(db.DateTime, nullable=True)
+    ingestion_source = db.Column(db.String(50), nullable=True)
+    ingestion_batch_id = db.Column(db.String(100), nullable=True)
+    ingested_at = db.Column(db.DateTime, nullable=True)
+    ingested_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
     created_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow, onupdate=datetime.utcnow)
-    # --- END OF CHANGES ---
+    __table_args__ = (
+        db.UniqueConstraint('source', 'source_product_id', name='uq_release_source_source_product_id'),
+    )
 
-    offers = db.relationship('AffiliateOffer', backref='release', lazy=True)
-    prices = db.relationship('ReleasePrice', backref='release', lazy=True)
+    offers = db.relationship('AffiliateOffer', backref='release', lazy=True, cascade='all, delete-orphan')
+    prices = db.relationship('ReleasePrice', backref='release', lazy=True, cascade='all, delete-orphan')
+    regions = db.relationship('ReleaseRegion', backref='release', lazy=True, cascade='all, delete-orphan')
     size_bids = db.relationship('ReleaseSizeBid', backref='release', lazy=True, cascade='all, delete-orphan')
     sales_points = db.relationship('ReleaseSalePoint', backref='release', lazy=True, cascade='all, delete-orphan')
+    sales_monthly = db.relationship('ReleaseSalesMonthly', backref='release', lazy=True, cascade='all, delete-orphan')
+    market_stats = db.relationship('ReleaseMarketStats', backref='release', lazy=True, uselist=False, cascade='all, delete-orphan')
 
     def __repr__(self):
         return f'<Release {self.name}>'
+
+
+class ReleaseRegion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    release_id = db.Column(db.Integer, db.ForeignKey('release.id'), nullable=False, index=True)
+    region = db.Column(db.String(10), nullable=False)
+    release_date = db.Column(db.Date, nullable=False)
+    release_time = db.Column(db.Time, nullable=True)
+    timezone = db.Column(db.String(64), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('release_id', 'region', name='uq_release_region_release_id_region'),
+    )
+
+    def __repr__(self):
+        return f'<ReleaseRegion {self.release_id} {self.region}>'
 
 
 class AffiliateOffer(db.Model):
@@ -477,7 +513,7 @@ class ReleaseSizeBid(db.Model):
     fetched_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     __table_args__ = (
-        db.UniqueConstraint('release_id', 'size_label', 'size_type', name='uq_release_size_bid'),
+        db.UniqueConstraint('release_id', 'size_label', 'size_type', 'price_type', name='uq_release_size_bid'),
     )
 
     def __repr__(self):
@@ -498,6 +534,43 @@ class ReleaseSalePoint(db.Model):
 
     def __repr__(self):
         return f'<ReleaseSalePoint {self.release_id} {self.sale_at}>'
+
+
+class ReleaseSalesMonthly(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    release_id = db.Column(db.Integer, db.ForeignKey('release.id'), nullable=False, index=True)
+    month_start = db.Column(db.Date, nullable=False, index=True)
+    avg_price = db.Column(db.Numeric(10, 2), nullable=False)
+    currency = db.Column(db.String(3), nullable=False, default="USD")
+    fetched_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('release_id', 'month_start', name='uq_release_monthly_sales'),
+    )
+
+    def __repr__(self):
+        return f'<ReleaseSalesMonthly {self.release_id} {self.month_start}>'
+
+
+class ReleaseMarketStats(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    release_id = db.Column(db.Integer, db.ForeignKey('release.id'), nullable=False, index=True, unique=True)
+    currency = db.Column(db.String(3), nullable=True)
+    average_price_1m = db.Column(db.Numeric(10, 2), nullable=True)
+    average_price_3m = db.Column(db.Numeric(10, 2), nullable=True)
+    average_price_1y = db.Column(db.Numeric(10, 2), nullable=True)
+    volatility = db.Column(db.Float, nullable=True)
+    price_range_low = db.Column(db.Numeric(10, 2), nullable=True)
+    price_range_high = db.Column(db.Numeric(10, 2), nullable=True)
+    sales_price_range_low = db.Column(db.Numeric(10, 2), nullable=True)
+    sales_price_range_high = db.Column(db.Numeric(10, 2), nullable=True)
+    sales_volume = db.Column(db.Integer, nullable=True)
+    gmv = db.Column(db.Numeric(12, 2), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<ReleaseMarketStats {self.release_id}>'
 
 
 class ExchangeRate(db.Model):
@@ -525,7 +598,7 @@ class ReleasePrice(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (
-        db.UniqueConstraint('release_id', 'currency', 'region', name='uq_release_price_currency_region'),
+        db.UniqueConstraint('release_id', 'region', name='uq_release_price_region'),
     )
 
     def __repr__(self):
