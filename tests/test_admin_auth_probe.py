@@ -213,6 +213,83 @@ def test_probe_returns_400_for_non_jwt_bearer(test_app, test_client, admin_user,
 # ---------------------------------------------------------------------------
 
 
+def test_probe_resolves_linked_user_via_es256_jwt(
+    test_app, test_client, admin_user, auth, monkeypatch
+):
+    """End-to-end ES256 path: a Supabase asymmetric token resolves through
+    the probe via JWKS, mirroring the real staging-rehearsal flow.
+
+    This test pins the fix for the staging probe rejection
+    ("The specified alg value is not allowed"). With the JWKS-aware
+    verifier, a real ES256 access token signed by Supabase's project key
+    now verifies and the linked app user is resolved correctly.
+    """
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    private_key = ec.generate_private_key(ec.SECP256R1())
+
+    class _FakeJWK:
+        def __init__(self, key):
+            self.key = key
+
+    class _FakeJWKSClient:
+        def __init__(self, key):
+            self._key = key
+
+        def get_signing_key_from_jwt(self, token):
+            return _FakeJWK(self._key)
+
+    monkeypatch.setattr(
+        "services.supabase_auth_service._get_jwks_client",
+        lambda url: _FakeJWKSClient(private_key.public_key()),
+    )
+
+    _enable(test_app)
+    test_app.config["SUPABASE_URL"] = "https://example.supabase.co"
+    auth.login(username="adminuser", password="password123")
+
+    target_uuid = uuid.uuid4()
+    with test_app.app_context():
+        linked = User(
+            username="es256_admin",
+            email="es256_admin@example.com",
+            first_name="ES256",
+            last_name="Admin",
+            is_email_confirmed=True,
+            is_admin=True,
+        )
+        linked.set_password("password123")
+        db.session.add(linked)
+        db.session.commit()
+        link_app_user_to_supabase(linked.id, target_uuid)
+        linked_id = linked.id
+
+    now = int(time.time())
+    token = jwt.encode(
+        {
+            "sub": str(target_uuid),
+            "email": "es256_admin@example.com",
+            "iat": now,
+            "exp": now + 60,
+            "aud": "authenticated",
+        },
+        private_key,
+        algorithm="ES256",
+        headers={"kid": "test-kid"},
+    )
+
+    response = test_client.get(
+        PROBE_PATH, headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["ok"] is True
+    assert payload["via"] == "supabase"
+    assert payload["user_id"] == linked_id
+    assert payload["is_admin"] is True
+    assert payload["supabase_user_id"] == str(target_uuid)
+
+
 def test_probe_does_not_create_or_modify_user_rows(
     test_app, test_client, admin_user, auth
 ):
