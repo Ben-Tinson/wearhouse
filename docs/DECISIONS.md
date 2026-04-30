@@ -108,6 +108,11 @@ Framing: Phase 2 introduces server-side Supabase Auth **capability** (JWT verifi
   - Why: these slices were kept strictly capability-only and operational-only. No decorator changes; no end-user UX changes; `SUPABASE_AUTH_ENABLED` defaults to false; no schema changes.
   - Implication: production state remains observably unchanged for end users. The CLI can pre-link admins (with the flag still false) so that, when the decorator and probe slices ship, real production data is ready. No admin pre-linking against production should happen until at least one staging dry-run + apply cycle has been audited.
 
+- **Phase 2 probe rehearsal completed successfully against staging** (Status, 2026-04-30).
+  - Decision: the Phase 2 admin probe rehearsal has been executed end-to-end against the staging Supabase Postgres + Supabase Auth target and is recorded as **passed**. Full record: `docs/SUPABASE_AUTH_PHASE2_PROBE_REHEARSAL_OUTCOME_2026-04-30.md`.
+  - Why: validated the safety contract under real conditions — flag-off → flag-on → flag-off cycle behaved correctly, a linked admin's Supabase JWT resolved through `/admin/auth/probe`, and a verifier follow-up to add ES256/JWKS support (Supabase's current asymmetric default) was scoped, merged, and re-validated in the same window without changing any end-user code path.
+  - Implication: the Phase 2 probe path is considered ready. Production may continue with `SUPABASE_AUTH_ENABLED=false` as steady state until a deliberate production probe window is scheduled. End-user Supabase-only sign-in (login, signup, password reset, SSO cutover) is **not** validated by this rehearsal and remains Phase 3 work.
+
 ## Release CSV import
 - **Admin-only preview/confirm flow**: CSV import always previews before apply, and confirm re-validates the submitted CSV text instead of trusting preview state.
 - **Guidance-row compatibility**: the template includes a `__FORMAT_GUIDE__` row and the importer ignores it explicitly.
