@@ -1,28 +1,80 @@
 """Supabase Auth verification helpers — Phase 2 foundation.
 
 This module exposes pure JWT verification helpers. It is **not** wired
-into any live request path in this slice; the resolver shim consults it
-behind the ``SUPABASE_AUTH_ENABLED`` feature flag.
+into any live request path until the resolver / decorator / probe
+consult it behind the ``SUPABASE_AUTH_ENABLED`` feature flag.
+
+Algorithm support:
+
+    - ``HS256`` — legacy Supabase shared-secret tokens. Verified against
+      ``SUPABASE_JWT_SECRET``.
+    - ``ES256`` / ``RS256`` — Supabase asymmetric signing keys (the
+      current default for new projects). Verified against the JWKS
+      published at ``<SUPABASE_URL>/auth/v1/.well-known/jwks.json``.
+
+The token's ``alg`` header drives the choice. We do **not** trust an
+arbitrary algorithm — the value must be in our explicit allowlist
+(``_ASYMMETRIC_ALGS`` ∪ ``_SYMMETRIC_ALGS``) or verification is
+refused. This guards against the historic "alg confusion" class of
+attacks (e.g. an attacker swapping ES256 → HS256 against the public
+key).
 
 Admin-side SDK helpers (identity creation, password-reset trigger) are
-deliberately deferred to the linkage-CLI slice so that the foundation
-does not require the Supabase SDK as a runtime dependency. This keeps
-Phase 2 boot-time and import-time risk minimal.
+the ``SupabaseAdminClient`` REST wrapper used only by the linkage CLI.
 
-Verification is performed against the project's HS256 JWT signing
-secret (``SUPABASE_JWT_SECRET``). Issuer / audience claim hardening is
-intentionally a Phase 3 concern — Phase 2 establishes the verification
-seam, not the full claim-policy.
+Issuer / audience claim hardening is intentionally a Phase 3 concern —
+Phase 2 establishes the verification seam, not the full claim-policy.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from threading import Lock
 from typing import Any, Dict, Optional
 
 import jwt
 import requests
 from flask import current_app
+from jwt import PyJWKClient
+
+
+_ASYMMETRIC_ALGS = frozenset({"ES256", "RS256"})
+_SYMMETRIC_ALGS = frozenset({"HS256"})
+_ALL_ACCEPTED_ALGS = _ASYMMETRIC_ALGS | _SYMMETRIC_ALGS
+
+# Process-wide cache of PyJWKClient instances keyed by JWKS URL. PyJWKClient
+# performs its own per-key caching with a configurable lifespan; we just
+# avoid building a new client per request. The lock keeps the cache safe
+# under threaded WSGI workers (gunicorn sync workers do not share state, but
+# threaded / async workers might).
+_jwks_clients: Dict[str, PyJWKClient] = {}
+_jwks_clients_lock = Lock()
+_JWKS_KEY_LIFESPAN_SECONDS = 3600
+
+
+def _jwks_url_for(supabase_url: str) -> str:
+    """Return the JWKS URL for a Supabase project base URL."""
+    return f"{supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+
+
+def _get_jwks_client(supabase_url: str) -> PyJWKClient:
+    """Return a cached ``PyJWKClient`` for this Supabase project URL.
+
+    Tests monkeypatch this helper to inject a fake client without touching
+    the network. Production code paths consult Supabase's JWKS endpoint
+    once per ``_JWKS_KEY_LIFESPAN_SECONDS`` per signing kid.
+    """
+    url = _jwks_url_for(supabase_url)
+    with _jwks_clients_lock:
+        client = _jwks_clients.get(url)
+        if client is None:
+            client = PyJWKClient(
+                url,
+                cache_keys=True,
+                lifespan=_JWKS_KEY_LIFESPAN_SECONDS,
+            )
+            _jwks_clients[url] = client
+        return client
 
 
 class SupabaseAuthError(Exception):
@@ -81,29 +133,78 @@ def looks_like_jwt(value: Optional[str]) -> bool:
     return value.count(".") == 2
 
 
+def _resolve_verification_key(token: str, alg: str):
+    """Pick the verification key for ``alg``, or raise.
+
+    Asymmetric algs resolve to the JWKS public key matched by ``kid``.
+    Symmetric algs resolve to ``SUPABASE_JWT_SECRET``. Anything else is
+    refused before signature verification is attempted.
+    """
+    if alg in _ASYMMETRIC_ALGS:
+        supabase_url = (current_app.config.get("SUPABASE_URL") or "").strip()
+        if not supabase_url:
+            raise SupabaseAuthMisconfigured(
+                f"SUPABASE_URL is required to verify {alg} JWTs against JWKS"
+            )
+        try:
+            jwks = _get_jwks_client(supabase_url)
+            signing_key = jwks.get_signing_key_from_jwt(token)
+        except jwt.InvalidTokenError as exc:
+            raise SupabaseTokenInvalid(f"could not resolve JWKS signing key: {exc}") from exc
+        except Exception as exc:  # network errors, JWKS parse errors, etc.
+            raise SupabaseTokenInvalid(f"JWKS lookup failed: {exc}") from exc
+        return signing_key.key
+
+    if alg in _SYMMETRIC_ALGS:
+        secret = current_app.config.get("SUPABASE_JWT_SECRET")
+        if not secret:
+            raise SupabaseAuthMisconfigured(
+                f"SUPABASE_JWT_SECRET is required to verify {alg} JWTs"
+            )
+        return secret
+
+    raise SupabaseTokenInvalid(f"unsupported JWT alg: {alg!r}")
+
+
 def verify_access_token(token: str) -> SupabaseClaims:
     """Verify a Supabase access token and return its claims.
 
+    The token's ``alg`` header determines the verification path:
+
+        - ``ES256`` / ``RS256`` → JWKS lookup against
+          ``<SUPABASE_URL>/auth/v1/.well-known/jwks.json``.
+        - ``HS256`` → ``SUPABASE_JWT_SECRET``.
+
     Raises:
         SupabaseAuthDisabled: when the feature flag is off.
-        SupabaseAuthMisconfigured: when ``SUPABASE_JWT_SECRET`` is unset.
-        SupabaseTokenInvalid: for any structural / signature / claims failure.
+        SupabaseAuthMisconfigured: when the credential needed for the
+            chosen alg is not configured (``SUPABASE_URL`` for
+            asymmetric, ``SUPABASE_JWT_SECRET`` for symmetric).
+        SupabaseTokenInvalid: for any structural / signature / claims
+            failure, including an unsupported ``alg``.
     """
     if not is_enabled():
         raise SupabaseAuthDisabled("SUPABASE_AUTH_ENABLED is False")
-
-    secret = current_app.config.get("SUPABASE_JWT_SECRET")
-    if not secret:
-        raise SupabaseAuthMisconfigured("SUPABASE_JWT_SECRET is not configured")
 
     if not looks_like_jwt(token):
         raise SupabaseTokenInvalid("not a structurally valid JWT")
 
     try:
+        header = jwt.get_unverified_header(token)
+    except jwt.InvalidTokenError as exc:
+        raise SupabaseTokenInvalid(f"unparseable JWT header: {exc}") from exc
+
+    alg = header.get("alg")
+    if alg not in _ALL_ACCEPTED_ALGS:
+        raise SupabaseTokenInvalid(f"unsupported JWT alg: {alg!r}")
+
+    verification_key = _resolve_verification_key(token, alg)
+
+    try:
         claims = jwt.decode(
             token,
-            secret,
-            algorithms=["HS256"],
+            verification_key,
+            algorithms=[alg],
             options={"require": ["exp", "sub"], "verify_aud": False},
         )
     except jwt.InvalidTokenError as exc:
