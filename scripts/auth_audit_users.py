@@ -281,7 +281,14 @@ def check_c9_pending_email_collisions(session) -> Dict[str, Any]:
 
 
 def check_c10_unexpected_supabase_links(session) -> Dict[str, Any]:
-    """Sentinel: no rows should have ``supabase_auth_user_id`` set in Phase 1."""
+    """Linked-user count.
+
+    Phase 1 used this as a blocking sentinel (no row should be linked yet).
+    Phase 2 downgrades it to ``info`` because admins are now intentionally
+    pre-linked via ``scripts/link_supabase_identities.py``. We still report
+    the count and rows so operators can see at a glance how many users have
+    been linked, but the audit no longer blocks on it.
+    """
     column = getattr(User, "supabase_auth_user_id", None)
     if column is None:
         # Migration not applied yet. Surface as warning rather than blocking;
@@ -301,8 +308,8 @@ def check_c10_unexpected_supabase_links(session) -> Dict[str, Any]:
     )
     return {
         "id": "C10",
-        "severity": SEVERITY_BLOCKING,
-        "label": "users with non-null supabase_auth_user_id (Phase 1 sentinel)",
+        "severity": SEVERITY_INFO,
+        "label": "users linked to a Supabase Auth identity",
         "count": len(users),
         "rows": [_row_summary(u) for u in users],
     }

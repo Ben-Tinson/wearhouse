@@ -121,8 +121,15 @@ def test_audit_flags_pending_email_collision_as_blocking(test_app):
         assert c9["count"] == 1
 
 
-def test_audit_phase1_sentinel_blocks_when_supabase_link_set(test_app):
-    """C10 must block if any row already has supabase_auth_user_id populated."""
+def test_audit_c10_reports_linked_users_as_info_in_phase2(test_app):
+    """C10 was a Phase 1 blocking sentinel; in Phase 2 it is informational.
+
+    Linked admins are expected once the linkage CLI has been run, so the
+    audit no longer fails the run when any row has supabase_auth_user_id
+    populated. The count and rows are still reported for visibility.
+    """
+    from scripts.auth_audit_users import SEVERITY_INFO, render_report
+
     with test_app.app_context():
         u = _make_user(username="early_link", email="early@example.com")
         u.supabase_auth_user_id = uuid.uuid4()
@@ -130,8 +137,13 @@ def test_audit_phase1_sentinel_blocks_when_supabase_link_set(test_app):
 
         results = run_checks(db.session)
         c10 = _check_by_id(results, "C10")
-        assert c10["severity"] == SEVERITY_BLOCKING
+        assert c10["severity"] == SEVERITY_INFO
         assert c10["count"] == 1
+        assert c10["rows"][0]["user_id"] == u.id
+
+        # Having a linked user no longer fails the audit.
+        exit_code, _rendered = render_report(db.session, output_format="text")
+        assert exit_code == 0
 
 
 def test_audit_flags_orphan_api_tokens_as_blocking(test_app):
