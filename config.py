@@ -39,7 +39,14 @@ class Config:
     # SUPABASE_AUTH_ENABLED is the master kill switch: while False, no
     # Supabase Auth code path executes for any live request. The other
     # vars are only consulted when the flag is True or by the admin-side
-    # linkage CLI (forthcoming).
+    # linkage CLI.
+    #
+    # Operational rule (per docs/DECISIONS.md "Phase 2 ships with
+    # SUPABASE_AUTH_ENABLED=false as production steady state"):
+    # this flag MUST NOT be set to True in any version-controlled file.
+    # It may be set True only in a controlled staging probe window or
+    # the documented 15-minute production probe exercise, then returned
+    # to False. Tests may mutate it on a test-only Flask app instance.
     SUPABASE_URL = os.environ.get('SUPABASE_URL')
     SUPABASE_ANON_KEY = os.environ.get('SUPABASE_ANON_KEY')
     SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
