@@ -53,6 +53,21 @@ class Config:
     SUPABASE_JWT_SECRET = os.environ.get('SUPABASE_JWT_SECRET')
     SUPABASE_AUTH_ENABLED = os.environ.get('SUPABASE_AUTH_ENABLED', 'false').lower() in ('1', 'true', 'yes')
 
+    # Phase 3a (new-user Supabase signup) flags. Defaults are safe-off:
+    # the bridge endpoint introduced in Phase 3a PR 3 returns 404 unless
+    # SUPABASE_NEW_USER_SIGNUP_ENABLED is explicitly set to true. Per
+    # docs/SUPABASE_AUTH_PHASE3A_EXECUTION_PLAN.md §6 these defaults must
+    # never be flipped to true in any version-controlled file; they are
+    # set true only via the deployment-platform secret store at the
+    # Phase 3a launch flag flip, never before. SUPABASE_SSO_PROVIDERS
+    # drives the (forthcoming PR 4) signup UI's provider buttons.
+    # SUPABASE_BRIDGE_REDIRECT_URL is the Supabase-dashboard-configured
+    # callback URL used by OAuth flows shipping in PR 4; the bridge
+    # endpoint itself does not consult it directly.
+    SUPABASE_NEW_USER_SIGNUP_ENABLED = os.environ.get('SUPABASE_NEW_USER_SIGNUP_ENABLED', 'false').lower() in ('1', 'true', 'yes')
+    SUPABASE_SSO_PROVIDERS = os.environ.get('SUPABASE_SSO_PROVIDERS', 'google')
+    SUPABASE_BRIDGE_REDIRECT_URL = os.environ.get('SUPABASE_BRIDGE_REDIRECT_URL')
+
 
 class TestConfig(Config):
     TESTING = True

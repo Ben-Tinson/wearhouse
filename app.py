@@ -14,6 +14,7 @@ from routes.auth_routes import auth_bp
 from routes.main_routes import main_bp
 from routes.news_routes import news_bp
 from routes.sneakers_routes import sneakers_bp
+from routes.supabase_auth_routes import supabase_auth_bp
 from utils.slugs import build_my_sneaker_slug, build_product_key, build_product_slug
 from services.heat_service import heat_label_for_score, heat_tooltip
 from services.steps_seed_service import seed_fake_steps, seed_fake_wear, verify_steps_attribution
@@ -61,6 +62,7 @@ def create_app(config_class=Config): # Existing default
         app.register_blueprint(main_bp)
         app.register_blueprint(news_bp)
         app.register_blueprint(sneakers_bp)
+        app.register_blueprint(supabase_auth_bp)
 
         app.jinja_env.globals["build_my_sneaker_slug"] = build_my_sneaker_slug
         app.jinja_env.globals["build_product_key"] = build_product_key
