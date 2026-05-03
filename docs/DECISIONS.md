@@ -113,6 +113,60 @@ Framing: Phase 2 introduces server-side Supabase Auth **capability** (JWT verifi
   - Why: validated the safety contract under real conditions — flag-off → flag-on → flag-off cycle behaved correctly, a linked admin's Supabase JWT resolved through `/admin/auth/probe`, and a verifier follow-up to add ES256/JWKS support (Supabase's current asymmetric default) was scoped, merged, and re-validated in the same window without changing any end-user code path.
   - Implication: the Phase 2 probe path is considered ready. Production may continue with `SUPABASE_AUTH_ENABLED=false` as steady state until a deliberate production probe window is scheduled. End-user Supabase-only sign-in (login, signup, password reset, SSO cutover) is **not** validated by this rehearsal and remains Phase 3 work.
 
+## Supabase Auth Phase 3 — accepted implementation decisions
+
+Framing: Phase 3 is the first phase that intentionally changes end-user authentication UX. Brand-new users sign up and sign in through Supabase Auth; existing users keep the legacy path and may opt into Supabase on their own terms. Each decision below is recorded as accepted before Phase 3 code work begins. Reference: `docs/SUPABASE_AUTH_PHASE3_IMPLEMENTATION_PLAN.md`.
+
+- **Username remains a required app field in Phase 3** (Accepted, 2026-05-02).
+  - Decision: new Supabase-first users must choose a unique username during signup / onboarding. Username is retained as a first-class Soletrak field rather than auto-generated or removed.
+  - Why: the existing app still depends heavily on usernames across login assumptions, templates, profiles, and user-facing flows (`forms.py::LoginForm`, `routes/auth_routes.py::login`, profile / dashboard templates, `tests/conftest.py` fixtures).
+  - Implication: Phase 3a preserves username semantics and avoids a wider username-removal refactor. The new signup UI must collect a username with the same uniqueness validation as the legacy `RegistrationForm`.
+
+- **Phase 3a launches with email/password + Google SSO only** (Accepted, 2026-05-02).
+  - Decision: Phase 3a ships with two sign-in methods — Supabase email/password and Google SSO. Apple, GitHub, magic link, and other providers are deferred to follow-up work.
+  - Why: this gives a practical low-complexity launch surface while still exercising both the password and SSO paths in production. Adding more providers afterwards is a Supabase-dashboard-plus-config-flag change, not a code change.
+  - Implication: `SUPABASE_SSO_PROVIDERS` defaults to `google` (not `google,apple`) for Phase 3a launch. Apple is a follow-up, not a launch blocker. The signup / login pages render only the configured providers.
+
+- **Phase 3a is strictly new-users only and must not modify existing accounts or data** (Accepted, 2026-05-02).
+  - Decision: Phase 3a applies only to brand-new users. Existing Soletrak accounts, credentials, profile fields, and user-owned data (collection, wishlist, sneakers, tokens, admin status, preferences) remain untouched unless the user later enters an explicit linking flow in Phase 3b.
+  - Why: this keeps the first rollout low-risk and avoids accidental migration, duplicate-account creation, or silent overwrites of legacy users' data.
+  - Implication: no silent linking, no backfill, no deletion, no rewriting of existing user rows or related domain data in Phase 3a. The bridge endpoint must refuse to operate on an existing legacy user row in Phase 3a (the consent linkage flow is a Phase 3b concern).
+
+- **Existing-user linking requires explicit consent plus legacy re-authentication** (Accepted, 2026-05-02).
+  - Decision: a Supabase-authenticated user whose email matches an existing Soletrak account is **not** linked automatically. Linking requires (a) an explicit consent step, AND (b) one-time successful authentication against the existing legacy Soletrak account (username + legacy password) before `user.supabase_auth_user_id` is written.
+  - Why: email match alone is not a strong enough trust signal during transition — an attacker who controls a Supabase identity for someone else's email could otherwise hijack the linkage. Requiring a one-time legacy re-auth proves possession of the existing account.
+  - Implication: email match becomes a linkage *challenge*, not an automatic link. Users who have forgotten their legacy password must complete the existing legacy recovery flow first, then return and complete linkage. The bridge service raises a typed error on email match; the front-end shows the consent + legacy-auth challenge.
+
+- **Supabase sessions bridge into Flask-Login rather than replacing request handling immediately** (Accepted, 2026-05-02).
+  - Decision: Phase 3 uses a Supabase-token-to-Flask-Login bridge. After Supabase identity is verified, the bridge calls `login_user(app_user)` to issue a normal Flask-Login session. The rest of the app continues to consult `current_user` exactly as today.
+  - Why: this is the lowest-risk way to adopt Supabase-first auth without rewriting 200+ `current_user`-using routes, decorators, and templates. It also preserves the `UserApiToken` mobile contract, the admin gating model, and every existing session-cookie assumption.
+  - Implication: a verified Supabase identity is converted into a normal app session at the bridge endpoint; downstream request handling, decorators, and template `current_user` references remain stable. Phase 3 does not migrate any existing route to a JWT-on-every-request model.
+
+- **New-user onboarding must remain extensible for future minimum fields** (Accepted, 2026-05-02).
+  - Decision: Phase 3a onboarding collects the currently required Soletrak profile fields (first name, last name, region, marketing opt-in, username), but the onboarding schema is designed to be extensible so future required launch / commercial fields (e.g. free vs paid account state, plan tier, subscription status) can be added later without changing the core auth architecture.
+  - Why: account-tier and launch-commercial logic are not yet final, but Phase 3 should not block them. Treating onboarding as an app-owned profile completion step (separate from Supabase identity verification) keeps it independently extensible.
+  - Implication: onboarding is implemented as a Soletrak-owned post-Supabase-auth profile-completion step, not as a fixed minimal auth-only form. Adding a new required field later is a forms-plus-template change, not an auth-architecture change.
+
+- **Legacy login remains enabled through the Phase 3 transition** (Accepted, 2026-05-02).
+  - Decision: legacy username + password login (`/login`, `LoginForm`, `routes/auth_routes.py::login`, `User.password_hash`) stays enabled through Phase 3a and Phase 3b. `LEGACY_LOGIN_ENABLED` defaults to `true` and is not flipped off as part of Phase 3.
+  - Why: existing users still depend on the legacy path until linking / migration is complete; flipping it off prematurely would lock out the long tail of unlinked users.
+  - Implication: legacy login sunset is later work (Phase 3d planning, Phase 4 removal). Phase 3a / 3b never depend on disabling legacy login.
+
+- **Password reset behaviour splits by account state** (Accepted, 2026-05-02).
+  - Decision: unlinked legacy users continue using the existing `/reset-password-request` + itsdangerous-token flow. Users with `user.supabase_auth_user_id IS NOT NULL` are directed to the Supabase password-reset flow instead. Soletrak does not maintain two concurrent password authorities for a single account once linked.
+  - Why: a single password authority per account state reduces user confusion and support burden, and avoids the failure mode where a user resets via the legacy path but then signs in via Supabase with an unchanged Supabase password.
+  - Implication: linked-state guards must be added to `auth_routes.reset_password_request`, `auth_routes.reset_password_with_token`, and the profile email-change endpoints in the implementation phase. The guards short-circuit with a friendly "your account uses Supabase login; please reset there" message and do not 500.
+
+- **Brand-new Supabase-first users still create app-owned User rows** (Accepted, 2026-05-02).
+  - Decision: every successful brand-new Supabase-first signup must still create a normal app-owned `User` row with `user.supabase_auth_user_id` populated. The bridge does not treat Supabase as a substitute for the app-owned `User` model.
+  - Why: the app-owned `user` table remains central to roles (`is_admin`), preferences (`preferred_currency`, `preferred_region`, `timezone`), ownership (collection, wishlist, sneakers, tokens, expenses), and app domain behaviour. None of these can move into Supabase Auth metadata without a much larger refactor.
+  - Implication: Supabase Auth is the identity source; the app-owned `User` row remains the profile / account / authorization anchor. Bridge-side row creation is a sanctioned writer of `user.supabase_auth_user_id` (alongside the linkage CLI), and is the only Phase 3-introduced writer.
+
+- **Production rollout remains phased** (Accepted, 2026-05-02).
+  - Decision: keep the staged rollout shape described in `docs/SUPABASE_AUTH_PHASE3_IMPLEMENTATION_PLAN.md` — Phase 3a new-user-only launch → Phase 3b existing-user opt-in linking → Phase 3c broader migration / backfill → Phase 3d legacy sunset planning. No phase is skipped; production does not jump directly from today's state to Supabase-only-for-all-users in one cutover.
+  - Why: each sub-phase has a clear rollback point (a single feature flag) and a small enough blast radius to investigate and reverse if something misbehaves. Cutover-in-one risks admin lockout, mobile-token regression, and data loss simultaneously.
+  - Implication: production rollouts are gated by `SUPABASE_NEW_USER_SIGNUP_ENABLED` (3a), `SUPABASE_EXISTING_USER_LINK_ENABLED` (3b), the cohort backfill CLI (3c), and `LEGACY_LOGIN_DEPRECATED` / `LEGACY_LOGIN_ENABLED` (3d). Each flag flip is an explicit, auditable operator action.
+
 ## Release CSV import
 - **Admin-only preview/confirm flow**: CSV import always previews before apply, and confirm re-validates the submitted CSV text instead of trusting preview state.
 - **Guidance-row compatibility**: the template includes a `__FORMAT_GUIDE__` row and the importer ignores it explicitly.
