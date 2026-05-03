@@ -20,6 +20,7 @@ from extensions import db, migrate as migrate_extension
 
 
 PHASE1_REVISION = "b3c4d5e6f7a8"
+PHASE1_PARENT_REVISION = "a7c3d9e4f1b2"
 INDEX_NAME = "uq_user_supabase_auth_user_id"
 
 
@@ -71,9 +72,11 @@ def test_phase1_migration_round_trip():
             assert bool(indexes[INDEX_NAME]["unique"]) is True
             assert indexes[INDEX_NAME]["column_names"] == ["supabase_auth_user_id"]
 
-            # Downgrade exactly the Phase 1 revision and verify both the
-            # column and the partial unique index disappear.
-            migrate_downgrade(revision="-1")
+            # Downgrade past the Phase 1 revision (pinned to its
+            # explicit parent so this test stays correct as later
+            # migrations are added on top) and verify both the column
+            # and the partial unique index disappear.
+            migrate_downgrade(revision=PHASE1_PARENT_REVISION)
             assert "supabase_auth_user_id" not in _column_names("user")
             assert INDEX_NAME not in _index_names("user")
 
