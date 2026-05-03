@@ -16,7 +16,11 @@ wishlist_items = db.Table('wishlist_items',
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)
+    # Nullable from Phase 3a onwards: Supabase-first users have no
+    # app-managed password. ``check_password`` returns False on a NULL
+    # hash so a Supabase-first row can never authenticate via the legacy
+    # ``LoginForm`` path. Existing rows keep their hashes.
+    password_hash = db.Column(db.String(256), nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
@@ -36,6 +40,14 @@ class User(db.Model, UserMixin):
     # partial index defined in the migration (WHERE supabase_auth_user_id IS NOT NULL).
     supabase_auth_user_id = db.Column(SA_Uuid(as_uuid=True), nullable=True)
 
+    # Phase 3a columns. Dormant in PR 1 of Phase 3a (no writers yet);
+    # the session bridge introduced in subsequent PRs is the live writer.
+    # ``last_login_at`` is updated by the bridge on every Supabase
+    # sign-in. ``auth_provider`` records the user's authentication path
+    # (``legacy``, ``supabase_email``, ``supabase_oauth_google``, etc.).
+    last_login_at = db.Column(db.DateTime, nullable=True)
+    auth_provider = db.Column(db.String(40), nullable=True)
+
 
     sneakers = db.relationship('Sneaker', backref='owner', lazy=True)
     wishlist = db.relationship('Release', secondary=wishlist_items, lazy='subquery',
@@ -52,6 +64,13 @@ class User(db.Model, UserMixin):
         self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
 
     def check_password(self, password):
+        # Defensive guard introduced with Phase 3a: a row whose
+        # ``password_hash`` is NULL (Supabase-first user) must never
+        # authenticate via the legacy ``LoginForm`` path. Without this
+        # guard, ``check_password_hash`` would raise on a None hash;
+        # returning False explicitly makes the failure mode predictable.
+        if self.password_hash is None:
+            return False
         return check_password_hash(self.password_hash, password)
 
     def get_reset_password_token(self, expires_sec=1800): # Token expires in 30 minutes (1800 seconds)
