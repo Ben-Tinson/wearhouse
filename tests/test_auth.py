@@ -220,3 +220,104 @@ def test_logout_functionality(test_client, auth, init_database):
     response_after_logout = test_client.get('/my-collection')
     # Assert that this now results in a redirect (status 302) to the login page
     assert response_after_logout.status_code == 302
+
+
+# ---------------------------------------------------------------------------
+# Phase 3a PR 5 — /register redirect behaviour
+#
+# When SUPABASE_NEW_USER_SIGNUP_ENABLED is True, anonymous /register
+# visitors are forwarded to the new Supabase signup page. When the flag
+# is False (the code default), the legacy form continues to serve.
+# Authenticated users always short-circuit to main.home regardless of
+# the flag — /register never bounces a signed-in user toward signup.
+# ---------------------------------------------------------------------------
+
+
+def test_register_renders_legacy_form_when_phase3a_flag_off(test_app, test_client):
+    test_app.config['SUPABASE_NEW_USER_SIGNUP_ENABLED'] = False
+    response = test_client.get('/register')
+    assert response.status_code == 200
+    # The legacy template's page title is 'Register'.
+    assert b'Register' in response.data
+
+
+def test_register_get_redirects_to_supabase_signup_when_flag_on(test_app, test_client):
+    test_app.config['SUPABASE_NEW_USER_SIGNUP_ENABLED'] = True
+    response = test_client.get('/register', follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers.get('Location', '').endswith('/auth/supabase/signup')
+
+
+def test_register_post_redirects_to_supabase_signup_when_flag_on(test_app, test_client):
+    """POST is redirected before form processing — the legacy form
+    never sees the body when the flag is on."""
+    test_app.config['SUPABASE_NEW_USER_SIGNUP_ENABLED'] = True
+    response = test_client.post(
+        '/register',
+        data={
+            'username': 'redirected_user',
+            'email': 'redirect@example.com',
+            'first_name': 'Redirect',
+            'last_name': 'User',
+            'password': 'password123',
+            'confirm_password': 'password123',
+            'preferred_region': 'UK',
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers.get('Location', '').endswith('/auth/supabase/signup')
+
+    # Critical: the legacy form processing must not have created a User row.
+    with test_app.app_context():
+        assert User.query.filter_by(username='redirected_user').first() is None
+
+
+def test_register_redirect_does_not_apply_to_authenticated_users(
+    test_app, test_client, init_database, auth
+):
+    """An already-authenticated user hitting /register still goes to
+    main.home (existing behaviour); they are not bounced toward signup."""
+    test_app.config['SUPABASE_NEW_USER_SIGNUP_ENABLED'] = True
+    auth.login(username='testuser', password='password123')
+    response = test_client.get('/register', follow_redirects=False)
+    assert response.status_code == 302
+    location = response.headers.get('Location', '')
+    assert '/auth/supabase/signup' not in location
+    # main.home — could resolve to '/' or '/home' depending on config; the
+    # important assertion is that the redirect is NOT to the Supabase
+    # signup page.
+
+
+def test_legacy_login_unchanged_under_phase3a_flag(test_app, test_client, init_database):
+    """Legacy /login behaviour is not touched by PR 5 regardless of the
+    Phase 3a flag state."""
+    test_app.config['SUPABASE_NEW_USER_SIGNUP_ENABLED'] = True
+    response = test_client.get('/login')
+    assert response.status_code == 200
+    # Legacy LoginForm exposes a 'username' field.
+    assert b'username' in response.data.lower()
+
+
+def test_register_full_legacy_flow_still_works_when_flag_off(test_app, test_client):
+    """End-to-end legacy registration must continue to work with the
+    Phase 3a flag off (the production steady state until rollout)."""
+    test_app.config['SUPABASE_NEW_USER_SIGNUP_ENABLED'] = False
+    response = test_client.post(
+        '/register',
+        data={
+            'username': 'legacy_route_user',
+            'email': 'legacy_route@example.com',
+            'first_name': 'Legacy',
+            'last_name': 'Route',
+            'password': 'password123',
+            'confirm_password': 'password123',
+            'preferred_region': 'EU',
+        },
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    with test_app.app_context():
+        created = User.query.filter_by(username='legacy_route_user').first()
+        assert created is not None
+        assert created.preferred_region == 'EU'

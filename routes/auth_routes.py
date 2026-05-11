@@ -55,6 +55,15 @@ def register():
     if current_user.is_authenticated:
         return redirect(url_for('main.home'))
 
+    # Phase 3a: when the new-user Supabase signup launch flag is on,
+    # forward anonymous /register visitors to the Supabase signup page.
+    # The legacy form continues to serve when the flag is off (the
+    # default in code per docs/SUPABASE_AUTH_PHASE3A_EXECUTION_PLAN.md
+    # §6). Authenticated users still short-circuit to main.home above
+    # so /register never bounces a signed-in user toward signup.
+    if current_app.config.get('SUPABASE_NEW_USER_SIGNUP_ENABLED'):
+        return redirect(url_for('supabase_auth.supabase_signup'))
+
     form = RegistrationForm()
     if form.validate_on_submit():
         username_from_form = form.username.data
