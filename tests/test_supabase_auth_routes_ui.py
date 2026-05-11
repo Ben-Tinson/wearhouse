@@ -226,10 +226,13 @@ def test_legacy_register_unchanged_when_flag_off(test_app, test_client):
     assert b"Register" in response.data
 
 
-def test_legacy_register_still_renders_when_flag_on(test_app, test_client):
-    """No /register redirect ships in PR 4. Legacy registration must still
-    render even when the Supabase signup flag is on."""
+def test_legacy_register_redirects_to_supabase_signup_when_flag_on(test_app, test_client):
+    """PR 5 (this slice) introduces the `/register` → `/auth/supabase/signup`
+    redirect. PR 4's earlier `no-redirect-yet` assertion is replaced by
+    this PR 5 contract. The end-to-end behaviour is still covered by
+    `tests/test_auth.py::test_register_get_redirects_to_supabase_signup_when_flag_on`
+    — this test ensures the UI suite is kept in sync."""
     _enable(test_app)
-    response = test_client.get("/register")
-    assert response.status_code == 200
-    assert b"Register" in response.data
+    response = test_client.get("/register", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers.get("Location", "").endswith("/auth/supabase/signup")
