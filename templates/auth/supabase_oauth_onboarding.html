@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} — Soletrak{% endblock %}
+
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <h2 class="mb-2 text-center">Almost done</h2>
+        <p class="text-muted text-center mb-4">
+            A few details so we can set up your Soletrak account.
+        </p>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+
+                <form data-supabase-onboarding-form novalidate>
+                    <div class="mb-3">
+                        <label for="onboarding-email" class="form-label">Email</label>
+                        <input type="email"
+                               class="form-control"
+                               id="onboarding-email"
+                               name="email"
+                               data-supabase-email-readonly
+                               readonly
+                               disabled>
+                        <div class="form-text">
+                            Email is set by your sign-in provider and can't be changed here.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="onboarding-username" class="form-label">Username</label>
+                        <input type="text"
+                               class="form-control"
+                               id="onboarding-username"
+                               name="username"
+                               required
+                               minlength="4"
+                               maxlength="80"
+                               autocomplete="username"
+                               placeholder="Choose a username">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-sm-6 mb-3">
+                            <label for="onboarding-first-name" class="form-label">First name</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="onboarding-first-name"
+                                   name="first_name"
+                                   required
+                                   maxlength="50"
+                                   autocomplete="given-name">
+                        </div>
+                        <div class="col-sm-6 mb-3">
+                            <label for="onboarding-last-name" class="form-label">Last name</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="onboarding-last-name"
+                                   name="last_name"
+                                   required
+                                   maxlength="50"
+                                   autocomplete="family-name">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="onboarding-region" class="form-label">Region</label>
+                        <select class="form-select"
+                                id="onboarding-region"
+                                name="preferred_region"
+                                required>
+                            <option value="UK">UK</option>
+                            <option value="US">US</option>
+                            <option value="EU">EU</option>
+                        </select>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input type="checkbox"
+                               class="form-check-input"
+                               id="onboarding-marketing"
+                               name="marketing_opt_in">
+                        <label class="form-check-label" for="onboarding-marketing">
+                            I'd like to receive marketing communications from Soletrak.
+                        </label>
+                    </div>
+
+                    <button type="submit"
+                            class="btn btn-primary w-100"
+                            data-testid="supabase-onboarding-submit">
+                        Finish setup
+                    </button>
+                </form>
+
+                {# Populated by supabase_auth_client.js when bridge call fails. #}
+                <div class="mt-3" data-supabase-status hidden></div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script id="supabase-auth-config" type="application/json">{{ supabase_config | tojson }}</script>
+<script src="{{ url_for('static', filename='js/supabase_auth_client.js') }}" defer></script>
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        if (window.SoletrakSupabaseAuth && typeof window.SoletrakSupabaseAuth.initOnboarding === 'function') {
+            window.SoletrakSupabaseAuth.initOnboarding();
+        }
+    });
+</script>
+{% endblock %}
