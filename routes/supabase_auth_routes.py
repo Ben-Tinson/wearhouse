@@ -16,7 +16,15 @@ client glue.
 
 from __future__ import annotations
 
-from flask import Blueprint, abort, current_app, jsonify, request
+from flask import (
+    Blueprint,
+    abort,
+    current_app,
+    jsonify,
+    render_template,
+    request,
+    url_for,
+)
 from flask_login import login_user
 
 from extensions import csrf
@@ -160,3 +168,120 @@ def bridge():
         "source": outcome.source,
         "redirect": "/dashboard",
     }), 200
+
+
+# ---------------------------------------------------------------------------
+# Browser-facing HTML routes — Phase 3a PR 4
+#
+# These pages serve the new-user Supabase Auth UX. They all 404 when
+# SUPABASE_NEW_USER_SIGNUP_ENABLED is False. They render Supabase JS
+# SDK-driven pages whose only server-side write path is back through
+# the JSON bridge endpoint above (POST /bridge). The HTML routes
+# themselves create no DB rows.
+#
+# The non-secret config (Supabase project URL, anon key, configured SSO
+# providers, bridge endpoint URL) is injected into each page as a small
+# JSON blob the browser-side ``supabase_auth_client.js`` consumes. The
+# service role key and JWT secret are server-only and never reach a
+# template.
+# ---------------------------------------------------------------------------
+
+
+def _public_client_config() -> dict:
+    """Build the browser-safe config blob for the Supabase JS SDK.
+
+    Includes only values that are intended to be visible to the user
+    agent: the Supabase project URL, the publishable anon key, the list
+    of configured SSO providers, the configured browser-side bridge
+    redirect URL, and the absolute URLs of our four Phase 3a HTML
+    endpoints. Sensitive values (service role key, JWT secret) are
+    never included.
+    """
+    raw_providers = (current_app.config.get("SUPABASE_SSO_PROVIDERS") or "").strip()
+    providers = [p.strip().lower() for p in raw_providers.split(",") if p.strip()]
+    return {
+        "supabase_url": current_app.config.get("SUPABASE_URL") or "",
+        "supabase_anon_key": current_app.config.get("SUPABASE_ANON_KEY") or "",
+        "sso_providers": providers,
+        "bridge_redirect_url": current_app.config.get("SUPABASE_BRIDGE_REDIRECT_URL") or "",
+        "endpoints": {
+            "bridge": url_for("supabase_auth.bridge"),
+            "signup": url_for("supabase_auth.supabase_signup"),
+            "confirm": url_for("supabase_auth.supabase_confirm"),
+            "oauth_callback": url_for("supabase_auth.supabase_oauth_callback"),
+            "onboarding": url_for("supabase_auth.supabase_onboarding"),
+            "dashboard": "/dashboard",
+        },
+    }
+
+
+@supabase_auth_bp.route("/signup", methods=["GET"])
+def supabase_signup():
+    """New-user signup entry point.
+
+    Renders the email/password form plus one button per configured SSO
+    provider. The page itself performs no server-side authentication or
+    user creation; the Supabase JS SDK drives the email/password sign-up
+    or OAuth handoff, and the resulting access token is POSTed to
+    ``/auth/supabase/bridge`` (the JSON endpoint above).
+    """
+    _flag_or_404()
+    return render_template(
+        "auth/supabase_signup.html",
+        title="Sign up",
+        supabase_config=_public_client_config(),
+    )
+
+
+@supabase_auth_bp.route("/confirm", methods=["GET"])
+def supabase_confirm():
+    """Landing page for email/password confirmation links.
+
+    Supabase sends users here from the confirmation email with the
+    access token in the URL fragment. The Supabase JS SDK picks up the
+    token, reads the profile fields stashed in user_metadata at signup,
+    and POSTs them to the bridge endpoint. No server-side state is
+    written by this route — it is a pure render plus a JS handler.
+    """
+    _flag_or_404()
+    return render_template(
+        "auth/supabase_confirm.html",
+        title="Confirming your email",
+        supabase_config=_public_client_config(),
+    )
+
+
+@supabase_auth_bp.route("/oauth-callback", methods=["GET"])
+def supabase_oauth_callback():
+    """Landing page for Supabase OAuth (Google etc.) callbacks.
+
+    Supabase brokers the OAuth flow and redirects here with the access
+    token in the URL fragment. The JS handler POSTs to the bridge
+    endpoint **without** a profile payload first; if the bridge replies
+    400 invalid_profile (i.e. this is a first-time OAuth user) it
+    stashes the token in sessionStorage and redirects to the onboarding
+    page.
+    """
+    _flag_or_404()
+    return render_template(
+        "auth/supabase_oauth_callback.html",
+        title="Completing sign-in",
+        supabase_config=_public_client_config(),
+    )
+
+
+@supabase_auth_bp.route("/onboarding", methods=["GET"])
+def supabase_onboarding():
+    """Profile-completion form for first-time OAuth sign-ups.
+
+    Email is pre-filled (read-only) from the JWT once the JS handler
+    extracts it. Submission POSTs to the bridge endpoint with the
+    access token (recovered from sessionStorage) plus the collected
+    profile fields.
+    """
+    _flag_or_404()
+    return render_template(
+        "auth/supabase_oauth_onboarding.html",
+        title="Complete your profile",
+        supabase_config=_public_client_config(),
+    )
