@@ -291,7 +291,7 @@ def test_bridge_200_creates_new_user_and_issues_session(
     assert payload["ok"] is True
     assert payload["was_created"] is True
     assert payload["source"] == "bridge_signup"
-    assert payload["redirect"] == "/dashboard"
+    assert payload["redirect"] == "/"  # main.home
 
     with test_app.app_context():
         new_user = User.query.filter_by(username="brandnew").one()
@@ -336,7 +336,7 @@ def test_bridge_200_for_returning_user_does_not_recreate(
     assert payload["was_created"] is False
     assert payload["source"] == "bridge_login"
     assert payload["user_id"] == existing_id
-    assert payload["redirect"] == "/dashboard"
+    assert payload["redirect"] == "/"  # main.home
 
     with test_app.app_context():
         assert User.query.count() == before_count
