@@ -27,6 +27,8 @@ from flask import (
 )
 from flask_login import login_user
 
+from sqlalchemy import func, or_
+
 from extensions import csrf
 from models import User
 from services.supabase_session_bridge import (
@@ -199,6 +201,50 @@ def check_username():
     return jsonify({"available": True, "reason": None}), 200
 
 
+@supabase_auth_bp.route("/check-email", methods=["GET"])
+def check_email():
+    """Lightweight availability check used by the signup page's JS to
+    surface email collisions earlier than bridge time.
+
+    Response::
+
+        {"available": true|false, "reason": "format"|"in_use"|null}
+
+    The ``in_use`` reason is **intentionally non-specific**: it covers
+    legacy users with this email, linked existing users, Supabase-first
+    users created via the bridge, and in-flight legacy email changes
+    (``User.pending_email``) — all conflated into one answer so a
+    probing caller cannot distinguish those states. The signup page's
+    JS translates the reason into safer copy:
+    *"This email can't be used for a new account. Try signing in or
+    use another email."*
+
+    Email enumeration risk note: this endpoint can confirm whether a
+    specific guessed email exists in Soletrak's app `user` table. The
+    legacy ``/register`` form has the same property (POST returns the
+    same flash for a taken email). Rate-limiting on the entire Phase 3a
+    Supabase Auth blueprint is a separate Phase 4 concern noted in
+    ``docs/SUPABASE_AUTH_PHASE3_IMPLEMENTATION_PLAN.md`` §15.16.
+    """
+    _flag_or_404()
+    raw = (request.args.get("email") or "").strip()
+    if not raw or "@" not in raw or len(raw) > 320:
+        return jsonify({"available": False, "reason": "format"}), 200
+    normalised = raw.lower()
+    existing = (
+        User.query.filter(
+            or_(
+                func.lower(User.email) == normalised,
+                func.lower(User.pending_email) == normalised,
+            )
+        )
+        .first()
+    )
+    if existing is not None:
+        return jsonify({"available": False, "reason": "in_use"}), 200
+    return jsonify({"available": True, "reason": None}), 200
+
+
 # ---------------------------------------------------------------------------
 # Browser-facing HTML routes — Phase 3a PR 4
 #
@@ -240,6 +286,7 @@ def _public_client_config() -> dict:
             "oauth_callback": url_for("supabase_auth.supabase_oauth_callback"),
             "onboarding": url_for("supabase_auth.supabase_onboarding"),
             "check_username": url_for("supabase_auth.check_username"),
+            "check_email": url_for("supabase_auth.check_email"),
             "dashboard": url_for("main.home"),
         },
     }

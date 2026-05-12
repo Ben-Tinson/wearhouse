@@ -60,7 +60,9 @@
                                name="email"
                                required
                                autocomplete="email"
-                               placeholder="your@email.com">
+                               placeholder="your@email.com"
+                               aria-describedby="supabase-email-feedback">
+                        <div class="form-text" id="supabase-email-feedback" data-email-feedback></div>
                     </div>
 
                     <div class="mb-3">
@@ -74,6 +76,7 @@
                                    minlength="8"
                                    autocomplete="new-password"
                                    placeholder="Choose a password (min. 8 chars)"
+                                   aria-describedby="supabase-password-feedback"
                                    data-password-input>
                             <button type="button"
                                     class="btn btn-outline-secondary"
@@ -82,6 +85,7 @@
                                 Show
                             </button>
                         </div>
+                        <div class="form-text" id="supabase-password-feedback" data-password-feedback></div>
                     </div>
 
                     <div class="mb-3">
