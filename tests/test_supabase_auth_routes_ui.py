@@ -185,6 +185,7 @@ def test_signup_page_injects_public_config_blob(test_app, test_client):
     assert config["endpoints"]["onboarding"] == "/auth/supabase/onboarding"
     assert config["endpoints"]["dashboard"] == "/"  # main.home
     assert config["endpoints"]["check_username"] == "/auth/supabase/check-username"
+    assert config["endpoints"]["check_email"] == "/auth/supabase/check-email"
 
 
 def test_signup_page_never_leaks_service_role_key_or_jwt_secret(test_app, test_client):
@@ -399,3 +400,184 @@ def test_login_page_does_not_leak_supabase_secrets_when_flag_on(test_app, test_c
     assert "LOGIN-JWT-SECRET-LEAK" not in body
     # The publishable anon key is allowed to appear.
     assert "anon-public" in body
+
+
+# ---------------------------------------------------------------------------
+# Signup-validation polish slice — email pre-check endpoint
+# ---------------------------------------------------------------------------
+
+
+def test_check_email_returns_404_when_flag_off(test_app, test_client):
+    _disable(test_app)
+    response = test_client.get(
+        "/auth/supabase/check-email?email=new@example.com"
+    )
+    assert response.status_code == 404
+
+
+def test_check_email_reports_available_for_new_email(test_app, test_client):
+    _enable(test_app)
+    response = test_client.get(
+        "/auth/supabase/check-email?email=brand-new@example.com"
+    )
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload == {"available": True, "reason": None}
+
+
+def test_check_email_reports_in_use_for_legacy_user(test_app, test_client):
+    from extensions import db
+    from models import User
+
+    _enable(test_app)
+    with test_app.app_context():
+        user = User(
+            username="claimed_email_user",
+            email="claimed@example.com",
+            first_name="Claimed",
+            last_name="Email",
+            is_email_confirmed=True,
+        )
+        user.set_password("password123")
+        db.session.add(user)
+        db.session.commit()
+
+    response = test_client.get(
+        "/auth/supabase/check-email?email=claimed@example.com"
+    )
+    payload = response.get_json()
+    assert payload == {"available": False, "reason": "in_use"}
+
+
+def test_check_email_is_case_insensitive(test_app, test_client):
+    from extensions import db
+    from models import User
+
+    _enable(test_app)
+    with test_app.app_context():
+        user = User(
+            username="case_email_user",
+            email="MixedCase@Example.com",
+            first_name="Case",
+            last_name="Email",
+            is_email_confirmed=True,
+        )
+        user.set_password("password123")
+        db.session.add(user)
+        db.session.commit()
+
+    response = test_client.get(
+        "/auth/supabase/check-email?email=mixedcase@example.com"
+    )
+    payload = response.get_json()
+    assert payload == {"available": False, "reason": "in_use"}
+
+
+def test_check_email_flags_pending_email_as_in_use(test_app, test_client):
+    """An in-flight legacy email-change must not be reusable for signup."""
+    from extensions import db
+    from models import User
+
+    _enable(test_app)
+    with test_app.app_context():
+        user = User(
+            username="pending_email_owner",
+            email="current@example.com",
+            first_name="Pending",
+            last_name="Email",
+            is_email_confirmed=True,
+            pending_email="incoming@example.com",
+        )
+        user.set_password("password123")
+        db.session.add(user)
+        db.session.commit()
+
+    response = test_client.get(
+        "/auth/supabase/check-email?email=incoming@example.com"
+    )
+    payload = response.get_json()
+    assert payload == {"available": False, "reason": "in_use"}
+
+
+def test_check_email_reports_format_for_blank(test_app, test_client):
+    _enable(test_app)
+    response = test_client.get("/auth/supabase/check-email?email=")
+    payload = response.get_json()
+    assert payload == {"available": False, "reason": "format"}
+
+
+def test_check_email_reports_format_for_malformed_input(test_app, test_client):
+    _enable(test_app)
+    response = test_client.get("/auth/supabase/check-email?email=not-an-email")
+    payload = response.get_json()
+    assert payload == {"available": False, "reason": "format"}
+
+
+def test_check_email_reports_format_for_overly_long_input(test_app, test_client):
+    """RFC 5321 caps the total email length at 320 chars."""
+    _enable(test_app)
+    too_long = "a" * 310 + "@example.com"
+    response = test_client.get(
+        "/auth/supabase/check-email?email=" + too_long
+    )
+    payload = response.get_json()
+    assert payload == {"available": False, "reason": "format"}
+
+
+def test_check_email_in_use_is_indistinguishable_between_legacy_and_supabase_first(
+    test_app, test_client
+):
+    """Both a legacy user and a Supabase-first user with the same email
+    yield identical ``in_use`` responses, defending against probers
+    distinguishing the two states."""
+    import uuid
+    from extensions import db
+    from models import User
+
+    _enable(test_app)
+    with test_app.app_context():
+        legacy = User(
+            username="legacy_dup",
+            email="legacy_dup@example.com",
+            first_name="Legacy",
+            last_name="Dup",
+            is_email_confirmed=True,
+        )
+        legacy.set_password("password123")
+        supabase_first = User(
+            username="supafirst_dup",
+            email="supafirst_dup@example.com",
+            first_name="Supa",
+            last_name="Dup",
+            is_email_confirmed=True,
+            password_hash=None,
+            auth_provider="supabase_email",
+            supabase_auth_user_id=uuid.uuid4(),
+        )
+        db.session.add_all([legacy, supabase_first])
+        db.session.commit()
+
+    r1 = test_client.get("/auth/supabase/check-email?email=legacy_dup@example.com")
+    r2 = test_client.get("/auth/supabase/check-email?email=supafirst_dup@example.com")
+    assert r1.get_json() == r2.get_json() == {"available": False, "reason": "in_use"}
+
+
+# ---------------------------------------------------------------------------
+# Signup-validation polish slice — template markers
+# ---------------------------------------------------------------------------
+
+
+def test_signup_page_has_email_feedback_node(test_app, test_client):
+    _enable(test_app)
+    response = test_client.get("/auth/supabase/signup")
+    body = response.data.decode("utf-8")
+    assert "data-email-feedback" in body
+    assert 'aria-describedby="supabase-email-feedback"' in body
+
+
+def test_signup_page_has_password_feedback_node(test_app, test_client):
+    _enable(test_app)
+    response = test_client.get("/auth/supabase/signup")
+    body = response.data.decode("utf-8")
+    assert "data-password-feedback" in body
+    assert 'aria-describedby="supabase-password-feedback"' in body

@@ -184,6 +184,25 @@
         });
     }
 
+    function checkEmailAvailability(config, email) {
+        if (!config.endpoints || !config.endpoints.check_email) {
+            return Promise.resolve({available: true, reason: null});
+        }
+        var url = config.endpoints.check_email
+            + "?email=" + encodeURIComponent(email);
+        return fetch(url, {
+            credentials: "same-origin",
+            headers: {"Accept": "application/json"}
+        }).then(function (response) {
+            if (!response.ok) {
+                return {available: true, reason: null};
+            }
+            return response.json();
+        }).catch(function () {
+            return {available: true, reason: null};
+        });
+    }
+
     // ---------------------------------------------------------------
     // /signup
     // ---------------------------------------------------------------
@@ -198,6 +217,16 @@
         var status = document.querySelector("[data-supabase-status]");
         var usernameInput = document.getElementById("supabase-username");
         var usernameFeedback = document.querySelector("[data-username-feedback]");
+        var emailInput = document.getElementById("supabase-email");
+        var emailFeedback = document.querySelector("[data-email-feedback]");
+        var passwordInput = document.getElementById("supabase-password");
+        var passwordFeedback = document.querySelector("[data-password-feedback]");
+
+        // Tracks the latest email pre-check result so the submit handler
+        // can block before driving Supabase to create an identity that
+        // would only fail at bridge time. Authoritative answers still
+        // come from the bridge itself.
+        var lastEmailCheck = {value: null, available: true, reason: null};
 
         initPasswordToggles();
 
@@ -208,6 +237,78 @@
             confirmInput.addEventListener("input", function () {
                 markConfirmPasswordMismatch(form, !passwordsMatch(form));
             });
+        }
+
+        // Async email availability check on blur. The bridge remains
+        // the authoritative final guard; this is a friendly pre-flight
+        // that conflates "legacy", "linked", "Supabase-first" and
+        // "pending email change" into a single in_use reason so we
+        // don't expand the existing email-enumeration surface.
+        if (emailInput && emailFeedback) {
+            emailInput.addEventListener("blur", function () {
+                var value = (emailInput.value || "").trim();
+                if (!value || value.indexOf("@") === -1) {
+                    emailFeedback.textContent = "";
+                    emailInput.classList.remove("is-invalid", "is-valid");
+                    lastEmailCheck = {value: null, available: true, reason: null};
+                    return;
+                }
+                checkEmailAvailability(config, value).then(function (result) {
+                    lastEmailCheck = {
+                        value: value,
+                        available: result.available,
+                        reason: result.reason
+                    };
+                    if (result.available) {
+                        emailFeedback.textContent = "";
+                        emailInput.classList.remove("is-invalid");
+                        emailInput.classList.add("is-valid");
+                    } else if (result.reason === "in_use") {
+                        emailFeedback.textContent =
+                            "This email can't be used for a new account. "
+                            + "Try signing in or use another email.";
+                        emailInput.classList.remove("is-valid");
+                        emailInput.classList.add("is-invalid");
+                    } else if (result.reason === "format") {
+                        emailFeedback.textContent =
+                            "Please enter a valid email address.";
+                        emailInput.classList.remove("is-valid");
+                        emailInput.classList.add("is-invalid");
+                    }
+                });
+            });
+        }
+
+        // Live password length feedback. The minimum is read from the
+        // input's ``minlength`` attribute so the message tracks any
+        // future product change without code edits here. Suitability
+        // checks beyond length (entropy, common-password screens) are
+        // explicitly out of scope for this slice — Supabase enforces
+        // its own server-side minimum and the bridge / Supabase remain
+        // the authoritative guards.
+        if (passwordInput && passwordFeedback) {
+            var passwordMinLength = parseInt(
+                passwordInput.getAttribute("minlength"), 10
+            ) || 8;
+            var updatePasswordFeedback = function () {
+                var value = passwordInput.value || "";
+                if (!value) {
+                    passwordFeedback.textContent = "";
+                    passwordInput.classList.remove("is-invalid", "is-valid");
+                    return;
+                }
+                if (value.length < passwordMinLength) {
+                    passwordFeedback.textContent =
+                        "Use at least " + passwordMinLength + " characters.";
+                    passwordInput.classList.add("is-invalid");
+                    passwordInput.classList.remove("is-valid");
+                } else {
+                    passwordFeedback.textContent = "Length OK.";
+                    passwordInput.classList.remove("is-invalid");
+                    passwordInput.classList.add("is-valid");
+                }
+            };
+            passwordInput.addEventListener("input", updatePasswordFeedback);
         }
 
         // Async username availability check on blur. Errors are
@@ -257,6 +358,40 @@
 
                 if (!email || !password) {
                     setStatus(status, "error", "Email and password are required.");
+                    return;
+                }
+
+                // Password length pre-flight matches the input's
+                // declared ``minlength``. Bridge / Supabase remain
+                // authoritative.
+                var minLen = parseInt(
+                    (passwordInput && passwordInput.getAttribute("minlength")) || "8",
+                    10
+                );
+                if (password.length < minLen) {
+                    setStatus(
+                        status,
+                        "error",
+                        "Use at least " + minLen + " characters in your password."
+                    );
+                    return;
+                }
+
+                // Email pre-check: if the most recent blur-time check
+                // reported this exact value as unusable, refuse to
+                // proceed. This avoids creating a Supabase identity
+                // that the bridge would only reject afterwards. A
+                // race where the email becomes taken between blur and
+                // submit still surfaces correctly at bridge time.
+                if (lastEmailCheck.value === email
+                    && !lastEmailCheck.available
+                    && lastEmailCheck.reason === "in_use") {
+                    setStatus(
+                        status,
+                        "error",
+                        "This email can't be used for a new account. "
+                        + "Try signing in or use another email."
+                    );
                     return;
                 }
 
