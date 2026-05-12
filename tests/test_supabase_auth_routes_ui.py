@@ -183,7 +183,8 @@ def test_signup_page_injects_public_config_blob(test_app, test_client):
     assert config["endpoints"]["confirm"] == "/auth/supabase/confirm"
     assert config["endpoints"]["oauth_callback"] == "/auth/supabase/oauth-callback"
     assert config["endpoints"]["onboarding"] == "/auth/supabase/onboarding"
-    assert config["endpoints"]["dashboard"] == "/dashboard"
+    assert config["endpoints"]["dashboard"] == "/"  # main.home
+    assert config["endpoints"]["check_username"] == "/auth/supabase/check-username"
 
 
 def test_signup_page_never_leaks_service_role_key_or_jwt_secret(test_app, test_client):
@@ -236,3 +237,165 @@ def test_legacy_register_redirects_to_supabase_signup_when_flag_on(test_app, tes
     response = test_client.get("/register", follow_redirects=False)
     assert response.status_code == 302
     assert response.headers.get("Location", "").endswith("/auth/supabase/signup")
+
+
+# ---------------------------------------------------------------------------
+# Phase 3a UX-polish slice — signup-page polish
+# ---------------------------------------------------------------------------
+
+
+def test_signup_page_has_confirm_password_field(test_app, test_client):
+    _enable(test_app)
+    response = test_client.get("/auth/supabase/signup")
+    assert response.status_code == 200
+    body = response.data.decode("utf-8")
+    assert 'name="confirm_password"' in body
+    assert 'data-confirm-password-for="#supabase-password"' in body
+
+
+def test_signup_page_has_password_show_hide_toggles(test_app, test_client):
+    _enable(test_app)
+    response = test_client.get("/auth/supabase/signup")
+    body = response.data.decode("utf-8")
+    assert 'data-password-toggle="#supabase-password"' in body
+    assert 'data-password-toggle="#supabase-confirm-password"' in body
+
+
+def test_signup_page_renders_google_logo_svg_when_provider_configured(test_app, test_client):
+    _enable(test_app)
+    test_app.config["SUPABASE_SSO_PROVIDERS"] = "google"
+    response = test_client.get("/auth/supabase/signup")
+    body = response.data.decode("utf-8")
+    assert "data-google-logo" in body
+    # Spot-check brand colours; the SVG should be inline (no external image).
+    assert "#4285F4" in body
+    assert "#EA4335" in body
+
+
+def test_signup_page_has_username_feedback_node(test_app, test_client):
+    _enable(test_app)
+    response = test_client.get("/auth/supabase/signup")
+    body = response.data.decode("utf-8")
+    assert "data-username-feedback" in body
+    assert 'aria-describedby="supabase-username-feedback"' in body
+
+
+# ---------------------------------------------------------------------------
+# Phase 3a UX-polish slice — check-username endpoint
+# ---------------------------------------------------------------------------
+
+
+def test_check_username_returns_404_when_flag_off(test_app, test_client):
+    _disable(test_app)
+    response = test_client.get("/auth/supabase/check-username?username=fresh")
+    assert response.status_code == 404
+
+
+def test_check_username_reports_available_for_new_username(test_app, test_client):
+    _enable(test_app)
+    response = test_client.get("/auth/supabase/check-username?username=brandnew")
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload == {"available": True, "reason": None}
+
+
+def test_check_username_reports_taken_for_existing_username(test_app, test_client):
+    from extensions import db
+    from models import User
+
+    _enable(test_app)
+    with test_app.app_context():
+        user = User(
+            username="claimed_handle",
+            email="claimed@example.com",
+            first_name="Claimed",
+            last_name="Handle",
+            is_email_confirmed=True,
+        )
+        user.set_password("password123")
+        db.session.add(user)
+        db.session.commit()
+
+    response = test_client.get(
+        "/auth/supabase/check-username?username=claimed_handle"
+    )
+    payload = response.get_json()
+    assert payload == {"available": False, "reason": "taken"}
+
+
+def test_check_username_reports_length_for_short_username(test_app, test_client):
+    _enable(test_app)
+    response = test_client.get("/auth/supabase/check-username?username=abc")
+    payload = response.get_json()
+    assert payload == {"available": False, "reason": "length"}
+
+
+def test_check_username_reports_length_for_blank(test_app, test_client):
+    _enable(test_app)
+    response = test_client.get("/auth/supabase/check-username?username=")
+    payload = response.get_json()
+    assert payload == {"available": False, "reason": "length"}
+
+
+# ---------------------------------------------------------------------------
+# Phase 3a UX-polish slice — /login dual-mode behaviour
+# ---------------------------------------------------------------------------
+
+
+def test_login_page_renders_legacy_form_when_flag_off(test_app, test_client):
+    _disable(test_app)
+    response = test_client.get("/login")
+    assert response.status_code == 200
+    body = response.data.decode("utf-8")
+    # Legacy form is still posted to /login.
+    assert 'action="/login"' in body
+    # No Supabase entry points.
+    assert "data-supabase-login-form" not in body
+    assert "data-supabase-sso" not in body
+    # Legacy password show/hide still works without the Supabase config.
+    assert "data-password-toggle" in body
+
+
+def test_login_page_adds_supabase_signin_section_when_flag_on(test_app, test_client):
+    _enable(test_app)
+    response = test_client.get("/login")
+    assert response.status_code == 200
+    body = response.data.decode("utf-8")
+    # Supabase email/password sign-in form is present.
+    assert "data-supabase-login-form" in body
+    # Google SSO button is present (default provider list = google).
+    assert 'data-supabase-sso="google"' in body
+    # Sign-up link points at the Supabase signup page.
+    assert 'href="/auth/supabase/signup"' in body
+    # Supabase config blob and JS client are loaded.
+    assert 'id="supabase-auth-config"' in body
+    assert "/static/js/supabase_auth_client.js" in body
+    # Show/hide buttons on both the new Supabase password input and
+    # the (now-collapsed) legacy password input.
+    assert 'data-password-toggle="#supabase-login-password"' in body
+    assert 'data-password-toggle="#legacy-login-password"' in body
+
+
+def test_login_page_legacy_form_still_posts_when_flag_on(test_app, test_client):
+    """The collapsed legacy form remains functional when the flag is on."""
+    _enable(test_app)
+    response = test_client.get("/login")
+    body = response.data.decode("utf-8")
+    # The legacy POST target is preserved inside the collapsed section.
+    assert 'action="/login"' in body
+    # CSRF token is rendered (form.hidden_tag).
+    assert "csrf_token" in body or "name=\"csrf_token\"" in body or '<input id="csrf_token"' in body or "hidden" in body
+
+
+def test_login_page_does_not_leak_supabase_secrets_when_flag_on(test_app, test_client):
+    _enable(test_app)
+    test_app.config["SUPABASE_URL"] = "https://example.supabase.co"
+    test_app.config["SUPABASE_ANON_KEY"] = "anon-public"
+    test_app.config["SUPABASE_SERVICE_ROLE_KEY"] = "LOGIN-SERVICE-ROLE-LEAK"
+    test_app.config["SUPABASE_JWT_SECRET"] = "LOGIN-JWT-SECRET-LEAK"
+    response = test_client.get("/login")
+    body = response.data.decode("utf-8")
+    assert "LOGIN-SERVICE-ROLE-LEAK" not in body
+    assert "LOGIN-JWT-SECRET-LEAK" not in body
+    # The publishable anon key is allowed to appear.
+    assert "anon-public" in body

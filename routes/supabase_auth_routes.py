@@ -28,6 +28,7 @@ from flask import (
 from flask_login import login_user
 
 from extensions import csrf
+from models import User
 from services.supabase_session_bridge import (
     BridgeFlagDisabled,
     BridgeProfileInvalid,
@@ -161,13 +162,41 @@ def bridge():
             "message": "Profile payload was invalid.",
         }), 400
 
+    # The post-success redirect must point at a route that actually
+    # exists in this app. The legacy login path lands users at
+    # ``main.home``, so Phase 3a does the same for parity. Callers may
+    # override on the client by reading a ``?next=...`` query parameter.
     return jsonify({
         "ok": True,
         "user_id": outcome.app_user.id,
         "was_created": outcome.was_created,
         "source": outcome.source,
-        "redirect": "/dashboard",
+        "redirect": url_for("main.home"),
     }), 200
+
+
+@supabase_auth_bp.route("/check-username", methods=["GET"])
+def check_username():
+    """Lightweight availability check used by the signup page's JS to
+    catch duplicate usernames before driving Supabase to create an
+    identity that would only fail at bridge time.
+
+    Response::
+
+        {"available": true|false, "reason": "length"|"taken"|null}
+
+    Reveals only whether the specific queried username is free — the
+    legacy ``/register`` form already exhibits the same property by
+    flashing on POST. Rate-limiting is a separate Phase 4 concern.
+    """
+    _flag_or_404()
+    raw = (request.args.get("username") or "").strip()
+    if len(raw) < 4 or len(raw) > 80:
+        return jsonify({"available": False, "reason": "length"}), 200
+    existing = User.query.filter_by(username=raw).first()
+    if existing is not None:
+        return jsonify({"available": False, "reason": "taken"}), 200
+    return jsonify({"available": True, "reason": None}), 200
 
 
 # ---------------------------------------------------------------------------
@@ -210,7 +239,8 @@ def _public_client_config() -> dict:
             "confirm": url_for("supabase_auth.supabase_confirm"),
             "oauth_callback": url_for("supabase_auth.supabase_oauth_callback"),
             "onboarding": url_for("supabase_auth.supabase_onboarding"),
-            "dashboard": "/dashboard",
+            "check_username": url_for("supabase_auth.check_username"),
+            "dashboard": url_for("main.home"),
         },
     }
 

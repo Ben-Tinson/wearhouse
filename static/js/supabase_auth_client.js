@@ -109,10 +109,79 @@
     }
 
     function dashboardUrl(config, body) {
+        // Honour an explicit ?next=... on the current URL when present
+        // (matches the legacy /login redirect behaviour).
+        try {
+            var params = new URLSearchParams(window.location.search || "");
+            var next = params.get("next");
+            if (next && next.charAt(0) === "/") {
+                return next;
+            }
+        } catch (err) { /* ignore */ }
         if (body && body.redirect) {
             return body.redirect;
         }
-        return (config.endpoints && config.endpoints.dashboard) || "/dashboard";
+        return (config.endpoints && config.endpoints.dashboard) || "/";
+    }
+
+    // ---------------------------------------------------------------
+    // Shared UX helpers
+    // ---------------------------------------------------------------
+    function initPasswordToggles() {
+        var toggles = document.querySelectorAll("[data-password-toggle]");
+        Array.prototype.forEach.call(toggles, function (button) {
+            // Guard against double-binding when multiple init functions run.
+            if (button.__supabaseToggleBound) { return; }
+            button.__supabaseToggleBound = true;
+            button.addEventListener("click", function () {
+                var selector = button.getAttribute("data-password-toggle");
+                var input = document.querySelector(selector);
+                if (!input) { return; }
+                if (input.type === "password") {
+                    input.type = "text";
+                    button.textContent = "Hide";
+                } else {
+                    input.type = "password";
+                    button.textContent = "Show";
+                }
+            });
+        });
+    }
+
+    function passwordsMatch(form) {
+        var primary = form.querySelector("[data-password-input]:not([data-confirm-password-for])");
+        var confirm = form.querySelector("[data-confirm-password-for]");
+        if (!primary || !confirm) { return true; }
+        return primary.value === confirm.value;
+    }
+
+    function markConfirmPasswordMismatch(form, mismatch) {
+        var confirm = form.querySelector("[data-confirm-password-for]");
+        if (!confirm) { return; }
+        if (mismatch) {
+            confirm.classList.add("is-invalid");
+        } else {
+            confirm.classList.remove("is-invalid");
+        }
+    }
+
+    function checkUsernameAvailability(config, username) {
+        if (!config.endpoints || !config.endpoints.check_username) {
+            return Promise.resolve({available: true, reason: null});
+        }
+        var url = config.endpoints.check_username
+            + "?username=" + encodeURIComponent(username);
+        return fetch(url, {
+            credentials: "same-origin",
+            headers: {"Accept": "application/json"}
+        }).then(function (response) {
+            if (!response.ok) {
+                return {available: true, reason: null};
+            }
+            return response.json();
+        }).catch(function () {
+            return {available: true, reason: null};
+        });
     }
 
     // ---------------------------------------------------------------
@@ -127,10 +196,61 @@
 
         var form = document.querySelector("[data-supabase-signup-form]");
         var status = document.querySelector("[data-supabase-status]");
+        var usernameInput = document.getElementById("supabase-username");
+        var usernameFeedback = document.querySelector("[data-username-feedback]");
+
+        initPasswordToggles();
+
+        // Live confirm-password match feedback.
+        var confirmInput = form
+            && form.querySelector("[data-confirm-password-for]");
+        if (confirmInput) {
+            confirmInput.addEventListener("input", function () {
+                markConfirmPasswordMismatch(form, !passwordsMatch(form));
+            });
+        }
+
+        // Async username availability check on blur. Errors are
+        // non-blocking — submit-time validation in the bridge is the
+        // authoritative guard.
+        if (usernameInput && usernameFeedback) {
+            usernameInput.addEventListener("blur", function () {
+                var value = (usernameInput.value || "").trim();
+                if (value.length < 4) {
+                    usernameFeedback.textContent = "";
+                    usernameInput.classList.remove("is-invalid", "is-valid");
+                    return;
+                }
+                checkUsernameAvailability(config, value).then(function (result) {
+                    if (result.available) {
+                        usernameFeedback.textContent = "Username is available.";
+                        usernameInput.classList.remove("is-invalid");
+                        usernameInput.classList.add("is-valid");
+                    } else if (result.reason === "taken") {
+                        usernameFeedback.textContent =
+                            "That username is already taken.";
+                        usernameInput.classList.remove("is-valid");
+                        usernameInput.classList.add("is-invalid");
+                    } else if (result.reason === "length") {
+                        usernameFeedback.textContent =
+                            "Username must be 4–80 characters.";
+                        usernameInput.classList.add("is-invalid");
+                    }
+                });
+            });
+        }
 
         if (form) {
             form.addEventListener("submit", function (event) {
                 event.preventDefault();
+
+                if (!passwordsMatch(form)) {
+                    markConfirmPasswordMismatch(form, true);
+                    setStatus(status, "error", "Passwords do not match.");
+                    return;
+                }
+                markConfirmPasswordMismatch(form, false);
+
                 var profile = readProfileFromForm(form);
                 var email = (form.email.value || "").trim();
                 var password = form.password.value || "";
@@ -399,10 +519,115 @@
         });
     }
 
+    // ---------------------------------------------------------------
+    // /login — Supabase-first sign-in (Phase 3a UX-polish slice)
+    // ---------------------------------------------------------------
+    function initLogin() {
+        var config = readConfig();
+        var client = getSupabaseClient(config);
+        if (!client || !config) {
+            return;
+        }
+
+        initPasswordToggles();
+
+        var form = document.querySelector("[data-supabase-login-form]");
+        var status = document.querySelector("[data-supabase-status]");
+
+        if (form) {
+            form.addEventListener("submit", function (event) {
+                event.preventDefault();
+                var email = (form.email.value || "").trim();
+                var password = form.password.value || "";
+                if (!email || !password) {
+                    setStatus(status, "error", "Email and password are required.");
+                    return;
+                }
+                setStatus(status, "info", "Signing you in…");
+                client.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                }).then(function (result) {
+                    if (result.error) {
+                        setStatus(
+                            status,
+                            "error",
+                            result.error.message || "Sign-in failed."
+                        );
+                        return;
+                    }
+                    var session = result.data && result.data.session;
+                    if (!session || !session.access_token) {
+                        setStatus(
+                            status,
+                            "error",
+                            "Sign-in returned no session. Please try again."
+                        );
+                        return;
+                    }
+                    postToBridge(config, session.access_token, null).then(function (out) {
+                        if (out.status === 200 && out.body && out.body.ok) {
+                            window.location.assign(dashboardUrl(config, out.body));
+                            return;
+                        }
+                        if (out.status === 409
+                            && out.body
+                            && out.body.error === "existing_legacy_account") {
+                            setStatus(
+                                status,
+                                "warning",
+                                "An existing Soletrak account exists for this email. "
+                                + "Please sign in with your existing username below."
+                            );
+                            return;
+                        }
+                        var msg = (out.body && (out.body.message || out.body.error))
+                            || ("Bridge returned " + out.status);
+                        setStatus(status, "error", msg);
+                    }).catch(function (err) {
+                        setStatus(
+                            status,
+                            "error",
+                            (err && err.message) || "Bridge call failed."
+                        );
+                    });
+                }).catch(function (err) {
+                    setStatus(
+                        status,
+                        "error",
+                        (err && err.message) || "Sign-in failed."
+                    );
+                });
+            });
+        }
+
+        // SSO buttons on the login page mirror the signup-page handler.
+        var ssoButtons = document.querySelectorAll("[data-supabase-sso]");
+        Array.prototype.forEach.call(ssoButtons, function (button) {
+            button.addEventListener("click", function () {
+                var provider = button.getAttribute("data-supabase-sso");
+                var redirectTo = (config.bridge_redirect_url
+                    || (window.location.origin + config.endpoints.oauth_callback));
+                client.auth.signInWithOAuth({
+                    provider: provider,
+                    options: {redirectTo: redirectTo}
+                }).catch(function (err) {
+                    setStatus(
+                        status,
+                        "error",
+                        (err && err.message) || "SSO sign-in failed."
+                    );
+                });
+            });
+        });
+    }
+
     window.SoletrakSupabaseAuth = {
         initSignup: initSignup,
         initConfirm: initConfirm,
         initOAuthCallback: initOAuthCallback,
-        initOnboarding: initOnboarding
+        initOnboarding: initOnboarding,
+        initLogin: initLogin,
+        initPasswordToggles: initPasswordToggles
     };
 })();

@@ -1,19 +1,124 @@
 {% extends "base.html" %}
 
-{% block title %}{{ title }}{% endblock %} {# Using title passed from the route #}
+{% block title %}{{ title }}{% endblock %}
+
+{% if config.get('SUPABASE_NEW_USER_SIGNUP_ENABLED') %}
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+{% endblock %}
+{% endif %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6 col-lg-5">
-        <h2 class="mb-4 text-center">{{ title }}</h2> {# Using title passed from the route #}
+        <h2 class="mb-4 text-center">{{ title }}</h2>
+
+        {# ---------------------------------------------------------------
+           Supabase-first sign-in (Phase 3a, flag-gated). This is the new
+           main entry point for users who signed up via Supabase. Legacy
+           users with a username + password still use the form below.
+           --------------------------------------------------------------- #}
+        {% if config.get('SUPABASE_NEW_USER_SIGNUP_ENABLED') %}
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+
+                {% if supabase_config and supabase_config.sso_providers %}
+                <div class="d-grid gap-2 mb-3">
+                    {% if 'google' in supabase_config.sso_providers %}
+                    <button type="button"
+                            class="btn btn-outline-secondary d-flex align-items-center justify-content-center"
+                            data-supabase-sso="google"
+                            data-testid="supabase-login-sso-google">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             width="18" height="18" viewBox="0 0 18 18"
+                             class="me-2"
+                             aria-hidden="true"
+                             data-google-logo>
+                            <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.71-1.57 2.7-3.89 2.7-6.62z"/>
+                            <path fill="#34A853" d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.71H.96v2.33A8.997 8.997 0 0 0 9 18z"/>
+                            <path fill="#FBBC05" d="M3.97 10.71A5.41 5.41 0 0 1 3.68 9c0-.59.1-1.17.29-1.71V4.96H.96A8.997 8.997 0 0 0 0 9c0 1.45.35 2.82.96 4.04l3.01-2.33z"/>
+                            <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A8.997 8.997 0 0 0 .96 4.96l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/>
+                        </svg>
+                        Continue with Google
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="text-center text-muted small mb-3">— or sign in with email —</div>
+                {% endif %}
+
+                <form data-supabase-login-form novalidate>
+                    <div class="mb-3">
+                        <label for="supabase-login-email" class="form-label">Email</label>
+                        <input type="email"
+                               class="form-control"
+                               id="supabase-login-email"
+                               name="email"
+                               required
+                               autocomplete="email"
+                               placeholder="your@email.com">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="supabase-login-password" class="form-label">Password</label>
+                        <div class="input-group">
+                            <input type="password"
+                                   class="form-control"
+                                   id="supabase-login-password"
+                                   name="password"
+                                   required
+                                   autocomplete="current-password"
+                                   placeholder="Enter your password"
+                                   data-password-input>
+                            <button type="button"
+                                    class="btn btn-outline-secondary"
+                                    data-password-toggle="#supabase-login-password"
+                                    aria-label="Show or hide password">
+                                Show
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit"
+                                class="btn btn-primary"
+                                data-testid="supabase-login-submit">
+                            Sign in
+                        </button>
+                    </div>
+                </form>
+
+                <div class="mt-3" data-supabase-status hidden></div>
+            </div>
+        </div>
+
+        <p class="text-center text-muted small mb-2">
+            Don't have an account?
+            <a href="{{ url_for('supabase_auth.supabase_signup') }}">Sign up</a>.
+        </p>
+
+        <details class="mt-3">
+            <summary class="text-muted small text-center" style="cursor: pointer;">
+                Sign in with a legacy Soletrak username
+            </summary>
+            <div class="card shadow-sm mt-2">
+                <div class="card-body">
+        {% endif %}
+
+        {# ---------------------------------------------------------------
+           Legacy username + password form. Always rendered. When the
+           Phase 3a flag is on, it is collapsed under a <details> toggle
+           so the Supabase sign-in path is the visible default.
+           --------------------------------------------------------------- #}
+        {% if not config.get('SUPABASE_NEW_USER_SIGNUP_ENABLED') %}
         <div class="card shadow-sm">
             <div class="card-body">
-                <form method="POST" action="{{ url_for('auth.login') }}"> {# Explicit action is fine #}
-                    {{ form.hidden_tag() }} {# IMPORTANT: Adds CSRF token and other hidden fields #}
-                    
+        {% endif %}
+                <form method="POST" action="{{ url_for('auth.login') }}">
+                    {{ form.hidden_tag() }}
+
                     <div class="mb-3">
                         {{ form.username.label(class="form-label") }}
-                        
+
                         {% if form.username.errors %}
                             {{ form.username(class="form-control is-invalid", placeholder="Enter your username") }}
                             <div class="invalid-feedback">
@@ -25,18 +130,28 @@
                             {{ form.username(class="form-control", placeholder="Enter your username") }}
                         {% endif %}
                     </div>
-                    
+
                     <div class="mb-3">
                         {{ form.password.label(class="form-label") }}
+                        <div class="input-group">
+                            {% if form.password.errors %}
+                                {{ form.password(class="form-control is-invalid", placeholder="Enter your password", **{"data-password-input": "", "id": "legacy-login-password"}) }}
+                            {% else %}
+                                {{ form.password(class="form-control", placeholder="Enter your password", **{"data-password-input": "", "id": "legacy-login-password"}) }}
+                            {% endif %}
+                            <button type="button"
+                                    class="btn btn-outline-secondary"
+                                    data-password-toggle="#legacy-login-password"
+                                    aria-label="Show or hide password">
+                                Show
+                            </button>
+                        </div>
                         {% if form.password.errors %}
-                            {{ form.password(class="form-control is-invalid", placeholder="Enter your password") }}
-                            <div class="invalid-feedback">
+                            <div class="invalid-feedback d-block">
                                 {% for error in form.password.errors %}
                                     <span>{{ error }}</span>
                                 {% endfor %}
                             </div>
-                        {% else %}
-                            {{ form.password(class="form-control", placeholder="Enter your password") }}
                         {% endif %}
                     </div>
 
@@ -46,12 +161,57 @@
                 </form>
             </div>
         </div>
+        {% if config.get('SUPABASE_NEW_USER_SIGNUP_ENABLED') %}
+        </details>
+        {% else %}
         <p class="mt-3 text-center">
             Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a>.
         </p>
-        <p class="text-center mt-2"> {# mt-2 for a little space above it #}
+        {% endif %}
+
+        <p class="text-center mt-2">
             <a href="{{ url_for('auth.reset_password_request') }}">Forgot password?</a>
         </p>
     </div>
 </div>
+
+{% if config.get('SUPABASE_NEW_USER_SIGNUP_ENABLED') and supabase_config %}
+<script id="supabase-auth-config" type="application/json">{{ supabase_config | tojson }}</script>
+<script src="{{ url_for('static', filename='js/supabase_auth_client.js') }}" defer></script>
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        if (window.SoletrakSupabaseAuth) {
+            if (typeof window.SoletrakSupabaseAuth.initLogin === 'function') {
+                window.SoletrakSupabaseAuth.initLogin();
+            }
+            if (typeof window.SoletrakSupabaseAuth.initPasswordToggles === 'function') {
+                window.SoletrakSupabaseAuth.initPasswordToggles();
+            }
+        }
+    });
+</script>
+{% else %}
+<script>
+    /* Legacy login: still expose the show/hide password toggle, with no
+       Supabase config required. The handler is intentionally inline /
+       small so it works without loading the larger Supabase JS client. */
+    window.addEventListener('DOMContentLoaded', function () {
+        var toggles = document.querySelectorAll('[data-password-toggle]');
+        Array.prototype.forEach.call(toggles, function (button) {
+            button.addEventListener('click', function () {
+                var sel = button.getAttribute('data-password-toggle');
+                var input = document.querySelector(sel);
+                if (!input) { return; }
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    button.textContent = 'Hide';
+                } else {
+                    input.type = 'password';
+                    button.textContent = 'Show';
+                }
+            });
+        });
+    });
+</script>
+{% endif %}
 {% endblock %}

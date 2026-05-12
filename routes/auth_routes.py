@@ -139,7 +139,21 @@ def login():
         else:
             flash('Login Unsuccessful. Please check username and password.', 'danger')
 
-    return render_template('login.html', title='Login', form=form)
+    # Phase 3a UX-polish slice: when the new-user Supabase signup flag
+    # is on, /login becomes the unified sign-in entry point and needs
+    # the same browser-safe Supabase config blob the Supabase Auth
+    # blueprint exposes. The helper lives in that blueprint to keep one
+    # source of truth.
+    supabase_config = None
+    if current_app.config.get('SUPABASE_NEW_USER_SIGNUP_ENABLED'):
+        from routes.supabase_auth_routes import _public_client_config
+        supabase_config = _public_client_config()
+    return render_template(
+        'login.html',
+        title='Login',
+        form=form,
+        supabase_config=supabase_config,
+    )
 
 # Logout Route
 @auth_bp.route('/logout')
