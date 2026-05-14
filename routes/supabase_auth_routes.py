@@ -36,6 +36,7 @@ from services.supabase_session_bridge import (
     BridgeProfileInvalid,
     BridgeTokenInvalid,
     ExistingLegacyUserConflict,
+    ExistingSupabaseLinkConflict,
     bridge_supabase_identity,
 )
 
@@ -154,6 +155,17 @@ def bridge():
             "message": (
                 "An existing Soletrak account exists for this email. "
                 "Please sign in with your existing username."
+            ),
+        }), 409
+    except ExistingSupabaseLinkConflict as exc:
+        return jsonify({
+            "ok": False,
+            "error": "supabase_link_mismatch",
+            "existing_user_id_hint": exc.app_user_id,
+            "message": (
+                "This email is already linked to a different sign-in "
+                "method. Please sign in with the method you originally "
+                "used."
             ),
         }), 409
     except BridgeProfileInvalid as exc:

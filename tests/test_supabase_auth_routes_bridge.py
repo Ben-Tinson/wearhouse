@@ -239,6 +239,111 @@ def test_bridge_409_on_email_match_against_unlinked_legacy_user(
 
 
 # ---------------------------------------------------------------------------
+# Existing Supabase link mismatch (409) — bug fix
+# ---------------------------------------------------------------------------
+
+
+def test_bridge_409_on_email_match_with_different_supabase_link(
+    test_app, test_client, monkeypatch
+):
+    """Reproduces the manual-testing bug: an app user already linked to
+    UUID_A receives a JWT for the same email with UUID_B. Before the
+    fix, the bridge fell through to a duplicate insert and returned a
+    raw 500. After the fix, the route returns 409 with the typed
+    ``supabase_link_mismatch`` error and the legacy linkage is
+    untouched."""
+    import uuid as _uuid
+    from services.supabase_auth_linkage import link_app_user_to_supabase
+
+    original_uuid = _uuid.uuid4()
+    incoming_uuid = _uuid.uuid4()
+    claims = _make_claims(sub=str(incoming_uuid), email="mismatch@example.com")
+    _patch_bridge_verifier(monkeypatch, claims=claims)
+
+    _enable_phase3a(test_app)
+    with test_app.app_context():
+        original = _make_legacy_user(
+            username="mismatch_user", email="mismatch@example.com"
+        )
+        link_app_user_to_supabase(original.id, original_uuid)
+        original_id = original.id
+        before_count = User.query.count()
+
+    response = test_client.post(
+        BRIDGE_PATH,
+        json={"access_token": "tok", "profile": _valid_profile(username="newer")},
+    )
+    assert response.status_code == 409
+    payload = response.get_json()
+    assert payload["ok"] is False
+    assert payload["error"] == "supabase_link_mismatch"
+    assert payload["existing_user_id_hint"] == original_id
+    # User-safe copy; does not reveal which method specifically.
+    assert "different sign-in method" in payload["message"]
+
+    # Crucial: the original linkage is untouched and no duplicate row exists.
+    with test_app.app_context():
+        reloaded = db.session.get(User, original_id)
+        assert reloaded.supabase_auth_user_id == original_uuid
+        assert reloaded.supabase_auth_user_id != incoming_uuid
+        assert User.query.count() == before_count
+        assert User.query.filter_by(username="newer").first() is None
+
+
+def test_bridge_session_cookie_not_issued_on_supabase_link_mismatch(
+    test_app, test_client, monkeypatch
+):
+    """A 409 mismatch must not authenticate the caller."""
+    import uuid as _uuid
+    from services.supabase_auth_linkage import link_app_user_to_supabase
+
+    claims = _make_claims(
+        sub=str(_uuid.uuid4()), email="nosession_mm@example.com"
+    )
+    _patch_bridge_verifier(monkeypatch, claims=claims)
+
+    _enable_phase3a(test_app)
+    with test_app.app_context():
+        user = _make_legacy_user(
+            username="nosession_mm", email="nosession_mm@example.com"
+        )
+        link_app_user_to_supabase(user.id, _uuid.uuid4())
+
+    response = test_client.post(
+        BRIDGE_PATH,
+        json={"access_token": "tok", "profile": _valid_profile(username="nsmx")},
+    )
+    assert response.status_code == 409
+    # Unauthenticated → @login_required redirects /profile to /login.
+    follow_up = test_client.get("/profile")
+    assert follow_up.status_code == 302
+    assert "/login" in (follow_up.headers.get("Location") or "")
+
+
+def test_bridge_409_existing_legacy_account_still_distinct_from_mismatch(
+    test_app, test_client, monkeypatch
+):
+    """The pre-existing unlinked-legacy 409 path keeps its own error
+    code; the mismatch path returns a different code."""
+    claims = _make_claims(email="distinct@example.com")
+    _patch_bridge_verifier(monkeypatch, claims=claims)
+
+    _enable_phase3a(test_app)
+    with test_app.app_context():
+        _make_legacy_user(username="distinct_user", email="distinct@example.com")
+
+    response = test_client.post(
+        BRIDGE_PATH,
+        json={"access_token": "tok", "profile": _valid_profile(username="dx")},
+    )
+    assert response.status_code == 409
+    payload = response.get_json()
+    # Legacy unlinked: error code is ``existing_legacy_account``, NOT
+    # ``supabase_link_mismatch``.
+    assert payload["error"] == "existing_legacy_account"
+
+
+# ---------------------------------------------------------------------------
 # Profile validation (400 with field_errors)
 # ---------------------------------------------------------------------------
 
