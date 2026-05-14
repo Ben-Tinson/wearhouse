@@ -127,6 +127,35 @@ class ExistingLegacyUserConflict(BridgeError):
         self.app_user_id = app_user_id
 
 
+class ExistingSupabaseLinkConflict(BridgeError):
+    """Raised when the JWT's email matches an existing app user that is
+    already linked to a **different** Supabase identity than ``claims.sub``.
+
+    Distinct from ``ExistingLegacyUserConflict`` (which fires when the
+    matched user has no Supabase link at all). This case typically arises
+    when:
+
+        - the user has accumulated more than one Supabase identity for
+          the same email (e.g. an email/password signup followed later
+          by a Google sign-in that Supabase did not auto-merge), or
+        - an earlier Supabase identity was deleted / re-created so the
+          new ``sub`` differs from the value stored on the app row.
+
+    The bridge refuses to silently relink — relinking an app user to a
+    different Supabase identity is a deliberate operator action via
+    ``scripts/link_supabase_identities.py`` (with ``by_admin=True``),
+    never a side effect of a request. Before this guard, the bridge
+    would fall through to a fresh-row INSERT and crash on the unique
+    email constraint with a raw IntegrityError 500.
+    """
+
+    def __init__(self, app_user_id: int) -> None:
+        super().__init__(
+            f"app user {app_user_id} is already linked to a different Supabase identity"
+        )
+        self.app_user_id = app_user_id
+
+
 class BridgeProfileInvalid(BridgeError):
     """Raised when the profile payload is missing or invalid for new-user
     creation. ``field_errors`` maps field name → human-readable message.
@@ -351,11 +380,21 @@ def bridge_supabase_identity(
             source=BRIDGE_SOURCE_RETURNING,
         )
 
-    # 2. Email-match against an unlinked legacy user — refuse to silently link.
+    # 2. Email-match guard. We arrive here only when ``find_app_user_by_supabase_id``
+    # already missed (no row links to ``claims.sub``). So if email matches:
+    #   - and the existing row has NO Supabase link → it is a legacy user
+    #     who may opt into linking via the Phase 3b consent flow.
+    #   - and the existing row IS linked → the link is to a different
+    #     Supabase identity (the by-sub lookup would otherwise have
+    #     returned this row). We refuse to silently relink and refuse
+    #     to attempt a duplicate insert (which would crash on the
+    #     unique email constraint).
     if claims.email:
         existing = find_app_user_by_email(claims.email)
-        if existing is not None and existing.supabase_auth_user_id is None:
-            raise ExistingLegacyUserConflict(existing.id)
+        if existing is not None:
+            if existing.supabase_auth_user_id is None:
+                raise ExistingLegacyUserConflict(existing.id)
+            raise ExistingSupabaseLinkConflict(existing.id)
 
     # 3. New user — validate profile, create row, link.
     if not claims.email:

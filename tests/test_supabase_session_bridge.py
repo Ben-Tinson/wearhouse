@@ -42,6 +42,7 @@ from services.supabase_session_bridge import (
     BridgeProfileInvalid,
     BridgeTokenInvalid,
     ExistingLegacyUserConflict,
+    ExistingSupabaseLinkConflict,
     bridge_supabase_identity,
 )
 
@@ -361,6 +362,134 @@ def test_bridge_email_match_is_case_insensitive(test_app, monkeypatch):
         _make_legacy_user(username="mixed", email="mixed@example.com")
         with pytest.raises(ExistingLegacyUserConflict):
             bridge_supabase_identity("tok", _valid_profile(username="x"), no_audit=True)
+
+
+# ---------------------------------------------------------------------------
+# Existing-link mismatch: app row already linked to a DIFFERENT Supabase
+# identity than the incoming JWT's sub. Before the fix, the bridge fell
+# through to a duplicate INSERT and 500'd on the unique email constraint.
+# ---------------------------------------------------------------------------
+
+
+def test_bridge_raises_supabase_link_mismatch_when_app_row_linked_to_different_sub(
+    test_app, monkeypatch
+):
+    """The specific manual-testing scenario: an app user already linked
+    to ``UUID_A``, an incoming JWT for the same email with a different
+    ``UUID_B``. The bridge must raise the typed conflict and not attempt
+    a duplicate insert."""
+    from services.supabase_auth_linkage import link_app_user_to_supabase
+
+    original_uuid = uuid.uuid4()
+    incoming_uuid = uuid.uuid4()
+    claims = _make_claims(sub=str(incoming_uuid), email="alice@example.com")
+    _patch_verifier(monkeypatch, claims=claims)
+
+    with test_app.app_context():
+        _enable_supabase(test_app)
+        original = _make_legacy_user(
+            username="alice", email="alice@example.com"
+        )
+        link_app_user_to_supabase(original.id, original_uuid)
+        original_id = original.id
+        before_count = User.query.count()
+
+        with pytest.raises(ExistingSupabaseLinkConflict) as excinfo:
+            bridge_supabase_identity(
+                "tok",
+                _valid_profile(username="alice_alt"),
+                no_audit=True,
+            )
+        assert excinfo.value.app_user_id == original_id
+
+        # No row mutated, no duplicate row created.
+        reloaded = db.session.get(User, original_id)
+        assert reloaded.supabase_auth_user_id == original_uuid
+        assert User.query.count() == before_count
+        assert User.query.filter_by(username="alice_alt").first() is None
+
+
+def test_bridge_mismatch_does_not_silently_relink(test_app, monkeypatch):
+    """The matched app row's existing linkage must NOT be overwritten."""
+    from services.supabase_auth_linkage import link_app_user_to_supabase
+
+    original_uuid = uuid.uuid4()
+    incoming_uuid = uuid.uuid4()
+    claims = _make_claims(sub=str(incoming_uuid), email="norelink@example.com")
+    _patch_verifier(monkeypatch, claims=claims)
+
+    with test_app.app_context():
+        _enable_supabase(test_app)
+        user = _make_legacy_user(username="norelink", email="norelink@example.com")
+        link_app_user_to_supabase(user.id, original_uuid)
+        user_id = user.id
+
+        with pytest.raises(ExistingSupabaseLinkConflict):
+            bridge_supabase_identity("tok", _valid_profile(username="nlk"), no_audit=True)
+
+        reloaded = db.session.get(User, user_id)
+        assert reloaded.supabase_auth_user_id == original_uuid  # unchanged
+        assert reloaded.supabase_auth_user_id != incoming_uuid
+
+
+def test_bridge_mismatch_check_is_case_insensitive_on_email(test_app, monkeypatch):
+    from services.supabase_auth_linkage import link_app_user_to_supabase
+
+    original_uuid = uuid.uuid4()
+    claims = _make_claims(sub=str(uuid.uuid4()), email="MISMatch@Example.com")
+    _patch_verifier(monkeypatch, claims=claims)
+
+    with test_app.app_context():
+        _enable_supabase(test_app)
+        user = _make_legacy_user(username="mm_case", email="mismatch@example.com")
+        link_app_user_to_supabase(user.id, original_uuid)
+        with pytest.raises(ExistingSupabaseLinkConflict):
+            bridge_supabase_identity("tok", _valid_profile(username="mmx"), no_audit=True)
+
+
+def test_bridge_mismatch_does_not_write_audit(test_app, monkeypatch, tmp_path):
+    from services.supabase_auth_linkage import link_app_user_to_supabase
+
+    claims = _make_claims(
+        sub=str(uuid.uuid4()), email="audit_mismatch@example.com"
+    )
+    _patch_verifier(monkeypatch, claims=claims)
+    audit_file = str(tmp_path / "audit.jsonl")
+
+    with test_app.app_context():
+        _enable_supabase(test_app)
+        user = _make_legacy_user(
+            username="audit_mm", email="audit_mismatch@example.com"
+        )
+        link_app_user_to_supabase(user.id, uuid.uuid4())
+        with pytest.raises(ExistingSupabaseLinkConflict):
+            bridge_supabase_identity(
+                "tok",
+                _valid_profile(username="ammx"),
+                audit_path=audit_file,
+            )
+        assert not os.path.exists(audit_file)
+
+
+def test_bridge_existing_legacy_conflict_still_fires_for_unlinked_user(
+    test_app, monkeypatch
+):
+    """Sanity: the pre-existing unlinked-legacy path is unchanged. The
+    new mismatch error must NOT subsume the legacy-conflict error."""
+    claims = _make_claims(email="stillegacy@example.com")
+    _patch_verifier(monkeypatch, claims=claims)
+
+    with test_app.app_context():
+        _enable_supabase(test_app)
+        legacy = _make_legacy_user(
+            username="still_legacy", email="stillegacy@example.com"
+        )
+        legacy_id = legacy.id
+        with pytest.raises(ExistingLegacyUserConflict) as excinfo:
+            bridge_supabase_identity(
+                "tok", _valid_profile(username="newer"), no_audit=True
+            )
+        assert excinfo.value.app_user_id == legacy_id
 
 
 # ---------------------------------------------------------------------------
